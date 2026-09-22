@@ -1,12 +1,11 @@
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models.Entities;
-using AguaSantaClara.Web.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// EF Core
+// EF Core + PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -21,22 +20,19 @@ builder.Services.AddIdentity<Usuario, Rol>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// MVC
 builder.Services.AddControllersWithViews();
-
-// Repositorios
-builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-
-// Services (los específicos se agregan cuando existan)
-// builder.Services.AddScoped<IProductoService, ProductoService>();
 
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente
+// ⚠️ Migrar + Seed DENTRO del mismo scope
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var services = scope.ServiceProvider;
+
+    var db = services.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+
+    await SeedData.InitializeAsync(services);   // ← Usar el scope
 }
 
 if (!app.Environment.IsDevelopment())
