@@ -332,10 +332,13 @@
     <div class="catalogo-toolbar">
 
         <div class="busqueda">
+            <form method="get" asp-action="Index">
             <input type="text"
-                   class="form-control"
-                   placeholder="Buscar producto..."
-                   disabled />
+               name="search"
+               value="@ViewBag.Search"
+               class="form-control"
+               placeholder="Buscar producto..." />
+            </form>
         </div>
 
         <div class="vista-botones">

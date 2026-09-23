@@ -15,11 +15,23 @@ public class ProductosController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search)
     {
-        var productos = await _context.Productos
+        var consulta = _context.Productos.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var termino = search.Trim();
+
+            consulta = consulta.Where(p =>
+                p.Nombre.Contains(termino));
+        }
+
+        var productos = await consulta
             .OrderBy(p => p.Nombre)
             .ToListAsync();
+
+        ViewBag.Search = search;
 
         return View(productos);
     }
