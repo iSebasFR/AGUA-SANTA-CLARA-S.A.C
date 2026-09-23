@@ -1,0 +1,91 @@
+@model AguaSantaClara.Web.Models.EditarUsuarioViewModel
+
+@{
+    ViewData["Title"] = "Detalle del usuario";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h4 mb-1">Detalle del usuario</h1>
+        <p class="text-muted mb-0">Consulta y modifica los datos del usuario seleccionado.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Volver
+    </a>
+</div>
+
+<form asp-action="Edit" method="post">
+    <input asp-for="Id" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="UserName" class="form-label"></label>
+            <input asp-for="UserName" class="form-control" readonly />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" autocomplete="email" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Nombres" class="form-label"></label>
+            <input asp-for="Nombres" class="form-control" />
+            <span asp-validation-for="Nombres" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Apellidos" class="form-label"></label>
+            <input asp-for="Apellidos" class="form-control" />
+            <span asp-validation-for="Apellidos" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="IdRol" class="form-label"></label>
+            <select asp-for="IdRol" asp-items="Model.Roles" class="form-select"></select>
+            <span asp-validation-for="IdRol" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Estado</label>
+            <p class="form-control-plaintext">@(Model.Estado ? "Activo" : "Inactivo")</p>
+        </div>
+    </div>
+
+    <hr class="my-4" />
+    <div class="row g-3">
+        <div class="col-md-4">
+            <h2 class="h6">Rol asignado</h2>
+            <p class="mb-0"><span class="badge text-bg-primary">@Model.NombreRol</span></p>
+        </div>
+        <div class="col-md-8">
+            <h2 class="h6">Permisos del rol</h2>
+            @if (Model.Permisos.Any())
+            {
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var permiso in Model.Permisos)
+                    {
+                        <span class="badge text-bg-light border">@permiso</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">Sin permisos asignados.</p>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i> Guardar cambios
+        </button>
+        @if (Model.Estado)
+        {
+            <button type="submit" class="btn btn-outline-danger" formaction="@Url.Action("Deactivate", "Usuarios")">
+                <i class="bi bi-person-dash me-1"></i> Desactivar
+            </button>
+        }
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

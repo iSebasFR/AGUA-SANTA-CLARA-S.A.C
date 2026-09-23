@@ -15,9 +15,32 @@
     }
 </div>
 
+<form asp-action="Index" method="get" class="row g-2 mb-4">
+    <div class="col-md-8 col-lg-6">
+        <label for="search" class="visually-hidden">Buscar usuario</label>
+        <input id="search" name="search" value="@ViewBag.Search" class="form-control"
+               placeholder="Buscar por nombre, usuario o correo" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i> Buscar
+        </button>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(ViewBag.Search as string))
+    {
+        <div class="col-auto">
+            <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+        </div>
+    }
+</form>
+
 @if (TempData["SuccessMessage"] is string successMessage)
 {
     <div class="alert alert-success" role="alert">@successMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
 }
 
 <div class="table-responsive">
@@ -32,6 +55,12 @@
             </tr>
         </thead>
         <tbody>
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">No se encontraron usuarios.</td>
+            </tr>
+        }
         @foreach (var usuario in Model)
         {
             <tr>
@@ -43,6 +72,14 @@
                     <span class="badge @(usuario.Estado ? "text-bg-success" : "text-bg-secondary")">
                         @(usuario.Estado ? "Activo" : "Inactivo")
                     </span>
+                </td>
+                <td>
+                    @if (User.IsInRole("Gerente"))
+                    {
+                        <a asp-action="Edit" asp-route-id="@usuario.Id" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i> Ver / Editar
+                        </a>
+                    }
                 </td>
             </tr>
         }

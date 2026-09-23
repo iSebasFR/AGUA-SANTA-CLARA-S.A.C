@@ -19,14 +19,28 @@ public class UsuariosController : Controller
         _userManager = userManager;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search)
     {
-        var usuarios = await _context.Usuarios
+        var consulta = _context.Usuarios
             .Include(u => u.Rol)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var termino = search.Trim();
+            consulta = consulta.Where(u =>
+                (u.Nombres + " " + u.Apellidos).Contains(termino) ||
+                (u.Apellidos + " " + u.Nombres).Contains(termino) ||
+                (u.UserName ?? string.Empty).Contains(termino) ||
+                (u.Email ?? string.Empty).Contains(termino));
+        }
+
+        var usuarios = await consulta
             .OrderBy(u => u.Apellidos)
             .ThenBy(u => u.Nombres)
             .ToListAsync();
 
+        ViewBag.Search = search;
         return View(usuarios);
     }
 
@@ -112,7 +126,131 @@ public class UsuariosController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpGet]
+    [Authorize(Roles = "Gerente")]
+    public async Task<IActionResult> Edit(long id)
+    {
+        var usuario = await _context.Usuarios
+            .Include(u => u.Rol)
+                .ThenInclude(r => r.RolPermisos)
+                .ThenInclude(rp => rp.Permiso)
+            .FirstOrDefaultAsync(u => u.Id == id);
+        if (usuario == null)
+            return NotFound();
+
+        var model = new EditarUsuarioViewModel
+        {
+            Id = usuario.Id,
+            UserName = usuario.UserName ?? string.Empty,
+            Nombres = usuario.Nombres,
+            Apellidos = usuario.Apellidos,
+            Email = usuario.Email ?? string.Empty,
+            IdRol = usuario.IdRol,
+            Estado = usuario.Estado,
+            NombreRol = usuario.Rol?.Codigo == "ADMIN"
+                ? "Administrador"
+                : usuario.Rol?.Codigo == "VENDEDORA"
+                    ? "Vendedor"
+                    : usuario.Rol?.Name ?? "Sin rol",
+            Permisos = usuario.Rol?.RolPermisos
+                .Where(rp => rp.EstadoRegistro && rp.Permiso.Estado && rp.Permiso.EstadoRegistro)
+                .OrderBy(rp => rp.Permiso.Nombre)
+                .Select(rp => rp.Permiso.Nombre)
+                .ToList() ?? []
+        };
+
+        await CargarRolesAsync(model);
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Gerente")]
+    public async Task<IActionResult> Edit(EditarUsuarioViewModel model)
+    {
+        var usuario = await _context.Usuarios.FindAsync(model.Id);
+        var rol = model.IdRol.HasValue
+            ? await _context.Roles.FirstOrDefaultAsync(r =>
+                r.Id == model.IdRol.Value &&
+                r.Estado &&
+                r.EstadoRegistro &&
+                r.Codigo != "GERENTE")
+            : null;
+
+        if (usuario == null)
+            return NotFound();
+
+        if (rol == null)
+            ModelState.AddModelError(nameof(model.IdRol), "Seleccione un rol válido.");
+
+        if (!ModelState.IsValid)
+        {
+            await CargarRolesAsync(model);
+            return View(model);
+        }
+
+        usuario.Nombres = model.Nombres.Trim();
+        usuario.Apellidos = model.Apellidos.Trim();
+        usuario.Email = model.Email.Trim();
+        usuario.IdRol = rol!.Id;
+
+        var resultado = await _userManager.UpdateAsync(usuario);
+        if (!resultado.Succeeded)
+        {
+            foreach (var error in resultado.Errors)
+                ModelState.AddModelError(string.Empty, error.Description);
+
+            await CargarRolesAsync(model);
+            return View(model);
+        }
+
+        var rolesActuales = await _userManager.GetRolesAsync(usuario);
+        if (rolesActuales.Count > 0)
+            await _userManager.RemoveFromRolesAsync(usuario, rolesActuales);
+        await _userManager.AddToRoleAsync(usuario, rol.Name!);
+
+        TempData["SuccessMessage"] = "USUARIO ACTUALIZADO CORRECTAMENTE";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Gerente")]
+    public async Task<IActionResult> Deactivate(long id)
+    {
+        var usuario = await _context.Usuarios.FindAsync(id);
+        if (usuario == null)
+            return NotFound();
+
+        usuario.Estado = false;
+        var resultado = await _userManager.UpdateAsync(usuario);
+        if (!resultado.Succeeded)
+        {
+            foreach (var error in resultado.Errors)
+                TempData["ErrorMessage"] = error.Description;
+        }
+        else
+        {
+            TempData["SuccessMessage"] = "USUARIO DESACTIVADO CORRECTAMENTE";
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
     private async Task CargarRolesAsync(CrearUsuarioViewModel model)
+    {
+        model.Roles = await _context.Roles
+            .Where(r => r.Estado && r.EstadoRegistro && r.Codigo != "GERENTE")
+            .OrderBy(r => r.Name)
+            .Select(r => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+            {
+                Value = r.Id.ToString(),
+                Text = r.Codigo == "ADMIN" ? "Administrador" : "Vendedor"
+            })
+            .ToListAsync();
+    }
+
+    private async Task CargarRolesAsync(EditarUsuarioViewModel model)
     {
         model.Roles = await _context.Roles
             .Where(r => r.Estado && r.EstadoRegistro && r.Codigo != "GERENTE")
