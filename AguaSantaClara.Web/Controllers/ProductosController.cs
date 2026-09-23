@@ -131,4 +131,41 @@ public async Task<IActionResult> Edit(EditarProductoViewModel model)
     return RedirectToAction(nameof(Index));
 }
 
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Deactivate(long id)
+{
+    var producto = await _context.Productos
+        .FirstOrDefaultAsync(p => p.Id == id);
+
+    if (producto == null)
+        return NotFound();
+
+    producto.Estado = false;
+
+    await _context.SaveChangesAsync();
+
+    TempData["SuccessMessage"] = "PRODUCTO DESACTIVADO CORRECTAMENTE";
+
+    return RedirectToAction(nameof(Index));
+}
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Activate(long id)
+{
+    var producto = await _context.Productos
+        .FirstOrDefaultAsync(p => p.Id == id);
+
+    if (producto == null)
+        return NotFound();
+
+    producto.Estado = true;
+
+    await _context.SaveChangesAsync();
+
+    TempData["SuccessMessage"] = "PRODUCTO ACTIVADO CORRECTAMENTE";
+
+    return RedirectToAction(nameof(Index));
+}
+
 }
