@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. EF Core + PostgreSQL (con convención snake_case para PostgreSQL)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .UseSnakeCaseNamingConvention());
+);
 
 // 2. ASP.NET Core Identity con entidades personalizadas
 builder.Services.AddIdentity<Usuario, Rol>(options =>
