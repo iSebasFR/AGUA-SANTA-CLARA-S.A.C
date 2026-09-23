@@ -19,19 +19,13 @@
     <div class="col-md-8 col-lg-6">
         <label for="search" class="visually-hidden">Buscar usuario</label>
         <input id="search" name="search" value="@ViewBag.Search" class="form-control"
-               placeholder="Buscar por nombre, usuario o correo" />
+               placeholder="Escribe el dato que deseas buscar" />
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-outline-primary">
             <i class="bi bi-search me-1"></i> Buscar
         </button>
     </div>
-    @if (!string.IsNullOrWhiteSpace(ViewBag.Search as string))
-    {
-        <div class="col-auto">
-            <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
-        </div>
-    }
 </form>
 
 @if (TempData["SuccessMessage"] is string successMessage)

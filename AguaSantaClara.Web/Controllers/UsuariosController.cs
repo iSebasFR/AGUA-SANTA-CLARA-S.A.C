@@ -28,11 +28,12 @@ public class UsuariosController : Controller
         if (!string.IsNullOrWhiteSpace(search))
         {
             var termino = search.Trim();
+            var patron = $"%{termino}%";
             consulta = consulta.Where(u =>
-                (u.Nombres + " " + u.Apellidos).Contains(termino) ||
-                (u.Apellidos + " " + u.Nombres).Contains(termino) ||
-                (u.UserName ?? string.Empty).Contains(termino) ||
-                (u.Email ?? string.Empty).Contains(termino));
+                EF.Functions.ILike(u.Nombres + " " + u.Apellidos, patron) ||
+                EF.Functions.ILike(u.Apellidos + " " + u.Nombres, patron) ||
+                EF.Functions.ILike(u.UserName ?? string.Empty, patron) ||
+                EF.Functions.ILike(u.Email ?? string.Empty, patron));
         }
 
         var usuarios = await consulta
