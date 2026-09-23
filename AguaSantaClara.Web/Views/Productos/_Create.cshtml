@@ -1,0 +1,191 @@
+@model AguaSantaClara.Web.Models.CrearProductoViewModel
+
+<div class="modal fade" id="modalCrearProducto" tabindex="-1" aria-labelledby="modalCrearProductoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold" id="modalCrearProductoLabel">
+                        Nuevo producto
+                    </h5>
+
+                    <p class="text-muted small mb-0">
+                        Completa los datos para registrar el producto.
+                    </p>
+                </div>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar">
+                </button>
+            </div>
+
+            <form asp-action="Create" method="post">
+
+                <div class="modal-body pt-3">
+
+                    <div asp-validation-summary="ModelOnly"
+                         class="text-danger small mb-3">
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Nombre" class="form-label">
+                            Nombre<span class="text-danger">*</span>
+                        </label>
+
+                        <input asp-for="Nombre"
+                               class="form-control"
+                               placeholder="Nombre del producto" />
+
+                        <span asp-validation-for="Nombre"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Descripcion" class="form-label">
+                            Descripción
+                        </label>
+
+                        <textarea asp-for="Descripcion"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Descripción del producto"></textarea>
+
+                        <span asp-validation-for="Descripcion"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="row g-3">
+
+                        <div class="col-6">
+                            <label asp-for="PrecioVenta" class="form-label">
+                                Precio de venta (S/) <span class="text-danger">*</span>
+                            </label>
+
+                            <input asp-for="PrecioVenta"
+                                   type="number"
+                                   step="0.01"
+                                   min="0.01"
+                                   class="form-control"
+                                   placeholder="0.00" />
+
+                            <span asp-validation-for="PrecioVenta"
+                                  class="text-danger small">
+                            </span>
+                        </div>
+
+                        <div class="col-6">
+                            <label asp-for="Costo" class="form-label">
+                                Costo (S/)
+                            </label>
+
+                            <input asp-for="Costo"
+                                   type="number"
+                                   step="0.01"
+                                   min="0.01"
+                                   class="form-control"
+                                   placeholder="0.00" />
+
+                            <span asp-validation-for="Costo"
+                                  class="text-danger small">
+                            </span>
+                        </div>
+
+                        <div class="col-6">
+                            <label asp-for="StockActual" class="form-label">
+                                Stock actual <span class="text-danger">*</span>
+                            </label>
+
+                            <input asp-for="StockActual"
+                                   type="number"
+                                   min="0"
+                                   class="form-control" />
+
+                            <span asp-validation-for="StockActual"
+                                  class="text-danger small">
+                            </span>
+                        </div>
+
+                        <div class="col-6">
+                            <label asp-for="StockMinimo" class="form-label">
+                                Stock mínimo <span class="text-danger">*</span>
+                            </label>
+
+                            <input asp-for="StockMinimo"
+                                   type="number"
+                                   min="0"
+                                   class="form-control" />
+
+                            <span asp-validation-for="StockMinimo"
+                                  class="text-danger small">
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <div class="mt-4">
+
+                        <label class="form-label d-block">
+                            Estado
+                        </label>
+
+                        <div class="d-flex gap-4">
+
+                            <div class="form-check">
+                                <input asp-for="Estado"
+                                       class="form-check-input"
+                                       type="radio"
+                                       value="true"
+                                       checked />
+
+                                <label class="form-check-label">
+                                    Activo
+                                </label>
+                            </div>
+
+                            <div class="form-check">
+                                <input asp-for="Estado"
+                                       class="form-check-input"
+                                       type="radio"
+                                       value="false" />
+
+                                <label class="form-check-label">
+                                    Inactivo
+                                </label>
+                            </div>
+
+                        </div>
+
+                        <span asp-validation-for="Estado"
+                              class="text-danger small">
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer border-0 pt-0">
+
+                    <button type="button"
+                            class="btn btn-light border"
+                            data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        Guardar
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,181 @@
+@model AguaSantaClara.Web.Models.EditarProductoViewModel
+
+@{
+    ViewData["Title"] = "Editar producto";
+}
+
+<div class="container py-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+
+            <div class="mb-4">
+                <h3 class="fw-bold mb-1">Editar producto</h3>
+                <p class="text-muted mb-0">
+                    Modifique los datos del producto.
+                </p>
+            </div>
+
+            <form asp-action="Edit" method="post">
+
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" asp-for="Id" />
+
+                <div asp-validation-summary="ModelOnly"
+                     class="text-danger mb-3">
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Nombre" class="form-label">
+                        Nombre <span class="text-danger">*</span>
+                    </label>
+
+                    <input asp-for="Nombre"
+                           class="form-control" />
+
+                    <span asp-validation-for="Nombre"
+                          class="text-danger">
+                    </span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Descripcion" class="form-label">
+                        Descripción
+                    </label>
+
+                    <textarea asp-for="Descripcion"
+                              class="form-control"
+                              rows="3"></textarea>
+
+                    <span asp-validation-for="Descripcion"
+                          class="text-danger">
+                    </span>
+                </div>
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="PrecioVenta" class="form-label">
+                            Precio de venta (S/) <span class="text-danger">*</span>
+                        </label>
+
+                        <input asp-for="PrecioVenta"
+                               class="form-control"
+                               type="number"
+                               step="0.01"
+                               min="0.01" />
+
+                        <span asp-validation-for="PrecioVenta"
+                              class="text-danger">
+                        </span>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Costo" class="form-label">
+                            Costo (S/)
+                        </label>
+
+                        <input asp-for="Costo"
+                               class="form-control"
+                               type="number"
+                               step="0.01"
+                               min="0.01" />
+
+                        <span asp-validation-for="Costo"
+                              class="text-danger">
+                        </span>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="StockActual" class="form-label">
+                            Stock actual <span class="text-danger">*</span>
+                        </label>
+
+                        <input asp-for="StockActual"
+                               class="form-control"
+                               type="number"
+                               min="0" />
+
+                        <span asp-validation-for="StockActual"
+                              class="text-danger">
+                        </span>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="StockMinimo" class="form-label">
+                            Stock mínimo <span class="text-danger">*</span>
+                        </label>
+
+                        <input asp-for="StockMinimo"
+                               class="form-control"
+                               type="number"
+                               min="0" />
+
+                        <span asp-validation-for="StockMinimo"
+                              class="text-danger">
+                        </span>
+                    </div>
+
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">
+                        Estado
+                    </label>
+
+                    <div class="d-flex gap-3">
+
+                        <div class="form-check">
+                            <input asp-for="Estado"
+                                   class="form-check-input"
+                                   type="radio"
+                                   value="true"
+                                   id="estadoActivo" />
+
+                            <label class="form-check-label"
+                                   for="estadoActivo">
+                                Activo
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <input asp-for="Estado"
+                                   class="form-check-input"
+                                   type="radio"
+                                   value="false"
+                                   id="estadoInactivo" />
+
+                            <label class="form-check-label"
+                                   for="estadoInactivo">
+                                Inactivo
+                            </label>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+
+                    <a asp-action="Index"
+                       class="btn btn-light border">
+                        Cancelar
+                    </a>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        Guardar cambios
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
