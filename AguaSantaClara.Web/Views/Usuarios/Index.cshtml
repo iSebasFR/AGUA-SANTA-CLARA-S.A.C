@@ -2,5 +2,87 @@
     ViewData["Title"] = "Usuarios";
 }
 
+@model IEnumerable<AguaSantaClara.Web.Models.Entities.Usuario>
+
 <h1>Usuarios</h1>
-<p>Módulo en construcción...</p>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted mb-0">Administra los usuarios y sus roles de acceso.</p>
+    @if (User.IsInRole("Gerente"))
+    {
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Crear usuario
+        </a>
+    }
+</div>
+
+<form asp-action="Index" method="get" class="row g-2 mb-4">
+    <div class="col-md-8 col-lg-6">
+        <label for="search" class="visually-hidden">Buscar usuario</label>
+        <input id="search" name="search" value="@ViewBag.Search" class="form-control"
+               placeholder="Buscar por nombre, usuario o correo" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i> Buscar
+        </button>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(ViewBag.Search as string))
+    {
+        <div class="col-auto">
+            <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+        </div>
+    }
+</form>
+
+@if (TempData["SuccessMessage"] is string successMessage)
+{
+    <div class="alert alert-success" role="alert">@successMessage</div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger" role="alert">@errorMessage</div>
+}
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Nombre completo</th>
+                <th>Usuario</th>
+                <th>Correo</th>
+                <th>Rol</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">No se encontraron usuarios.</td>
+            </tr>
+        }
+        @foreach (var usuario in Model)
+        {
+            <tr>
+                <td>@usuario.Nombres @usuario.Apellidos</td>
+                <td>@usuario.UserName</td>
+                <td>@usuario.Email</td>
+                <td>@(usuario.Rol?.Codigo == "ADMIN" ? "Administrador" : usuario.Rol?.Codigo == "VENDEDORA" ? "Vendedor" : usuario.Rol?.Name)</td>
+                <td>
+                    <span class="badge @(usuario.Estado ? "text-bg-success" : "text-bg-secondary")">
+                        @(usuario.Estado ? "Activo" : "Inactivo")
+                    </span>
+                </td>
+                <td>
+                    @if (User.IsInRole("Gerente"))
+                    {
+                        <a asp-action="Edit" asp-route-id="@usuario.Id" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i> Ver / Editar
+                        </a>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

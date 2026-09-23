@@ -10,6 +10,7 @@ public class AppDbContext : IdentityDbContext<Usuario, Rol, long>
 
     public DbSet<Producto> Productos => Set<Producto>();
     public DbSet<Insumo> Insumos => Set<Insumo>();
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<DireccionCliente> DireccionesCliente => Set<DireccionCliente>();
     public DbSet<Permiso> Permisos => Set<Permiso>();
