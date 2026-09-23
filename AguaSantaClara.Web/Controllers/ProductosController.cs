@@ -167,5 +167,23 @@ public async Task<IActionResult> Activate(long id)
 
     return RedirectToAction(nameof(Index));
 }
+[HttpPost]
+[ValidateAntiForgeryToken]
+
+public async Task<IActionResult> Delete(long id)
+{
+    var producto = await _context.Productos
+        .FirstOrDefaultAsync(p => p.Id == id);
+
+    if (producto == null)
+        return NotFound();
+
+    _context.Productos.Remove(producto);
+    await _context.SaveChangesAsync();
+
+    TempData["SuccessMessage"] = "PRODUCTO ELIMINADO CORRECTAMENTE";
+
+    return RedirectToAction(nameof(Index));
+}
 
 }

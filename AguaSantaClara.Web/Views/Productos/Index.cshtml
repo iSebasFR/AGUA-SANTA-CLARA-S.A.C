@@ -652,10 +652,25 @@
 
     </form>
 
-    <button type="button"
+<form id="formEliminarProducto"
+      asp-action="Delete"
+      method="post"
+      class="d-inline"
+      onsubmit="return confirmarEliminacion();">
+
+    @Html.AntiForgeryToken()
+
+    <input type="hidden"
+           id="idProductoEliminar"
+           name="id"
+           value="@primerProducto.Id" />
+
+    <button type="submit"
             class="btn btn-sm btn-outline-danger">
         Eliminar
     </button>
+
+</form>
 
 </div>
 
@@ -827,7 +842,8 @@ function seleccionarProducto(id) {
     document.getElementById("detalleMinimo").textContent = minimo;
 
     // Actualizar estado
-    const detalleEstado = document.getElementById("detalleEstado");
+    const detalleEstado =
+        document.getElementById("detalleEstado");
 
     detalleEstado.className = "estado-badge";
 
@@ -862,6 +878,9 @@ function seleccionarProducto(id) {
     const idProductoEstado =
         document.getElementById("idProductoEstado");
 
+    const idProductoEliminar =
+        document.getElementById("idProductoEliminar");
+
     const botonEstado =
         document.getElementById("btnEstadoProducto");
 
@@ -871,7 +890,9 @@ function seleccionarProducto(id) {
 
         if (estado) {
 
-            formularioEstado.action = "@Url.Action("Deactivate", "Productos")";
+            formularioEstado.action =
+                "@Url.Action("Deactivate", "Productos")";
+
             botonEstado.textContent = "Desactivar";
 
             botonEstado.classList.remove("btn-success");
@@ -879,12 +900,19 @@ function seleccionarProducto(id) {
 
         } else {
 
-            formularioEstado.action = "@Url.Action("Activate", "Productos")";
+            formularioEstado.action =
+                "@Url.Action("Activate", "Productos")";
+
             botonEstado.textContent = "Activar";
 
             botonEstado.classList.remove("btn-desactivar");
             botonEstado.classList.add("btn-success");
         }
+    }
+
+    // Actualizar producto para eliminar
+    if (idProductoEliminar) {
+        idProductoEliminar.value = id;
     }
 
     // Quitar selección anterior
@@ -929,6 +957,30 @@ function confirmarCambioEstado() {
 
     return confirm(
         "¿Está seguro de que desea activar este producto?"
+    );
+}
+
+function confirmarEliminacion() {
+
+    const idProductoEliminar =
+        document.getElementById("idProductoEliminar");
+
+    if (!idProductoEliminar) {
+        return false;
+    }
+
+    const tarjeta = document.querySelector(
+        `.producto-card[data-id="${idProductoEliminar.value}"]`
+    );
+
+    if (!tarjeta) {
+        return false;
+    }
+
+    const nombre = tarjeta.dataset.nombre;
+
+    return confirm(
+        `¿Está seguro de que desea eliminar "${nombre}"?\n\nEsta acción no se puede deshacer.`
     );
 }
 
