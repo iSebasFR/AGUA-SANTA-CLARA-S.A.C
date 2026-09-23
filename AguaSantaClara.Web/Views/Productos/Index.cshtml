@@ -1,6 +1,689 @@
+@model IEnumerable<AguaSantaClara.Web.Models.Entities.Producto>
+
 @{
-    ViewData["Title"] = "Productos";
+    ViewData["Title"] = "Catálogo de productos";
 }
 
-<h1>Productos</h1>
-<p>Módulo en construcción...</p>
+<style>
+    .productos-page {
+        padding: 1.5rem;
+        background-color: #f5f7fa;
+        min-height: calc(100vh - 100px);
+    }
+
+    .productos-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+    }
+
+    .productos-header h1 {
+        margin: 0;
+        font-size: 1.7rem;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .productos-subtitle {
+        margin: 0.2rem 0 0;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .btn-nuevo-producto {
+        background-color: #1677ff;
+        border-color: #1677ff;
+        color: white;
+        font-weight: 600;
+        padding: 0.65rem 1rem;
+        border-radius: 8px;
+    }
+
+    .btn-nuevo-producto:hover {
+        background-color: #0f66dc;
+        border-color: #0f66dc;
+        color: white;
+    }
+
+    .catalogo-toolbar {
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.85rem;
+        margin-bottom: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .busqueda {
+        max-width: 320px;
+        width: 100%;
+    }
+
+    .vista-botones {
+        display: flex;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .btn-vista {
+        border: 0;
+        background: white;
+        padding: 0.45rem 0.75rem;
+        color: #6b7280;
+    }
+
+    .btn-vista.activo {
+        background-color: #1677ff;
+        color: white;
+    }
+
+    .productos-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .producto-card {
+        background-color: white;
+        border: 1px solid #dfe4ea;
+        border-radius: 10px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .producto-card:hover {
+        border-color: #1677ff;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+    }
+
+    .producto-card.seleccionado {
+        border: 1.5px solid #1677ff;
+    }
+
+    .producto-imagen {
+        height: 110px;
+        background: linear-gradient(135deg, #edf6ff, #dcecff);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #94c3ff;
+    }
+
+    .producto-contenido {
+        padding: 0.95rem;
+    }
+
+    .producto-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+
+    .producto-nombre {
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .producto-descripcion {
+        color: #6b7280;
+        font-size: 0.78rem;
+        margin: 0.3rem 0 0.9rem;
+        min-height: 34px;
+    }
+
+    .estado-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.55rem;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+
+    .estado-activo {
+        background-color: #dcfce7;
+        color: #15803d;
+    }
+
+    .estado-inactivo {
+        background-color: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .stock-bajo {
+        background-color: #fff1e8;
+        color: #ea580c;
+    }
+
+    .producto-datos {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.7rem;
+    }
+
+    .dato-label {
+        display: block;
+        font-size: 0.65rem;
+        color: #9ca3af;
+        text-transform: uppercase;
+        margin-bottom: 0.1rem;
+    }
+
+    .dato-valor {
+        font-weight: 700;
+        color: #111827;
+        font-size: 0.9rem;
+    }
+
+    .dato-secundario {
+        font-size: 0.72rem;
+        color: #9ca3af;
+    }
+
+    .barra-stock {
+        height: 4px;
+        background-color: #edf0f2;
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 0.9rem;
+    }
+
+    .barra-stock-progreso {
+        height: 100%;
+        background-color: #1677ff;
+        border-radius: 999px;
+    }
+
+    .barra-stock-progreso.bajo {
+        background-color: #f97316;
+    }
+
+    .stock-minimo-texto {
+        font-size: 0.65rem;
+        color: #9ca3af;
+        margin-top: 0.25rem;
+    }
+
+    .detalle-producto {
+        background-color: white;
+        border: 1px solid #e1e5ea;
+        border-radius: 10px;
+        margin-top: 1.25rem;
+        padding: 1.25rem;
+    }
+
+    .detalle-titulo {
+        color: #164e8d;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 1.2rem;
+    }
+
+    .detalle-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+    }
+
+    .detalle-item .dato-label {
+        margin-bottom: 0.2rem;
+    }
+
+    .detalle-acciones {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .btn-editar {
+        background-color: #1677ff;
+        border-color: #1677ff;
+        color: white;
+    }
+
+    .btn-desactivar {
+        background-color: white;
+        border: 1px solid #f97316;
+        color: #ea580c;
+    }
+
+    .tabla-productos {
+        display: none;
+        background-color: white;
+        border: 1px solid #dfe4ea;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .tabla-productos table {
+        margin: 0;
+    }
+
+    .tabla-productos th {
+        font-size: 0.75rem;
+        color: #374151;
+        background-color: #f9fafb;
+        white-space: nowrap;
+    }
+
+    .tabla-productos td {
+        font-size: 0.8rem;
+        vertical-align: middle;
+    }
+
+    .estado-row-inactivo {
+        opacity: 0.6;
+        background-color: #fafafa;
+    }
+
+    .vacio {
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 3rem 1rem;
+        text-align: center;
+        color: #6b7280;
+    }
+
+    @@media (max-width: 1000px) {
+        .productos-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .detalle-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @@media (max-width: 700px) {
+        .productos-header,
+        .catalogo-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .productos-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .detalle-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="productos-page">
+
+        <div class="d-flex justify-content-end mb-3">
+            <button type="button" class="btn btn-nuevo-producto">
+                + Nuevo producto
+            </button>
+        </div>
+
+    <div class="catalogo-toolbar">
+
+        <div class="busqueda">
+            <input type="text"
+                   class="form-control"
+                   placeholder="Buscar producto..."
+                   disabled />
+        </div>
+
+        <div class="vista-botones">
+            <button type="button"
+                    id="btnTarjetas"
+                    class="btn-vista activo"
+                    onclick="mostrarTarjetas()">
+                ▦
+            </button>
+
+            <button type="button"
+                    id="btnLista"
+                    class="btn-vista"
+                    onclick="mostrarLista()">
+                ☰
+            </button>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="vacio">
+            <h5>No hay productos registrados</h5>
+            <p class="mb-0">
+                Actualmente no existen productos disponibles en el catálogo.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div id="vistaTarjetas" class="productos-grid">
+
+            @foreach (var producto in Model)
+            {
+                var porcentajeStock = producto.StockMinimo > 0
+                    ? Math.Min(100, (producto.StockActual * 100.0) / producto.StockMinimo)
+                    : 100;
+
+                var stockBajo = producto.StockActual <= producto.StockMinimo;
+
+                <div class="producto-card @(producto == Model.First() ? "seleccionado" : "")"
+                     data-id="@producto.Id"
+                     onclick="seleccionarProducto(@producto.Id)">
+
+                    <div class="producto-imagen">
+                        <svg width="40"
+                             height="40"
+                             viewBox="0 0 24 24"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="1.5">
+                            <path d="M12 3 4.5 7.5v9L12 21l7.5-4.5v-9L12 3Z" />
+                            <path d="m4.5 7.5 7.5 4.5 7.5-4.5" />
+                            <path d="M12 12v9" />
+                        </svg>
+                    </div>
+
+                    <div class="producto-contenido">
+
+                        <div class="producto-top">
+                            <div>
+                                <p class="producto-nombre">
+                                    @producto.Nombre
+                                </p>
+                            </div>
+
+                            @if (!producto.Estado)
+                            {
+                                <span class="estado-badge estado-inactivo">
+                                    Inactivo
+                                </span>
+                            }
+                            else if (stockBajo)
+                            {
+                                <span class="estado-badge stock-bajo">
+                                    Stock bajo
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="estado-badge estado-activo">
+                                    Disponible
+                                </span>
+                            }
+                        </div>
+
+                        <p class="producto-descripcion">
+                            @(string.IsNullOrWhiteSpace(producto.Descripcion)
+                                ? "Sin descripción registrada."
+                                : producto.Descripcion)
+                        </p>
+
+                        <div class="producto-datos">
+
+                            <div>
+                                <span class="dato-label">Precio venta</span>
+                                <span class="dato-valor">
+                                    S/ @producto.PrecioVenta.ToString("0.00")
+                                </span>
+                                <div class="dato-secundario">
+                                    Costo: S/ @producto.Costo.ToString("0.00")
+                                </div>
+                            </div>
+
+                            <div class="text-end">
+                                <span class="dato-label">Stock</span>
+                                <span class="dato-valor">
+                                    @producto.StockActual
+                                </span>
+                                <div class="dato-secundario">
+                                    Mín. @producto.StockMinimo
+                                </div>
+                            </div>
+
+                        </div>
+                        @{
+                            var porcentajeBarra = producto.StockMinimo > 0
+                                ? Math.Min(100, (producto.StockActual * 100.0) / (producto.StockMinimo * 2.0))
+                                : 100;
+                        }
+                        <div class="barra-stock">
+                            <div class="barra-stock-progreso @(stockBajo ? "bajo" : "")"
+                                 style="width:@porcentajeBarra.ToString("0")%">
+                            </div>
+                        </div>
+
+                        <div class="stock-minimo-texto">
+                            Stock mínimo: @producto.StockMinimo unidades
+                        </div>
+
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div id="vistaLista" class="tabla-productos">
+
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Descripción</th>
+                        <th>Precio venta</th>
+                        <th>Costo</th>
+                        <th>Stock</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    @foreach (var producto in Model)
+                    {
+                        var stockBajo = producto.StockActual <= producto.StockMinimo;
+
+                        <tr class="@(producto.Estado ? "" : "estado-row-inactivo")"
+                            onclick="seleccionarProducto(@producto.Id)"
+                            style="cursor:pointer;">
+
+                            <td>
+                                <strong>@producto.Nombre</strong>
+                            </td>
+
+                            <td>
+                                @(string.IsNullOrWhiteSpace(producto.Descripcion)
+                                    ? "Sin descripción"
+                                    : producto.Descripcion)
+                            </td>
+
+                            <td>
+                                S/ @producto.PrecioVenta.ToString("0.00")
+                            </td>
+
+                            <td>
+                                S/ @producto.Costo.ToString("0.00")
+                            </td>
+
+                            <td>
+                                @producto.StockActual / @producto.StockMinimo mín.
+                            </td>
+
+                            <td>
+                                @if (!producto.Estado)
+                                {
+                                    <span class="estado-badge estado-inactivo">
+                                        Inactivo
+                                    </span>
+                                }
+                                else if (stockBajo)
+                                {
+                                    <span class="estado-badge stock-bajo">
+                                        Stock bajo
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="estado-badge estado-activo">
+                                        Disponible
+                                    </span>
+                                }
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+            </table>
+        </div>
+
+        
+            var primerProducto = Model.First();
+        
+
+        <div class="detalle-producto" id="detalleProducto">
+
+            <div class="detalle-acciones">
+                <button type="button" class="btn btn-sm btn-editar">
+                    Editar
+                </button>
+
+                <button type="button" class="btn btn-sm btn-desactivar">
+                    Desactivar
+                </button>
+
+                <button type="button"
+                        class="btn btn-sm btn-outline-danger">
+                    Eliminar
+                </button>
+            </div>
+
+            <div class="detalle-titulo">
+                DETALLE DEL PRODUCTO SELECCIONADO
+            </div>
+
+            <div class="detalle-grid">
+
+                <div class="detalle-item">
+                    <span class="dato-label">Nombre</span>
+                    <strong id="detalleNombre">
+                        @primerProducto.Nombre
+                    </strong>
+                </div>
+
+                <div class="detalle-item">
+                    <span class="dato-label">Descripción</span>
+                    <strong id="detalleDescripcion">
+                        @(string.IsNullOrWhiteSpace(primerProducto.Descripcion)
+                            ? "Sin descripción"
+                            : primerProducto.Descripcion)
+                    </strong>
+                </div>
+
+                <div class="detalle-item">
+                    <span class="dato-label">Precio de venta</span>
+                    <strong id="detallePrecio">
+                        S/ @primerProducto.PrecioVenta.ToString("0.00")
+                    </strong>
+                </div>
+
+                <div class="detalle-item">
+                    <span class="dato-label">Costo</span>
+                    <strong id="detalleCosto">
+                        S/ @primerProducto.Costo.ToString("0.00")
+                    </strong>
+                </div>
+
+                <div class="detalle-item">
+                    <span class="dato-label">Stock actual</span>
+                    <strong id="detalleStock">
+                        @primerProducto.StockActual
+                    </strong>
+                </div>
+
+                <div class="detalle-item">
+                    <span class="dato-label">Stock mínimo</span>
+                    <strong id="detalleMinimo">
+                        @primerProducto.StockMinimo
+                    </strong>
+                </div>
+
+                <div class="detalle-item">
+                    <span class="dato-label">Estado</span>
+
+                    @if (primerProducto.Estado)
+                    {
+                        <span id="detalleEstado"
+                              class="estado-badge estado-activo">
+                            Disponible
+                        </span>
+                    }
+                    else
+                    {
+                        <span id="detalleEstado"
+                              class="estado-badge estado-inactivo">
+                            Inactivo
+                        </span>
+                    }
+                </div>
+
+            </div>
+
+        </div>
+    }
+
+</div>
+
+<script>
+    function mostrarTarjetas() {
+        document.getElementById("vistaTarjetas").style.display = "grid";
+        document.getElementById("vistaLista").style.display = "none";
+
+        document.getElementById("btnTarjetas").classList.add("activo");
+        document.getElementById("btnLista").classList.remove("activo");
+    }
+
+    function mostrarLista() {
+        document.getElementById("vistaTarjetas").style.display = "none";
+        document.getElementById("vistaLista").style.display = "block";
+
+        document.getElementById("btnLista").classList.add("activo");
+        document.getElementById("btnTarjetas").classList.remove("activo");
+    }
+
+    function seleccionarProducto(id) {
+
+        document.querySelectorAll(".producto-card")
+            .forEach(card => card.classList.remove("seleccionado"));
+
+        const tarjeta = document.querySelector(
+            `.producto-card[data-id="${id}"]`
+        );
+
+        if (tarjeta) {
+            tarjeta.classList.add("seleccionado");
+        }
+
+        const fila = document.querySelector(
+            `#vistaLista tr[onclick*="${id}"]`
+        );
+
+        if (fila) {
+            document.querySelectorAll("#vistaLista tbody tr")
+                .forEach(row => row.classList.remove("table-primary"));
+
+            fila.classList.add("table-primary");
+        }
+
+        // La carga de los datos del detalle se conectará
+        // al controlador/endpoint correspondiente en una tarea posterior.
+    }
+</script>
