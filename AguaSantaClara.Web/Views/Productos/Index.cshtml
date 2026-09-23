@@ -323,8 +323,18 @@
 
 <div class="productos-page">
 
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success mb-3" role="alert">
+            @successMessage
+        </div>
+    }
+
         <div class="d-flex justify-content-end mb-3">
-            <button type="button" class="btn btn-nuevo-producto">
+            <button type="button"
+                class="btn btn-nuevo-producto"
+                data-bs-toggle="modal"
+                data-bs-target="#modalCrearProducto">
                 + Nuevo producto
             </button>
         </div>
@@ -377,7 +387,8 @@
                     ? Math.Min(100, (producto.StockActual * 100.0) / producto.StockMinimo)
                     : 100;
 
-                var stockBajo = producto.StockActual <= producto.StockMinimo;
+                var stockBajo = producto.StockMinimo > 0 &&
+                producto.StockActual <= producto.StockMinimo;
 
                 <div class="producto-card @(producto == Model.First() ? "seleccionado" : "")"
                      data-id="@producto.Id"
@@ -492,7 +503,8 @@
 
                     @foreach (var producto in Model)
                     {
-                        var stockBajo = producto.StockActual <= producto.StockMinimo;
+                        var stockBajo = producto.StockMinimo > 0 &&
+                producto.StockActual <= producto.StockMinimo;
 
                         <tr class="@(producto.Estado ? "" : "estado-row-inactivo")"
                             onclick="seleccionarProducto(@producto.Id)"
@@ -622,20 +634,32 @@
                 <div class="detalle-item">
                     <span class="dato-label">Estado</span>
 
-                    @if (primerProducto.Estado)
-                    {
-                        <span id="detalleEstado"
-                              class="estado-badge estado-activo">
-                            Disponible
-                        </span>
-                    }
-                    else
-                    {
-                        <span id="detalleEstado"
-                              class="estado-badge estado-inactivo">
-                            Inactivo
-                        </span>
-                    }
+@{
+    var detalleStockBajo = primerProducto.StockMinimo > 0 &&
+                           primerProducto.StockActual <= primerProducto.StockMinimo;
+}
+
+@if (!primerProducto.Estado)
+{
+    <span id="detalleEstado"
+          class="estado-badge estado-inactivo">
+        Inactivo
+    </span>
+}
+else if (detalleStockBajo)
+{
+    <span id="detalleEstado"
+          class="estado-badge stock-bajo">
+        Stock bajo
+    </span>
+}
+else
+{
+    <span id="detalleEstado"
+          class="estado-badge estado-activo">
+        Disponible
+    </span>
+}
                 </div>
 
             </div>
@@ -644,6 +668,9 @@
     }
 
 </div>
+
+<partial name="_Create"
+         model="new AguaSantaClara.Web.Models.CrearProductoViewModel()" />
 
 <script>
     function mostrarTarjetas() {

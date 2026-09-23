@@ -1,4 +1,6 @@
 using AguaSantaClara.Web.Data;
+using AguaSantaClara.Web.Models;
+using AguaSantaClara.Web.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -35,4 +37,41 @@ public class ProductosController : Controller
 
         return View(productos);
     }
+
+    [HttpGet]
+    public IActionResult Create()
+    {
+        return View(new CrearProductoViewModel());
+    }
+
+    [HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(CrearProductoViewModel model)
+{
+    if (!ModelState.IsValid)
+    {
+        return View(model);
+    }
+
+    var producto = new Producto
+    {
+        Nombre = model.Nombre.Trim(),
+        Descripcion = string.IsNullOrWhiteSpace(model.Descripcion)
+            ? null
+            : model.Descripcion.Trim(),
+        PrecioVenta = model.PrecioVenta,
+        Costo = model.Costo,
+        StockActual = model.StockActual,
+        StockMinimo = model.StockMinimo,
+        Estado = model.Estado,
+        EstadoRegistro = true
+    };
+
+    _context.Productos.Add(producto);
+    await _context.SaveChangesAsync();
+
+    TempData["SuccessMessage"] = "PRODUCTO CREADO CORRECTAMENTE";
+
+    return RedirectToAction(nameof(Index));
+}
 }
