@@ -567,8 +567,12 @@
         <div class="detalle-producto" id="detalleProducto">
 
             <div class="detalle-acciones">
-                <button type="button" class="btn btn-sm btn-editar">
-                    Editar
+                <button type="button"
+                    id="btnEditarProducto"
+                    class="btn btn-sm btn-editar"
+                    data-id="@primerProducto.Id"    
+                    onclick="editarProducto()">
+                        Editar
                 </button>
 
                 <button type="button" class="btn btn-sm btn-desactivar">
@@ -691,6 +695,12 @@ else
 
     function seleccionarProducto(id) {
 
+        const botonEditar = document.getElementById("btnEditarProducto");
+
+        if (botonEditar) {
+            botonEditar.dataset.id = id;
+        }
+
         document.querySelectorAll(".producto-card")
             .forEach(card => card.classList.remove("seleccionado"));
 
@@ -712,8 +722,16 @@ else
 
             fila.classList.add("table-primary");
         }
+    }
 
-        // La carga de los datos del detalle se conectará
-        // al controlador/endpoint correspondiente en una tarea posterior.
+    function editarProducto() {
+        const botonEditar = document.getElementById("btnEditarProducto");
+        const id = botonEditar.dataset.id;
+
+        if (!id) {
+            return;
+        }
+
+        window.location.href = `/Productos/Edit/${id}`;
     }
 </script>

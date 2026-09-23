@@ -74,4 +74,61 @@ public async Task<IActionResult> Create(CrearProductoViewModel model)
 
     return RedirectToAction(nameof(Index));
 }
+
+[HttpGet]
+public async Task<IActionResult> Edit(long id)
+{
+    var producto = await _context.Productos
+        .FirstOrDefaultAsync(p => p.Id == id);
+
+    if (producto == null)
+        return NotFound();
+
+    var model = new EditarProductoViewModel
+    {
+        Id = producto.Id,
+        Nombre = producto.Nombre,
+        Descripcion = producto.Descripcion,
+        PrecioVenta = producto.PrecioVenta,
+        Costo = producto.Costo,
+        StockActual = producto.StockActual,
+        StockMinimo = producto.StockMinimo,
+        Estado = producto.Estado
+    };
+
+    return View(model);
+}
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(EditarProductoViewModel model)
+{
+    if (!ModelState.IsValid)
+    {
+        return View(model);
+    }
+
+    var producto = await _context.Productos
+        .FirstOrDefaultAsync(p => p.Id == model.Id);
+
+    if (producto == null)
+        return NotFound();
+
+    producto.Nombre = model.Nombre.Trim();
+    producto.Descripcion = string.IsNullOrWhiteSpace(model.Descripcion)
+        ? null
+        : model.Descripcion.Trim();
+    producto.PrecioVenta = model.PrecioVenta;
+    producto.Costo = model.Costo;
+    producto.StockActual = model.StockActual;
+    producto.StockMinimo = model.StockMinimo;
+    producto.Estado = model.Estado;
+
+    await _context.SaveChangesAsync();
+
+    TempData["SuccessMessage"] = "PRODUCTO ACTUALIZADO CORRECTAMENTE";
+
+    return RedirectToAction(nameof(Index));
+}
+
 }
