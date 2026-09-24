@@ -70,9 +70,21 @@
                             </span>
                         </td>
                         <td class="text-center">
-                            <a asp-action="Edit" asp-route-id="@insumo.Id" class="btn btn-sm btn-outline-primary">
-                                Editar
-                            </a>
+                            <div class="d-flex gap-1 justify-content-center">
+                                <a asp-action="Edit" asp-route-id="@insumo.Id" class="btn btn-sm btn-outline-primary">
+                                    Editar
+                                </a>
+                                @if (insumo.Estado)
+                                {
+                                    <form asp-action="Deactivate" asp-route-id="@insumo.Id" method="post"
+                                          onsubmit="return confirm('¿Desactivar este insumo?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">
+                                            Desactivar
+                                        </button>
+                                    </form>
+                                }
+                            </div>
                         </td>
                     </tr>
                 }

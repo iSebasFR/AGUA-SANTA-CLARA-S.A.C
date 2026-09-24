@@ -122,4 +122,24 @@ public class InsumosController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Deactivate(long id)
+    {
+        var insumo = await _context.Insumos
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (insumo == null)
+            return NotFound();
+
+        insumo.Estado = false;
+
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Insumo desactivado correctamente";
+
+        return RedirectToAction(nameof(Index));
+    }
+
 }
