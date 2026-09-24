@@ -4,7 +4,7 @@
     ViewData["Title"] = "Catálogo de insumos";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="h4 mb-1">Catálogo de insumos</h1>
         <p class="text-muted mb-0">Gestión de materiales usados en producción y distribución.</p>
@@ -32,38 +32,42 @@
     <div class="alert alert-success" role="alert">@successMessage</div>
 }
 
-<div class="table-responsive">
-    <table class="table table-hover align-middle">
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Descripción</th>
-                <th>Costo</th>
-                <th>Estado</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (!Model.Any())
-            {
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
                 <tr>
-                    <td colspan="4" class="text-center text-muted py-4">
-                        No hay insumos registrados.
-                    </td>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th class="text-end">Costo</th>
+                    <th class="text-center">Estado</th>
                 </tr>
-            }
-            @foreach (var insumo in Model)
-            {
-                <tr class="@(insumo.Estado ? "" : "table-secondary")">
-                    <td><strong>@insumo.Nombre</strong></td>
-                    <td>@(string.IsNullOrWhiteSpace(insumo.Descripcion) ? "Sin descripción" : insumo.Descripcion)</td>
-                    <td>S/ @insumo.Costo.ToString("0.00")</td>
-                    <td>
-                        <span class="badge @(insumo.Estado ? "text-bg-success" : "text-bg-secondary")">
-                            @(insumo.Estado ? "Activo" : "Inactivo")
-                        </span>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-5">
+                            No hay insumos registrados.
+                        </td>
+                    </tr>
+                }
+                @foreach (var insumo in Model)
+                {
+                    <tr class="@(insumo.Estado ? "" : "table-secondary")">
+                        <td><strong>@insumo.Nombre</strong></td>
+                        <td class="text-muted">
+                            @(string.IsNullOrWhiteSpace(insumo.Descripcion) ? "Sin descripción" : insumo.Descripcion)
+                        </td>
+                        <td class="text-end">S/ @insumo.Costo.ToString("0.00")</td>
+                        <td class="text-center">
+                            <span class="badge rounded-pill @(insumo.Estado ? "text-bg-success" : "text-bg-secondary")">
+                                @(insumo.Estado ? "Activo" : "Inactivo")
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
