@@ -24,9 +24,10 @@ public class InsumosController : Controller
         if (!string.IsNullOrWhiteSpace(search))
         {
             var termino = search.Trim();
+            var patron = $"%{termino}%";
 
             consulta = consulta.Where(i =>
-                i.Nombre.Contains(termino));
+                EF.Functions.ILike(i.Nombre, patron));
         }
 
         var insumos = await consulta
