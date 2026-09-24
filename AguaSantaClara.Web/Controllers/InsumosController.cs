@@ -72,4 +72,54 @@ public class InsumosController : Controller
 
         return RedirectToAction(nameof(Index));
     }
+
+        [HttpGet]
+    public async Task<IActionResult> Edit(long id)
+    {
+        var insumo = await _context.Insumos
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (insumo == null)
+            return NotFound();
+
+        var model = new EditarInsumoViewModel
+        {
+            Id = insumo.Id,
+            Nombre = insumo.Nombre,
+            Descripcion = insumo.Descripcion,
+            Costo = insumo.Costo,
+            Estado = insumo.Estado
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(EditarInsumoViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var insumo = await _context.Insumos
+            .FirstOrDefaultAsync(i => i.Id == model.Id);
+
+        if (insumo == null)
+            return NotFound();
+
+        insumo.Nombre = model.Nombre.Trim();
+        insumo.Descripcion = string.IsNullOrWhiteSpace(model.Descripcion)
+            ? null
+            : model.Descripcion.Trim();
+        insumo.Costo = model.Costo;
+        insumo.Estado = model.Estado;
+
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Insumo actualizado correctamente";
+
+        return RedirectToAction(nameof(Index));
+    }
 }

@@ -44,13 +44,14 @@
                     <th>Descripción</th>
                     <th class="text-end">Costo</th>
                     <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-5">
+                        <td colspan="5" class="text-center text-muted py-5">
                             No hay insumos registrados.
                         </td>
                     </tr>
@@ -67,6 +68,11 @@
                             <span class="badge rounded-pill @(insumo.Estado ? "text-bg-success" : "text-bg-secondary")">
                                 @(insumo.Estado ? "Activo" : "Inactivo")
                             </span>
+                        </td>
+                        <td class="text-center">
+                            <a asp-action="Edit" asp-route-id="@insumo.Id" class="btn btn-sm btn-outline-primary">
+                                Editar
+                            </a>
                         </td>
                     </tr>
                 }
