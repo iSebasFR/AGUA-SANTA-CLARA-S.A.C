@@ -56,7 +56,7 @@ public static class SeedData
                 EstadoRegistro = true,
                 FechaCreacion = DateTime.UtcNow,
                 SecurityStamp = Guid.NewGuid().ToString("D"),
-                IdRol = rolGerente.Id // Si tu modelo Rol usa 'IdRol' en vez de 'Id', cámbialo a rolGerente.IdRol
+                IdRol = rolGerente.Id
             };
 
             var result = await userManager.CreateAsync(gerenteUser, "Gerente123*");
@@ -64,6 +64,39 @@ public static class SeedData
             if (result.Succeeded)
             {
                 await userManager.AddToRoleAsync(gerenteUser, "Gerente");
+            }
+        }
+
+        // 4. Crear Usuario Administradora inicial (para pruebas de HU-03)
+        var rolAdmin = await roleManager.FindByNameAsync("Administradora");
+
+        if (rolAdmin != null)
+        {
+            string usernameAdmin = "admin";
+            var adminExistente = await userManager.FindByNameAsync(usernameAdmin);
+
+            if (adminExistente == null)
+            {
+                var adminUser = new Usuario
+                {
+                    UserName = usernameAdmin,
+                    Email = "admin@aguasantaclara.pe",
+                    EmailConfirmed = true,
+                    Nombres = "Maria",
+                    Apellidos = "Cordova",
+                    Estado = true,
+                    EstadoRegistro = true,
+                    FechaCreacion = DateTime.UtcNow,
+                    SecurityStamp = Guid.NewGuid().ToString("D"),
+                    IdRol = rolAdmin.Id
+                };
+
+                var resultAdmin = await userManager.CreateAsync(adminUser, "Admin1234*");
+
+                if (resultAdmin.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(adminUser, "Administradora");
+                }
             }
         }
     }

@@ -1,6 +1,69 @@
+@model IEnumerable<AguaSantaClara.Web.Models.Entities.Insumo>
+
 @{
-    ViewData["Title"] = "Insumos";
+    ViewData["Title"] = "Catálogo de insumos";
 }
 
-<h1>Insumos</h1>
-<p>Módulo en construcción...</p>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 mb-1">Catálogo de insumos</h1>
+        <p class="text-muted mb-0">Gestión de materiales usados en producción y distribución.</p>
+    </div>
+</div>
+
+<form method="get" asp-action="Index" class="row g-2 mb-4">
+    <div class="col-md-6 col-lg-4">
+        <label for="search" class="visually-hidden">Buscar insumo</label>
+        <input id="search"
+               name="search"
+               value="@ViewBag.Search"
+               class="form-control"
+               placeholder="Buscar insumo por nombre..." />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">
+            Buscar
+        </button>
+    </div>
+</form>
+
+@if (TempData["SuccessMessage"] is string successMessage)
+{
+    <div class="alert alert-success" role="alert">@successMessage</div>
+}
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Costo</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        No hay insumos registrados.
+                    </td>
+                </tr>
+            }
+            @foreach (var insumo in Model)
+            {
+                <tr class="@(insumo.Estado ? "" : "table-secondary")">
+                    <td><strong>@insumo.Nombre</strong></td>
+                    <td>@(string.IsNullOrWhiteSpace(insumo.Descripcion) ? "Sin descripción" : insumo.Descripcion)</td>
+                    <td>S/ @insumo.Costo.ToString("0.00")</td>
+                    <td>
+                        <span class="badge @(insumo.Estado ? "text-bg-success" : "text-bg-secondary")">
+                            @(insumo.Estado ? "Activo" : "Inactivo")
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
