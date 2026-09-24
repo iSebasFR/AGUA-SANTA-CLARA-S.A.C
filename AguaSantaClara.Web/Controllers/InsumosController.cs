@@ -142,4 +142,22 @@ public class InsumosController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(long id)
+    {
+        var insumo = await _context.Insumos
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (insumo == null)
+            return NotFound();
+
+        _context.Insumos.Remove(insumo);
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Insumo eliminado correctamente";
+
+        return RedirectToAction(nameof(Index));
+    }
+
 }

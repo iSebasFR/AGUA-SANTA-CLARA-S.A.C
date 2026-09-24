@@ -84,6 +84,13 @@
                                         </button>
                                     </form>
                                 }
+                                <form asp-action="Delete" asp-route-id="@insumo.Id" method="post"
+                                      onsubmit="return confirm('¿Eliminar este insumo? Esta acción no se puede deshacer.');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        Eliminar
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
