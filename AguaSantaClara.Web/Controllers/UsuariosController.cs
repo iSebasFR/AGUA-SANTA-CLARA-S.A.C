@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Web.Controllers;
 
+[Authorize(Roles = "Gerente")]
 public class UsuariosController : Controller
 {
     private readonly AppDbContext _context;
