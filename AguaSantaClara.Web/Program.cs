@@ -2,6 +2,7 @@ using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using AguaSantaClara.Web.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // 4. Migración automática + Seed DENTRO del mismo scope al arrancar
 using (var scope = app.Services.CreateScope())
