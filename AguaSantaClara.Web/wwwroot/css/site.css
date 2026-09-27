@@ -47,6 +47,40 @@ body.app-body {
   color: var(--app-text);
 }
 
+.login-page {
+  min-height: 100vh;
+  margin: 0;
+  padding: 24px;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+
+.login-card h3 {
+  color: var(--app-text);
+}
+
+.login-submit {
+  border-color: var(--app-sidebar);
+  background: var(--app-sidebar);
+  color: #fff;
+}
+
+.login-submit:hover,
+.login-submit:focus-visible {
+  border-color: var(--app-sidebar-hover);
+  background: var(--app-sidebar-hover);
+  color: #fff;
+}
+
 .app-shell {
   min-height: 100vh;
 }
