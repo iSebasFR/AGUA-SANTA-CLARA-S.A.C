@@ -15,14 +15,25 @@ public class ClientesController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search)
     {
-        var clientes = await _context.Clientes
+        var consulta = _context.Clientes
             .Include(cliente => cliente.Direcciones.Where(direccion => direccion.EstadoRegistro))
-            .Where(cliente => cliente.EstadoRegistro)
+            .Where(cliente => cliente.EstadoRegistro);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var patron = $"%{search.Trim()}%";
+            consulta = consulta.Where(cliente =>
+                EF.Functions.ILike(cliente.Nombre, patron) ||
+                EF.Functions.ILike(cliente.Telefono, patron));
+        }
+
+        var clientes = await consulta
             .OrderBy(cliente => cliente.Nombre)
             .ToListAsync();
 
+        ViewBag.Search = search;
         return View(clientes);
     }
 
