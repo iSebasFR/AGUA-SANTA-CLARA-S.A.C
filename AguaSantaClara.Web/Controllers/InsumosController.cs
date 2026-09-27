@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Web.Controllers;
 
-[Authorize(Roles = "Administradora")]
+[Authorize(Roles = "Administradora,Gerente")]
 public class InsumosController : Controller
 {
     private readonly AppDbContext _context;
