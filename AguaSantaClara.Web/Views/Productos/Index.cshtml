@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Catálogo de productos";
+    var puedeAdministrarInventario = User.IsInRole("Administradora") || User.IsInRole("Gerente");
 }
 
 <style>
@@ -330,14 +331,17 @@
         </div>
     }
 
-    <div class="d-flex justify-content-end mb-3">
-        <button type="button"
-                class="btn btn-nuevo-producto"
-                data-bs-toggle="modal"
-                data-bs-target="#modalCrearProducto">
-            + Nuevo producto
-        </button>
-    </div>
+    @if (puedeAdministrarInventario)
+    {
+        <div class="d-flex justify-content-end mb-3">
+            <button type="button"
+                    class="btn btn-nuevo-producto"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalCrearProducto">
+                + Nuevo producto
+            </button>
+        </div>
+    }
 
     <div class="catalogo-toolbar">
 
@@ -621,6 +625,8 @@
 
         <div class="detalle-producto" id="detalleProducto">
 
+            @if (puedeAdministrarInventario)
+            {
             <div class="detalle-acciones">
 
     <button type="button"
@@ -672,7 +678,8 @@
 
 </form>
 
-</div>
+            </div>
+            }
 
             <div class="detalle-titulo">
                 DETALLE DEL PRODUCTO SELECCIONADO
@@ -791,8 +798,10 @@
 
 </div>
 
-<partial name="_Create"
-         model="new AguaSantaClara.Web.Models.CrearProductoViewModel()" />
+@if (puedeAdministrarInventario)
+{
+    <partial name="_Create" model="new AguaSantaClara.Web.Models.CrearProductoViewModel()" />
+}
 
 <script>
 

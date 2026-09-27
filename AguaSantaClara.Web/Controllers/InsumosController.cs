@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Web.Controllers;
 
-[Authorize(Roles = "Administradora,Gerente")]
+[Authorize(Roles = "Administradora,Gerente,Vendedora")]
 public class InsumosController : Controller
 {
     private readonly AppDbContext _context;
@@ -41,6 +41,7 @@ public class InsumosController : Controller
 
     
     [HttpGet]
+    [Authorize(Roles = "Administradora,Gerente")]
     public IActionResult Create()
     {
         return View(new CrearInsumoViewModel());
@@ -48,6 +49,7 @@ public class InsumosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administradora,Gerente")]
     public async Task<IActionResult> Create(CrearInsumoViewModel model)
     {
         if (!ModelState.IsValid)
@@ -75,6 +77,7 @@ public class InsumosController : Controller
     }
 
         [HttpGet]
+    [Authorize(Roles = "Administradora,Gerente")]
     public async Task<IActionResult> Edit(long id)
     {
         var insumo = await _context.Insumos
@@ -97,6 +100,7 @@ public class InsumosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administradora,Gerente")]
     public async Task<IActionResult> Edit(EditarInsumoViewModel model)
     {
         if (!ModelState.IsValid)
@@ -126,6 +130,7 @@ public class InsumosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administradora,Gerente")]
     public async Task<IActionResult> Deactivate(long id)
     {
         var insumo = await _context.Insumos
@@ -145,6 +150,7 @@ public class InsumosController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administradora,Gerente")]
     public async Task<IActionResult> Delete(long id)
     {
         var insumo = await _context.Insumos

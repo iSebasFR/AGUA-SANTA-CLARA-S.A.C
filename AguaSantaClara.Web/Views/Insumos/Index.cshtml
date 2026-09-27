@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Catálogo de insumos";
+    var puedeAdministrarInventario = User.IsInRole("Administradora") || User.IsInRole("Gerente");
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -9,9 +10,10 @@
         <h1 class="h4 mb-1">Catálogo de insumos</h1>
         <p class="text-muted mb-0">Gestión de materiales usados en producción y distribución.</p>
     </div>
-    <a asp-action="Create" class="btn btn-primary">
-        + Crear insumo
-    </a>
+    @if (puedeAdministrarInventario)
+    {
+        <a asp-action="Create" class="btn btn-primary">+ Crear insumo</a>
+    }
 </div>
 
 <form method="get" asp-action="Index" class="row g-2 mb-4">
@@ -44,14 +46,17 @@
                     <th>Descripción</th>
                     <th class="text-end">Costo</th>
                     <th class="text-center">Estado</th>
-                    <th class="text-center">Acciones</th>
+                    @if (puedeAdministrarInventario)
+                    {
+                        <th class="text-center">Acciones</th>
+                    }
                 </tr>
             </thead>
             <tbody>
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-5">
+                        <td colspan="@(puedeAdministrarInventario ? 5 : 4)" class="text-center text-muted py-5">
                             No hay insumos registrados.
                         </td>
                     </tr>
@@ -69,7 +74,9 @@
                                 @(insumo.Estado ? "Activo" : "Inactivo")
                             </span>
                         </td>
-                        <td class="text-center">
+                        @if (puedeAdministrarInventario)
+                        {
+                            <td class="text-center">
                             <div class="d-flex gap-1 justify-content-center">
                                 <a asp-action="Edit" asp-route-id="@insumo.Id" class="btn btn-sm btn-outline-primary">
                                     Editar
@@ -92,7 +99,8 @@
                                     </button>
                                 </form>
                             </div>
-                        </td>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>

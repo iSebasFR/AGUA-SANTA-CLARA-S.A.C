@@ -1,0 +1,29 @@
+@model AguaSantaClara.Web.Models.Entities.Cliente
+
+@{
+    ViewData["Title"] = "Eliminar cliente";
+}
+
+<div class="mb-4">
+    <h2 class="h4 mb-1">Confirmar eliminación</h2>
+    <p class="text-muted mb-0">Esta acción eliminará también las direcciones asociadas.</p>
+</div>
+
+<div class="alert alert-warning" role="alert">
+    ¿Deseas eliminar al cliente <strong>@Model.Nombre</strong> y sus direcciones de entrega?
+</div>
+
+<dl class="row">
+    <dt class="col-sm-3">Teléfono</dt>
+    <dd class="col-sm-9">@Model.Telefono</dd>
+    <dt class="col-sm-3">Direcciones asociadas</dt>
+    <dd class="col-sm-9">@Model.Direcciones.Count</dd>
+</dl>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" name="id" value="@Model.Id" />
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
