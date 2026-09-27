@@ -45,7 +45,7 @@
                 @foreach (var cliente in Model)
                 {
                     <tr>
-                        <td>@cliente.Nombre</td>
+                        <td><a asp-action="Details" asp-route-id="@cliente.Id">@cliente.Nombre</a></td>
                         <td>@cliente.Telefono</td>
                         <td>@(cliente.Direcciones.FirstOrDefault(direccion => direccion.Principal)?.Direccion ?? cliente.Direcciones.FirstOrDefault()?.Direccion ?? "-")</td>
                         <td>@(cliente.Estado ? "Activo" : "Inactivo")</td>

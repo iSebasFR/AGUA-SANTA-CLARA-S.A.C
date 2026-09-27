@@ -69,4 +69,208 @@ public class ClientesController : Controller
         TempData["SuccessMessage"] = "Cliente creado correctamente";
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet]
+    public async Task<IActionResult> Details(long id)
+    {
+        var cliente = await _context.Clientes
+            .Include(cliente => cliente.Direcciones.Where(direccion => direccion.EstadoRegistro))
+            .FirstOrDefaultAsync(cliente => cliente.Id == id && cliente.EstadoRegistro);
+
+        return cliente == null ? NotFound() : View(cliente);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Edit(long id)
+    {
+        var cliente = await _context.Clientes
+            .Include(cliente => cliente.Direcciones.Where(direccion => direccion.EstadoRegistro))
+            .FirstOrDefaultAsync(cliente => cliente.Id == id && cliente.EstadoRegistro);
+
+        if (cliente == null)
+            return NotFound();
+
+        var direccionPrincipal = cliente.Direcciones
+            .OrderByDescending(direccion => direccion.Principal)
+            .FirstOrDefault();
+
+        return View(new EditarClienteViewModel
+        {
+            Id = cliente.Id,
+            Nombre = cliente.Nombre,
+            Telefono = cliente.Telefono,
+            Direccion = direccionPrincipal?.Direccion ?? string.Empty,
+            Estado = cliente.Estado
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(EditarClienteViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var cliente = await _context.Clientes
+            .Include(cliente => cliente.Direcciones.Where(direccion => direccion.EstadoRegistro))
+            .FirstOrDefaultAsync(cliente => cliente.Id == model.Id && cliente.EstadoRegistro);
+
+        if (cliente == null)
+            return NotFound();
+
+        cliente.Nombre = model.Nombre.Trim();
+        cliente.Telefono = model.Telefono.Trim();
+        cliente.Estado = model.Estado;
+
+        var direccionPrincipal = cliente.Direcciones
+            .OrderByDescending(direccion => direccion.Principal)
+            .FirstOrDefault();
+
+        if (direccionPrincipal == null)
+        {
+            direccionPrincipal = new DireccionCliente
+            {
+                Direccion = model.Direccion.Trim(),
+                Principal = true,
+                Estado = true,
+                EstadoRegistro = true
+            };
+            cliente.Direcciones.Add(direccionPrincipal);
+        }
+        else
+        {
+            direccionPrincipal.Direccion = model.Direccion.Trim();
+        }
+
+        foreach (var direccion in cliente.Direcciones)
+            direccion.Principal = direccion == direccionPrincipal;
+
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Cliente actualizado correctamente";
+        return RedirectToAction(nameof(Details), new { id = cliente.Id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> AddAddress(long id)
+    {
+        var clienteExiste = await _context.Clientes
+            .AnyAsync(cliente => cliente.Id == id && cliente.EstadoRegistro);
+
+        if (!clienteExiste)
+            return NotFound();
+
+        var tieneDirecciones = await _context.DireccionesCliente
+            .AnyAsync(direccion => direccion.IdCliente == id && direccion.EstadoRegistro);
+
+        return View(new DireccionClienteViewModel
+        {
+            IdCliente = id,
+            Principal = !tieneDirecciones
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddAddress(DireccionClienteViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var clienteExiste = await _context.Clientes
+            .AnyAsync(cliente => cliente.Id == model.IdCliente && cliente.EstadoRegistro);
+
+        if (!clienteExiste)
+            return NotFound();
+
+        var direcciones = await _context.DireccionesCliente
+            .Where(direccion => direccion.IdCliente == model.IdCliente && direccion.EstadoRegistro)
+            .ToListAsync();
+        var seraPrincipal = model.Principal || direcciones.Count == 0;
+
+        if (seraPrincipal)
+        {
+            foreach (var direccion in direcciones)
+                direccion.Principal = false;
+        }
+
+        _context.DireccionesCliente.Add(new DireccionCliente
+        {
+            IdCliente = model.IdCliente,
+            Direccion = model.Direccion.Trim(),
+            Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim(),
+            Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim(),
+            Principal = seraPrincipal,
+            Estado = true,
+            EstadoRegistro = true
+        });
+
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Dirección agregada correctamente";
+        return RedirectToAction(nameof(Details), new { id = model.IdCliente });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> EditAddress(long id)
+    {
+        var direccion = await _context.DireccionesCliente
+            .FirstOrDefaultAsync(direccion => direccion.Id == id && direccion.EstadoRegistro);
+
+        if (direccion == null)
+            return NotFound();
+
+        return View(new DireccionClienteViewModel
+        {
+            Id = direccion.Id,
+            IdCliente = direccion.IdCliente,
+            Direccion = direccion.Direccion,
+            Ciudad = direccion.Ciudad,
+            Referencia = direccion.Referencia
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditAddress(DireccionClienteViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var direccion = await _context.DireccionesCliente
+            .FirstOrDefaultAsync(direccion =>
+                direccion.Id == model.Id &&
+                direccion.IdCliente == model.IdCliente &&
+                direccion.EstadoRegistro);
+
+        if (direccion == null)
+            return NotFound();
+
+        direccion.Direccion = model.Direccion.Trim();
+        direccion.Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim();
+        direccion.Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim();
+
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Dirección actualizada correctamente";
+        return RedirectToAction(nameof(Details), new { id = model.IdCliente });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetPrimaryAddress(long id, long clienteId)
+    {
+        var direcciones = await _context.DireccionesCliente
+            .Where(direccion => direccion.IdCliente == clienteId && direccion.EstadoRegistro)
+            .ToListAsync();
+        var direccionPrincipal = direcciones.FirstOrDefault(direccion => direccion.Id == id);
+
+        if (direccionPrincipal == null)
+            return NotFound();
+
+        foreach (var direccion in direcciones)
+            direccion.Principal = direccion == direccionPrincipal;
+
+        await _context.SaveChangesAsync();
+        TempData["SuccessMessage"] = "Dirección principal actualizada correctamente";
+        return RedirectToAction(nameof(Details), new { id = clienteId });
+    }
 }
