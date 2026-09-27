@@ -1,11 +1,13 @@
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models;
 using AguaSantaClara.Web.Models.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Web.Controllers;
 
+[Authorize(Roles = "Vendedora,Gerente,Administradora")]
 public class ClientesController : Controller
 {
     private readonly AppDbContext _context;
@@ -38,10 +40,12 @@ public class ClientesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Vendedora")]
     public IActionResult Create() => View(new CrearClienteViewModel());
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> Create(CrearClienteViewModel model)
     {
         if (!ModelState.IsValid)
@@ -81,6 +85,7 @@ public class ClientesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> Edit(long id)
     {
         var cliente = await _context.Clientes
@@ -106,6 +111,7 @@ public class ClientesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> Edit(EditarClienteViewModel model)
     {
         if (!ModelState.IsValid)
@@ -152,6 +158,7 @@ public class ClientesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> AddAddress(long id)
     {
         var clienteExiste = await _context.Clientes
@@ -172,6 +179,7 @@ public class ClientesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> AddAddress(DireccionClienteViewModel model)
     {
         if (!ModelState.IsValid)
@@ -211,6 +219,7 @@ public class ClientesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> EditAddress(long id)
     {
         var direccion = await _context.DireccionesCliente
@@ -231,6 +240,7 @@ public class ClientesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> EditAddress(DireccionClienteViewModel model)
     {
         if (!ModelState.IsValid)
@@ -256,6 +266,7 @@ public class ClientesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> SetPrimaryAddress(long id, long clienteId)
     {
         var direcciones = await _context.DireccionesCliente
@@ -272,5 +283,35 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Dirección principal actualizada correctamente";
         return RedirectToAction(nameof(Details), new { id = clienteId });
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> Delete(long id)
+    {
+        var cliente = await _context.Clientes
+            .Include(cliente => cliente.Direcciones.Where(direccion => direccion.EstadoRegistro))
+            .FirstOrDefaultAsync(cliente => cliente.Id == id && cliente.EstadoRegistro);
+
+        return cliente == null ? NotFound() : View(cliente);
+    }
+
+    [HttpPost]
+    [ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> DeleteConfirmed(long id)
+    {
+        var cliente = await _context.Clientes
+            .FirstOrDefaultAsync(cliente => cliente.Id == id && cliente.EstadoRegistro);
+
+        if (cliente == null)
+            return NotFound();
+
+        _context.Clientes.Remove(cliente);
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Cliente eliminado correctamente";
+        return RedirectToAction(nameof(Index));
     }
 }

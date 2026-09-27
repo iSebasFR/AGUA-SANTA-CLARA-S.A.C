@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Web.Controllers;
 
-[Authorize(Roles = "Administradora,Gerente")]
+[Authorize(Roles = "Administradora,Gerente,Vendedora")]
 public class ProductosController : Controller
 {
     private readonly AppDbContext _context;
@@ -39,6 +39,7 @@ public class ProductosController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Administradora,Gerente")]
     public IActionResult Create()
     {
         return View(new CrearProductoViewModel());
@@ -46,6 +47,7 @@ public class ProductosController : Controller
 
     [HttpPost]
 [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administradora,Gerente")]
 public async Task<IActionResult> Create(CrearProductoViewModel model)
 {
     if (!ModelState.IsValid)
@@ -76,6 +78,7 @@ public async Task<IActionResult> Create(CrearProductoViewModel model)
 }
 
 [HttpGet]
+[Authorize(Roles = "Administradora,Gerente")]
 public async Task<IActionResult> Edit(long id)
 {
     var producto = await _context.Productos
@@ -101,6 +104,7 @@ public async Task<IActionResult> Edit(long id)
 
 [HttpPost]
 [ValidateAntiForgeryToken]
+[Authorize(Roles = "Administradora,Gerente")]
 public async Task<IActionResult> Edit(EditarProductoViewModel model)
 {
     if (!ModelState.IsValid)
@@ -133,6 +137,7 @@ public async Task<IActionResult> Edit(EditarProductoViewModel model)
 
 [HttpPost]
 [ValidateAntiForgeryToken]
+[Authorize(Roles = "Administradora,Gerente")]
 public async Task<IActionResult> Deactivate(long id)
 {
     var producto = await _context.Productos
@@ -151,6 +156,7 @@ public async Task<IActionResult> Deactivate(long id)
 }
 [HttpPost]
 [ValidateAntiForgeryToken]
+[Authorize(Roles = "Administradora,Gerente")]
 public async Task<IActionResult> Activate(long id)
 {
     var producto = await _context.Productos
@@ -169,6 +175,7 @@ public async Task<IActionResult> Activate(long id)
 }
 [HttpPost]
 [ValidateAntiForgeryToken]
+[Authorize(Roles = "Administradora,Gerente")]
 
 public async Task<IActionResult> Delete(long id)
 {

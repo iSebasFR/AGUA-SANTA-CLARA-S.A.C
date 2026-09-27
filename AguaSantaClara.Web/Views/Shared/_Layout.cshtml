@@ -1,135 +1,113 @@
-﻿<!DOCTYPE html>
+﻿@{
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    var canManageInventory = User.IsInRole("Administradora") || User.IsInRole("Gerente");
+    var userName = User.FindFirst("NombreCompleto")?.Value ?? User.Identity?.Name;
+    var roleName = User.IsInRole("Vendedora") ? "Vendedora"
+        : User.IsInRole("Gerente") ? "Gerente"
+        : User.IsInRole("Administradora") ? "Administradora"
+        : "Usuario";
+}
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>@ViewData["Title"] - Agua Santa Clara</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body class="bg-light">
-
-    <!-- ===== BARRA SUPERIOR ===== -->
-    <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-            <div class="container-fluid px-4">
-                <a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Index">
-                    Agua Santa Clara
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#navbarMain" aria-controls="navbarMain"
-                        aria-expanded="false" aria-label="Alternar navegación">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="collapse navbar-collapse" id="navbarMain">
-                    <!-- Navegación principal -->
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Home" asp-action="Index">
-                                <i class="bi bi-speedometer2 me-1"></i> Inicio
-                            </a>
-                        </li>
-                        @if (User.IsInRole("Gerente"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Usuarios" asp-action="Index">
-                                    <i class="bi bi-people me-1"></i> Usuarios
-                                </a>
-                            </li>
-                        }
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Productos" asp-action="Index">
-                                <i class="bi bi-box-seam me-1"></i> Productos
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Insumos" asp-action="Index">
-                                <i class="bi bi-tools me-1"></i> Insumos
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Clientes" asp-action="Index">
-                                <i class="bi bi-person-vcard me-1"></i> Clientes
-                            </a>
-                        </li>
-                    </ul>
-
-                    <!-- Menú de usuario -->
-                    <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button"
-                                   data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-person-circle me-1"></i> Mi cuenta
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                    <li><span class="dropdown-item-text">@User.Identity.Name</span></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <form asp-controller="Account" asp-action="Logout" method="post">
-                                            <button type="submit" class="dropdown-item text-danger">Cerrar sesión</button>
-                                        </form>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Account" asp-action="Login">
-                                    <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar sesión
-                                </a>
-                            </li>
-                        }
-                    </ul>
+<body class="app-body @(isAuthenticated ? "with-sidebar" : "guest-layout")">
+    <div class="app-shell">
+        @if (isAuthenticated)
+        {
+            <aside class="app-sidebar" id="appSidebar" aria-label="Navegación principal">
+                <div class="sidebar-brand-row">
+                    <a asp-controller="@(User.IsInRole("Vendedora") ? "Clientes" : "Home")" asp-action="Index" class="sidebar-brand">
+                        <span class="sidebar-brand-mark">AS</span>
+                        <span class="sidebar-label">Agua Santa Clara</span>
+                    </a>
                 </div>
-            </div>
-        </nav>
-    </header>
 
-    <!-- ===== CONTENIDO PRINCIPAL ===== -->
-    <main class="container-fluid px-4 py-4">
-        <!-- Encabezado de página -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1 class="h3 mb-0 text-dark">@ViewData["Title"]</h1>
-                <small class="text-muted">Sistema de Pedidos y Distribución</small>
-            </div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Inicio</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
-                </ol>
-            </nav>
-        </div>
+                <nav class="sidebar-nav">
+                    @if (canManageInventory)
+                    {
+                        <a asp-controller="Home" asp-action="Index" class="sidebar-link" title="Inicio">
+                            <i class="bi bi-speedometer2"></i><span class="sidebar-label">Inicio</span>
+                        </a>
+                    }
+                    @if (User.IsInRole("Gerente"))
+                    {
+                        <a asp-controller="Usuarios" asp-action="Index" class="sidebar-link" title="Usuarios">
+                            <i class="bi bi-people"></i><span class="sidebar-label">Usuarios</span>
+                        </a>
+                    }
+                    <a asp-controller="Clientes" asp-action="Index" class="sidebar-link" title="Clientes">
+                        <i class="bi bi-person-vcard"></i><span class="sidebar-label">Clientes</span>
+                    </a>
+                    <div class="sidebar-section-title sidebar-label">Inventario</div>
+                    <a asp-controller="Productos" asp-action="Index" class="sidebar-link" title="Productos">
+                        <i class="bi bi-box-seam"></i><span class="sidebar-label">Productos</span>
+                    </a>
+                    <a asp-controller="Insumos" asp-action="Index" class="sidebar-link" title="Insumos">
+                        <i class="bi bi-tools"></i><span class="sidebar-label">Insumos</span>
+                    </a>
+                </nav>
 
-        <!-- Contenido de cada vista -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
+                <div class="sidebar-account">
+                    <div class="account-avatar" aria-hidden="true"><i class="bi bi-person"></i></div>
+                    <div class="account-copy sidebar-label">
+                        <strong>@userName</strong>
+                        <span>@roleName</span>
+                    </div>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="sidebar-logout">
+                        <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión">
+                            <i class="bi bi-box-arrow-right"></i><span class="sidebar-label">Salir</span>
+                        </button>
+                    </form>
+                </div>
+            </aside>
+            <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+        }
+
+        <div class="app-main">
+            <header class="app-topbar">
+                @if (isAuthenticated)
+                {
+                    <button type="button" id="sidebarToggle" class="icon-button" aria-label="Abrir menú" aria-expanded="false" title="Menú">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <span class="topbar-caption">Sistema de Pedidos y Distribución</span>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login" class="guest-brand">Agua Santa Clara</a>
+                    <span class="topbar-caption">Sistema de Pedidos y Distribución</span>
+                }
+            </header>
+
+            <main class="app-content">
+                @if (isAuthenticated)
+                {
+                    <div class="page-heading">
+                        <h1>@ViewData["Title"]</h1>
+                        <span>Agua Santa Clara S.A.C.</span>
+                    </div>
+                }
                 @RenderBody()
-            </div>
-        </div>
-    </main>
+            </main>
 
-    <!-- ===== PIE DE PÁGINA ===== -->
-    <footer class="border-top bg-white mt-5 py-3">
-        <div class="container-fluid px-4">
-            <div class="d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-muted small">
-                    &copy; @DateTime.Now.Year Agua Santa Clara S.A.C. — Todos los derechos reservados.
-                </span>
-                <span class="text-muted small">
-                    Versión 1.0.0
-                </span>
-            </div>
+            <footer class="app-footer">
+                <span>&copy; @DateTime.Now.Year Agua Santa Clara S.A.C.</span>
+                <span>Versión 1.0.0</span>
+            </footer>
         </div>
-    </footer>
+    </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

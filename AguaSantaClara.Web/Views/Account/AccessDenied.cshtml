@@ -1,0 +1,11 @@
+@{
+    ViewData["Title"] = "Acceso denegado";
+    var returnController = User.IsInRole("Vendedora") ? "Clientes" : "Home";
+}
+
+<div class="py-5 text-center">
+    <i class="bi bi-shield-lock display-5 text-danger" aria-hidden="true"></i>
+    <h2 class="h4 mt-3">No tienes permiso para acceder a este módulo</h2>
+    <p class="text-muted">Tu rol no cuenta con acceso a esta sección.</p>
+    <a asp-controller="@returnController" asp-action="Index" class="btn btn-primary">Volver</a>
+</div>
