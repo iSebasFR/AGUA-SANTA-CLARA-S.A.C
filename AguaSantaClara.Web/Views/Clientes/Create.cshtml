@@ -30,6 +30,16 @@
             <input asp-for="Direccion" class="form-control" autocomplete="street-address" />
             <span asp-validation-for="Direccion" class="text-danger"></span>
         </div>
+        <div class="col-md-6">
+            <label asp-for="Ciudad" class="form-label"></label>
+            <input asp-for="Ciudad" class="form-control" autocomplete="address-level2" />
+            <span asp-validation-for="Ciudad" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Referencia" class="form-label"></label>
+            <input asp-for="Referencia" class="form-control" />
+            <span asp-validation-for="Referencia" class="text-danger"></span>
+        </div>
         <div class="col-12">
             <div class="form-check">
                 <input asp-for="Estado" class="form-check-input" />

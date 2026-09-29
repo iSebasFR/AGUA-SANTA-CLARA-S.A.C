@@ -21,6 +21,14 @@ public class EditarClienteViewModel
     [Display(Name = "Dirección principal")]
     public string Direccion { get; set; } = string.Empty;
 
+    [StringLength(100)]
+    [Display(Name = "Ciudad")]
+    public string? Ciudad { get; set; }
+
+    [StringLength(255)]
+    [Display(Name = "Referencia")]
+    public string? Referencia { get; set; }
+
     [Display(Name = "Estado")]
     public bool Estado { get; set; }
 }

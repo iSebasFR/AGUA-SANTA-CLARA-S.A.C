@@ -62,6 +62,8 @@ public class ClientesController : Controller
         cliente.Direcciones.Add(new DireccionCliente
         {
             Direccion = model.Direccion.Trim(),
+            Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim(),
+            Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim(),
             Principal = true,
             Estado = true,
             EstadoRegistro = true
@@ -85,7 +87,6 @@ public class ClientesController : Controller
     }
 
     [HttpGet]
-    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> Edit(long id)
     {
         var cliente = await _context.Clientes
@@ -105,13 +106,14 @@ public class ClientesController : Controller
             Nombre = cliente.Nombre,
             Telefono = cliente.Telefono,
             Direccion = direccionPrincipal?.Direccion ?? string.Empty,
+            Ciudad = direccionPrincipal?.Ciudad,
+            Referencia = direccionPrincipal?.Referencia,
             Estado = cliente.Estado
         });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> Edit(EditarClienteViewModel model)
     {
         if (!ModelState.IsValid)
@@ -137,6 +139,8 @@ public class ClientesController : Controller
             direccionPrincipal = new DireccionCliente
             {
                 Direccion = model.Direccion.Trim(),
+                Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim(),
+                Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim(),
                 Principal = true,
                 Estado = true,
                 EstadoRegistro = true
@@ -146,6 +150,8 @@ public class ClientesController : Controller
         else
         {
             direccionPrincipal.Direccion = model.Direccion.Trim();
+            direccionPrincipal.Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim();
+            direccionPrincipal.Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim();
         }
 
         foreach (var direccion in cliente.Direcciones)

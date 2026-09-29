@@ -80,7 +80,7 @@ else
     <p class="text-muted">El cliente aún no tiene direcciones registradas.</p>
 }
 
-@if (User.IsInRole("Vendedora"))
+@if (User.IsInRole("Vendedora") || User.IsInRole("Gerente") || User.IsInRole("Administradora"))
 {
     <div class="d-flex gap-2">
         <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar ficha</a>
