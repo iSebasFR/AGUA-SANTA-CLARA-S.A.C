@@ -21,6 +21,11 @@ public class DireccionClienteViewModel
     [Display(Name = "Referencia")]
     public string? Referencia { get; set; }
 
+    [StringLength(500)]
+    [Url(ErrorMessage = "La URL de ubicación no es válida.")]
+    [Display(Name = "URL de ubicación")]
+    public string? UrlUbicacion { get; set; }
+
     [Display(Name = "Dirección principal")]
     public bool Principal { get; set; }
 }

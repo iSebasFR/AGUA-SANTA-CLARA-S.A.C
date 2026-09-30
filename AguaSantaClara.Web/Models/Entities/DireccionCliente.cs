@@ -7,6 +7,7 @@ public class DireccionCliente
     public string Direccion { get; set; } = null!;
     public string? Referencia { get; set; }
     public string? Ciudad { get; set; }
+    public string? UrlUbicacion { get; set; }
     public bool Principal { get; set; }
     public bool Estado { get; set; } = true;
     public bool EstadoRegistro { get; set; } = true;

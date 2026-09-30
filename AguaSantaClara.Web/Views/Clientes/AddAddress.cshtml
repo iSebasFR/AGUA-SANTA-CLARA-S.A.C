@@ -29,6 +29,11 @@
             <span asp-validation-for="Referencia" class="text-danger"></span>
         </div>
         <div class="col-12">
+            <label asp-for="UrlUbicacion" class="form-label"></label>
+            <input asp-for="UrlUbicacion" class="form-control" inputmode="url" />
+            <span asp-validation-for="UrlUbicacion" class="text-danger"></span>
+        </div>
+        <div class="col-12">
             <div class="form-check">
                 <input asp-for="Principal" class="form-check-input" />
                 <label asp-for="Principal" class="form-check-label">Usar como dirección principal</label>

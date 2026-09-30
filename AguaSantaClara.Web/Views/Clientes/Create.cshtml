@@ -26,6 +26,11 @@
             <span asp-validation-for="Telefono" class="text-danger"></span>
         </div>
         <div class="col-md-6">
+            <label asp-for="Dni" class="form-label"></label>
+            <input asp-for="Dni" class="form-control" inputmode="numeric" maxlength="8" />
+            <span asp-validation-for="Dni" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
             <label asp-for="Direccion" class="form-label"></label>
             <input asp-for="Direccion" class="form-control" autocomplete="street-address" />
             <span asp-validation-for="Direccion" class="text-danger"></span>
@@ -39,6 +44,11 @@
             <label asp-for="Referencia" class="form-label"></label>
             <input asp-for="Referencia" class="form-control" />
             <span asp-validation-for="Referencia" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="UrlUbicacion" class="form-label"></label>
+            <input asp-for="UrlUbicacion" class="form-control" inputmode="url" />
+            <span asp-validation-for="UrlUbicacion" class="text-danger"></span>
         </div>
         <div class="col-12">
             <div class="form-check">

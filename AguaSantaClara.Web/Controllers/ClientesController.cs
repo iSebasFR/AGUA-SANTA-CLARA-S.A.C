@@ -48,6 +48,10 @@ public class ClientesController : Controller
     [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> Create(CrearClienteViewModel model)
     {
+        var dni = string.IsNullOrWhiteSpace(model.Dni) ? null : model.Dni.Trim();
+        if (dni != null && await DniDuplicadoAsync(dni, null))
+            ModelState.AddModelError(nameof(model.Dni), "Ya existe un cliente con ese DNI.");
+
         if (!ModelState.IsValid)
             return View(model);
 
@@ -55,6 +59,7 @@ public class ClientesController : Controller
         {
             Nombre = model.Nombre.Trim(),
             Telefono = model.Telefono.Trim(),
+            Dni = dni,
             Estado = model.Estado,
             EstadoRegistro = true
         };
@@ -64,6 +69,7 @@ public class ClientesController : Controller
             Direccion = model.Direccion.Trim(),
             Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim(),
             Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim(),
+            UrlUbicacion = string.IsNullOrWhiteSpace(model.UrlUbicacion) ? null : model.UrlUbicacion.Trim(),
             Principal = true,
             Estado = true,
             EstadoRegistro = true
@@ -105,9 +111,11 @@ public class ClientesController : Controller
             Id = cliente.Id,
             Nombre = cliente.Nombre,
             Telefono = cliente.Telefono,
+            Dni = cliente.Dni,
             Direccion = direccionPrincipal?.Direccion ?? string.Empty,
             Ciudad = direccionPrincipal?.Ciudad,
             Referencia = direccionPrincipal?.Referencia,
+            UrlUbicacion = direccionPrincipal?.UrlUbicacion,
             Estado = cliente.Estado
         });
     }
@@ -116,6 +124,10 @@ public class ClientesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(EditarClienteViewModel model)
     {
+        var dni = string.IsNullOrWhiteSpace(model.Dni) ? null : model.Dni.Trim();
+        if (dni != null && await DniDuplicadoAsync(dni, model.Id))
+            ModelState.AddModelError(nameof(model.Dni), "Ya existe un cliente con ese DNI.");
+
         if (!ModelState.IsValid)
             return View(model);
 
@@ -128,6 +140,7 @@ public class ClientesController : Controller
 
         cliente.Nombre = model.Nombre.Trim();
         cliente.Telefono = model.Telefono.Trim();
+        cliente.Dni = dni;
         cliente.Estado = model.Estado;
 
         var direccionPrincipal = cliente.Direcciones
@@ -141,6 +154,7 @@ public class ClientesController : Controller
                 Direccion = model.Direccion.Trim(),
                 Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim(),
                 Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim(),
+                UrlUbicacion = string.IsNullOrWhiteSpace(model.UrlUbicacion) ? null : model.UrlUbicacion.Trim(),
                 Principal = true,
                 Estado = true,
                 EstadoRegistro = true
@@ -152,6 +166,7 @@ public class ClientesController : Controller
             direccionPrincipal.Direccion = model.Direccion.Trim();
             direccionPrincipal.Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim();
             direccionPrincipal.Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim();
+            direccionPrincipal.UrlUbicacion = string.IsNullOrWhiteSpace(model.UrlUbicacion) ? null : model.UrlUbicacion.Trim();
         }
 
         foreach (var direccion in cliente.Direcciones)
@@ -214,6 +229,7 @@ public class ClientesController : Controller
             Direccion = model.Direccion.Trim(),
             Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim(),
             Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim(),
+            UrlUbicacion = string.IsNullOrWhiteSpace(model.UrlUbicacion) ? null : model.UrlUbicacion.Trim(),
             Principal = seraPrincipal,
             Estado = true,
             EstadoRegistro = true
@@ -240,7 +256,8 @@ public class ClientesController : Controller
             IdCliente = direccion.IdCliente,
             Direccion = direccion.Direccion,
             Ciudad = direccion.Ciudad,
-            Referencia = direccion.Referencia
+            Referencia = direccion.Referencia,
+            UrlUbicacion = direccion.UrlUbicacion
         });
     }
 
@@ -264,6 +281,7 @@ public class ClientesController : Controller
         direccion.Direccion = model.Direccion.Trim();
         direccion.Ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? null : model.Ciudad.Trim();
         direccion.Referencia = string.IsNullOrWhiteSpace(model.Referencia) ? null : model.Referencia.Trim();
+        direccion.UrlUbicacion = string.IsNullOrWhiteSpace(model.UrlUbicacion) ? null : model.UrlUbicacion.Trim();
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Dirección actualizada correctamente";
@@ -320,4 +338,7 @@ public class ClientesController : Controller
         TempData["SuccessMessage"] = "Cliente eliminado correctamente";
         return RedirectToAction(nameof(Index));
     }
+
+    private Task<bool> DniDuplicadoAsync(string dni, long? excluirId) =>
+        _context.Clientes.AnyAsync(cliente => cliente.Dni == dni && cliente.Id != excluirId);
 }

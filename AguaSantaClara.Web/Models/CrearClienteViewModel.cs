@@ -14,6 +14,10 @@ public class CrearClienteViewModel
     [Display(Name = "Teléfono")]
     public string Telefono { get; set; } = string.Empty;
 
+    [RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener 8 dígitos.")]
+    [Display(Name = "DNI")]
+    public string? Dni { get; set; }
+
     [Required(ErrorMessage = "La dirección es obligatoria.")]
     [StringLength(255)]
     [Display(Name = "Dirección")]
@@ -26,6 +30,11 @@ public class CrearClienteViewModel
     [StringLength(255)]
     [Display(Name = "Referencia")]
     public string? Referencia { get; set; }
+
+    [StringLength(500)]
+    [Url(ErrorMessage = "La URL de ubicación no es válida.")]
+    [Display(Name = "URL de ubicación")]
+    public string? UrlUbicacion { get; set; }
 
     [Display(Name = "Estado")]
     public bool Estado { get; set; } = true;

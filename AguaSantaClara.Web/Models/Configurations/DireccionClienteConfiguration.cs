@@ -16,6 +16,7 @@ public class DireccionClienteConfiguration : IEntityTypeConfiguration<DireccionC
         builder.Property(d => d.Direccion).HasColumnName("direccion").HasMaxLength(255).IsRequired();
         builder.Property(d => d.Referencia).HasColumnName("referencia").HasMaxLength(255);
         builder.Property(d => d.Ciudad).HasColumnName("ciudad").HasMaxLength(100);
+        builder.Property(d => d.UrlUbicacion).HasColumnName("url_ubicacion").HasMaxLength(500);
         builder.Property(d => d.Principal).HasColumnName("principal");
         builder.Property(d => d.Estado).HasColumnName("estado");
         builder.Property(d => d.EstadoRegistro).HasColumnName("estado_registro");

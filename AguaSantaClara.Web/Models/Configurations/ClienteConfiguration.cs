@@ -14,6 +14,7 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.Property(c => c.Id).HasColumnName("id_cliente");
         builder.Property(c => c.Nombre).HasColumnName("nombre").HasMaxLength(150).IsRequired();
         builder.Property(c => c.Telefono).HasColumnName("telefono").HasMaxLength(20).IsRequired();
+        builder.Property(c => c.Dni).HasColumnName("dni").HasMaxLength(8);
         builder.Property(c => c.Email).HasColumnName("email").HasMaxLength(150);
         builder.Property(c => c.Estado).HasColumnName("estado");
         builder.Property(c => c.EstadoRegistro).HasColumnName("estado_registro");
@@ -22,5 +23,8 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
 
         builder.HasIndex(c => c.Nombre).HasDatabaseName("idx_cliente_nombre");
         builder.HasIndex(c => c.Telefono).HasDatabaseName("idx_cliente_telefono");
+        builder.HasIndex(c => c.Dni).IsUnique().HasFilter("dni IS NOT NULL").HasDatabaseName("uq_cliente_dni");
+
+        builder.ToTable(t => t.HasCheckConstraint("chk_cliente_dni", "dni IS NULL OR dni ~ '^[0-9]{8}$'"));
     }
 }
