@@ -19,6 +19,8 @@ public class InsumoConfiguration : IEntityTypeConfiguration<Insumo>
         builder.Property(i => i.EstadoRegistro).HasColumnName("estado_registro");
         builder.Property(i => i.FechaCreacion).HasColumnName("fecha_creacion");
         builder.Property(i => i.FechaActualizacion).HasColumnName("fecha_actualizacion");
+        builder.Property(i => i.StockActual).HasColumnName("stock_actual");
+        builder.Property(i => i.StockMinimo).HasColumnName("stock_minimo");
 
         builder.ToTable(t =>
         {

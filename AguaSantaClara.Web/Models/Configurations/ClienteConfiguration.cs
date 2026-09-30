@@ -24,6 +24,8 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.HasIndex(c => c.Nombre).HasDatabaseName("idx_cliente_nombre");
         builder.HasIndex(c => c.Telefono).HasDatabaseName("idx_cliente_telefono");
         builder.HasIndex(c => c.Dni).IsUnique().HasFilter("dni IS NOT NULL").HasDatabaseName("uq_cliente_dni");
+        builder.Property(c => c.SaldoBidones).HasColumnName("saldo_bidones");
+        builder.Property(c => c.DeudaTotal).HasColumnName("deuda_total").HasPrecision(12, 2);
 
         builder.ToTable(t => t.HasCheckConstraint("chk_cliente_dni", "dni IS NULL OR dni ~ '^[0-9]{8}$'"));
     }
