@@ -11,6 +11,8 @@ public class Cliente
     public bool EstadoRegistro { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaActualizacion { get; set; }
+    public int SaldoBidones { get; set; }
+    public decimal DeudaTotal { get; set; }
 
     public ICollection<DireccionCliente> Direcciones { get; set; } = new List<DireccionCliente>();
 }
