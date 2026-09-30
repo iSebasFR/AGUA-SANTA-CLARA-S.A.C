@@ -21,6 +21,11 @@ public class AppDbContext : IdentityDbContext<Usuario, Rol, long>
     public DbSet<Pedido> Pedidos => Set<Pedido>();
     public DbSet<PedidoCliente> PedidosCliente => Set<PedidoCliente>();
     public DbSet<DetallePedido> DetallesPedido => Set<DetallePedido>();
+    public DbSet<Incidencia> Incidencias => Set<Incidencia>();
+    public DbSet<MetodoPago> MetodosPago => Set<MetodoPago>();
+    public DbSet<Pago> Pagos => Set<Pago>();
+    public DbSet<Deuda> Deudas => Set<Deuda>();
+    public DbSet<MovimientoBidones> MovimientosBidones => Set<MovimientoBidones>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

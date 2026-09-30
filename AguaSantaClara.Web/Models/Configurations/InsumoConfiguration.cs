@@ -15,14 +15,18 @@ public class InsumoConfiguration : IEntityTypeConfiguration<Insumo>
         builder.Property(i => i.Nombre).HasColumnName("nombre").HasMaxLength(150).IsRequired();
         builder.Property(i => i.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
         builder.Property(i => i.Costo).HasColumnName("costo").HasPrecision(12, 2);
+        builder.Property(i => i.StockActual).HasColumnName("stock_actual");
+        builder.Property(i => i.StockMinimo).HasColumnName("stock_minimo");
         builder.Property(i => i.Estado).HasColumnName("estado");
         builder.Property(i => i.EstadoRegistro).HasColumnName("estado_registro");
         builder.Property(i => i.FechaCreacion).HasColumnName("fecha_creacion");
         builder.Property(i => i.FechaActualizacion).HasColumnName("fecha_actualizacion");
 
+        // 👇 Aquí van TODOS los CHECKs juntos
         builder.ToTable(t =>
         {
             t.HasCheckConstraint("chk_insumo_costo_positivo", "costo > 0");
+            t.HasCheckConstraint("chk_insumo_stock_no_negativo", "stock_actual >= 0 AND stock_minimo >= 0");
         });
 
         builder.HasIndex(i => i.Nombre).HasDatabaseName("idx_insumo_nombre");

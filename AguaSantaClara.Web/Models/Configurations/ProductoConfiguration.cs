@@ -22,6 +22,8 @@ public class ProductoConfiguration : IEntityTypeConfiguration<Producto>
         builder.Property(p => p.EstadoRegistro).HasColumnName("estado_registro");
         builder.Property(p => p.FechaCreacion).HasColumnName("fecha_creacion");
         builder.Property(p => p.FechaActualizacion).HasColumnName("fecha_actualizacion");
+        builder.Property(p => p.EsRetornable).HasColumnName("es_retornable");
+        builder.Property(p => p.Categoria).HasColumnName("categoria").HasMaxLength(50);
 
         builder.ToTable(t =>
         {

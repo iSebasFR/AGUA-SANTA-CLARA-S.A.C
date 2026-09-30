@@ -11,6 +11,8 @@ public class Producto
     public int StockMinimo { get; set; }
     public bool Estado { get; set; } = true;
     public bool EstadoRegistro { get; set; } = true;
+    public bool EsRetornable { get; set; }
+    public string? Categoria { get; set; }
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaActualizacion { get; set; }
 }
