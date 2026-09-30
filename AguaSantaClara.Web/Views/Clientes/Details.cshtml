@@ -23,6 +23,8 @@
     <dd class="col-sm-9">@Model.Nombre</dd>
     <dt class="col-sm-3">Teléfono</dt>
     <dd class="col-sm-9">@Model.Telefono</dd>
+    <dt class="col-sm-3">DNI</dt>
+    <dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Dni) ? "-" : Model.Dni)</dd>
     <dt class="col-sm-3">Estado</dt>
     <dd class="col-sm-9">@(Model.Estado ? "Activo" : "Inactivo")</dd>
 </dl>
@@ -55,6 +57,10 @@
                     @if (!string.IsNullOrWhiteSpace(direccion.Referencia))
                     {
                         <div class="text-muted small">@direccion.Referencia</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(direccion.UrlUbicacion))
+                    {
+                        <div class="small"><a href="@direccion.UrlUbicacion" target="_blank" rel="noopener noreferrer">Ver ubicación</a></div>
                     }
                 </div>
                 @if (User.IsInRole("Vendedora"))

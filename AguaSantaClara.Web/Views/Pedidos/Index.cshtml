@@ -1,0 +1,72 @@
+@model AguaSantaClara.Web.Models.PedidosIndexViewModel
+
+@{
+    ViewData["Title"] = "Pedidos";
+    var esVendedora = User.IsInRole("Vendedora");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h4 mb-1">Pedidos</h2>
+        <p class="text-muted mb-0">Registro y envío de pedidos de productos.</p>
+    </div>
+    @if (esVendedora)
+    {
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#pedidoModal">
+            <i class="bi bi-plus-lg me-1"></i> Crear pedido
+        </button>
+    }
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>N°</th>
+                <th>Entrega</th>
+                <th>Local</th>
+                <th>Clientes</th>
+                <th>Repartidor</th>
+                <th class="text-end">Total</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Pedidos.Any())
+            {
+                @foreach (var pedido in Model.Pedidos)
+                {
+                    <tr>
+                        <td>@pedido.Id</td>
+                        <td>@pedido.FechaEntrega.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@pedido.Local.Nombre</td>
+                        <td>@string.Join(", ", pedido.Clientes.Select(c => c.Cliente.Nombre).Distinct())</td>
+                        <td>@(pedido.Repartidor?.Nombre ?? "-")</td>
+                        <td class="text-end">S/ @pedido.Total.ToString("0.00")</td>
+                        <td>
+                            <span class="badge @(pedido.Estado == "Pendiente" ? "text-bg-warning" : "text-bg-primary")">@pedido.Estado</span>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No hay pedidos registrados.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (esVendedora)
+{
+    <partial name="_CrearPedido" model="Model" />
+}
+
+@section Scripts {
+    @if (esVendedora)
+    {
+        <script src="~/js/pedidos.js" asp-append-version="true"></script>
+    }
+}

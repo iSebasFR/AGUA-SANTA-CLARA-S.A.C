@@ -15,6 +15,12 @@ public class AppDbContext : IdentityDbContext<Usuario, Rol, long>
     public DbSet<DireccionCliente> DireccionesCliente => Set<DireccionCliente>();
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<RolPermiso> RolesPermisos => Set<RolPermiso>();
+    public DbSet<Local> Locales => Set<Local>();
+    public DbSet<ProductoLocal> ProductosLocal => Set<ProductoLocal>();
+    public DbSet<Repartidor> Repartidores => Set<Repartidor>();
+    public DbSet<Pedido> Pedidos => Set<Pedido>();
+    public DbSet<PedidoCliente> PedidosCliente => Set<PedidoCliente>();
+    public DbSet<DetallePedido> DetallesPedido => Set<DetallePedido>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

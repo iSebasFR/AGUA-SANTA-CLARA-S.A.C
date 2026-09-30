@@ -1,0 +1,71 @@
+@model AguaSantaClara.Web.Models.PedidosIndexViewModel
+
+<div class="modal fade" id="pedidoModal" tabindex="-1" aria-labelledby="pedidoModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="pedidoModalLabel">Crear pedido</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancelar"></button>
+            </div>
+            <div class="modal-body">
+                @Html.AntiForgeryToken()
+                <div id="pedidoErrores" class="alert alert-danger d-none" role="alert"></div>
+                <div id="pedidoEnviado" class="alert alert-success d-none" role="status">
+                    <p class="mb-2">Pedido <strong id="pedidoEnviadoNumero"></strong> registrado como Enviado.</p>
+                    <a id="pedidoWhatsapp" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm">
+                        <i class="bi bi-whatsapp me-1"></i> Abrir WhatsApp
+                    </a>
+                </div>
+
+                <div id="pedidoFormulario">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="pedidoLocal" class="form-label">Local de despacho</label>
+                            <select id="pedidoLocal" class="form-select" data-campo="idLocal">
+                                <option value="">Selecciona un local</option>
+                                @foreach (var local in Model.Locales)
+                                {
+                                    <option value="@local.Id">@local.Nombre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pedidoFechaEntrega" class="form-label">Fecha y hora de entrega</label>
+                            <input id="pedidoFechaEntrega" type="datetime-local" class="form-control" data-campo="fechaEntrega" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="pedidoBuscar" class="form-label">Buscar cliente por teléfono o DNI</label>
+                        <div class="input-group">
+                            <input id="pedidoBuscar" type="text" class="form-control" inputmode="numeric" data-campo="clientes" autocomplete="off" />
+                            <button type="button" id="pedidoBuscarBtn" class="btn btn-outline-primary">
+                                <i class="bi bi-search me-1"></i> Buscar
+                            </button>
+                        </div>
+                        <div id="pedidoBuscarMensaje" class="form-text text-danger"></div>
+                    </div>
+
+                    <div id="pedidoClientes" class="d-grid gap-3"></div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <div class="fs-5">Total: <strong id="pedidoTotal">S/ 0.00</strong></div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <select id="pedidoRepartidor" class="form-select w-auto" data-campo="idRepartidor" aria-label="Repartidor">
+                        <option value="">Repartidor</option>
+                        @foreach (var repartidor in Model.Repartidores)
+                        {
+                            <option value="@repartidor.Id">@repartidor.Nombre (@repartidor.Celular)</option>
+                        }
+                    </select>
+                    <button type="button" id="pedidoEnviarBtn" class="btn btn-success">
+                        <i class="bi bi-send me-1"></i> Enviar a
+                    </button>
+                    <button type="button" id="pedidoGuardarBtn" class="btn btn-primary">Guardar Pedido</button>
+                    <button type="button" id="pedidoCancelarBtn" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

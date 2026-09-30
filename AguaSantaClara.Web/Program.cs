@@ -3,6 +3,7 @@ using AguaSantaClara.Web.Models.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using AguaSantaClara.Web.Middleware;
+using AguaSantaClara.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,8 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
 });
+
+builder.Services.AddScoped<IPedidoService, PedidoService>();
 
 builder.Services.AddControllersWithViews();
 
