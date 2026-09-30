@@ -130,7 +130,16 @@ public static class SeedData
 
         await SeedPedidosAsync(services.GetRequiredService<AppDbContext>());
     }
-
+    private static async Task SeedMetodosPagoAsync(AppDbContext db)
+    {
+        var metodos = new[] { "Efectivo", "Yape", "Transferencia Bancaria" };
+        foreach (var nombre in metodos)
+        {
+            if (!await db.MetodosPago.AnyAsync(m => m.Nombre == nombre))
+                db.MetodosPago.Add(new MetodoPago { Nombre = nombre });
+        }
+        await db.SaveChangesAsync();
+    }
     private static async Task SeedPedidosAsync(AppDbContext db)
     {
         var catalogo = new[]
