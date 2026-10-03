@@ -11,17 +11,14 @@ public class CrearProductoViewModel
     [StringLength(255, ErrorMessage = "La descripción no puede superar los 255 caracteres.")]
     public string? Descripcion { get; set; }
 
+    [Required(ErrorMessage = "Seleccione una categoría.")]
+    public string Categoria { get; set; } = string.Empty;
+
     [Range(0.01, double.MaxValue, ErrorMessage = "El precio de venta debe ser mayor que 0.")]
     public decimal PrecioVenta { get; set; }
 
     [Range(0.01, double.MaxValue, ErrorMessage = "El costo debe ser mayor que 0.")]
     public decimal Costo { get; set; }
-
-    [Range(0, int.MaxValue, ErrorMessage = "El stock actual no puede ser negativo.")]
-    public int StockActual { get; set; }
-
-    [Range(0, int.MaxValue, ErrorMessage = "El stock mínimo no puede ser negativo.")]
-    public int StockMinimo { get; set; }
 
     public bool Estado { get; set; } = true;
 }
