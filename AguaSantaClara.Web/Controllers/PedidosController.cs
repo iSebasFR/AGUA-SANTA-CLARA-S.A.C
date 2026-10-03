@@ -41,6 +41,48 @@ public class PedidosController : Controller
 
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> ObtenerParaEditar(long idPedido)
+    {
+        var pedido = await _context.Pedidos
+            .Where(p => p.Id == idPedido && p.EstadoRegistro)
+            .Select(p => new
+            {
+                idPedido = p.Id,
+                idRepartidor = p.IdRepartidor,
+                clientes = p.Clientes.Where(pc => pc.EstadoRegistro).Select(pc => new
+                {
+                    cliente = new
+                    {
+                        id = pc.Cliente.Id,
+                        nombre = pc.Cliente.Nombre,
+                        telefono = pc.Cliente.Telefono,
+                        dni = pc.Cliente.Dni,
+                        direcciones = pc.Cliente.Direcciones
+                            .Where(d => d.EstadoRegistro)
+                            .Select(d => new
+                            {
+                                id = d.Id,
+                                direccion = d.Direccion,
+                                ciudad = d.Ciudad,
+                                urlUbicacion = d.UrlUbicacion,
+                                principal = d.Principal
+                            }).ToList()
+                    },
+                    idDireccion = pc.IdDireccion,
+                    detalles = pc.Detalles.Where(d => d.EstadoRegistro).Select(d => new
+                    {
+                        idProducto = d.IdProducto,
+                        cantidad = d.Cantidad
+                    }).ToList()
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        return pedido == null ? NotFound() : Json(pedido);
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> BuscarCliente(string q)
     {
         var cliente = await _pedidoService.BuscarClienteAsync(q);
@@ -60,6 +102,15 @@ public class PedidosController : Controller
     public async Task<IActionResult> Guardar([FromBody] CrearPedidoViewModel modelo)
     {
         var resultado = await _pedidoService.CrearAsync(modelo ?? new CrearPedidoViewModel(), enviar: false);
+        return resultado.Ok ? Json(resultado) : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> Actualizar(long idPedido, [FromBody] CrearPedidoViewModel modelo)
+    {
+        var resultado = await _pedidoService.ActualizarAsync(idPedido, modelo ?? new CrearPedidoViewModel());
         return resultado.Ok ? Json(resultado) : BadRequest(resultado);
     }
 

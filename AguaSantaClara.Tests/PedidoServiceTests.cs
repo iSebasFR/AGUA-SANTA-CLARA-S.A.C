@@ -108,6 +108,26 @@ public class PedidoServiceTests
     }
 
     [Fact]
+    public async Task Actualizar_ReemplazaDatosYDetallesSinCrearOtroPedido()
+    {
+        var e = await CrearEscenarioAsync();
+        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+
+        var actualizado = await e.Servicio.ActualizarAsync(creado.IdPedido, Modelo(e, Linea(e.Beto, 0, (e.Hielo, 3))));
+
+        Assert.True(actualizado.Ok);
+        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
+        var pedido = await e.Db.Pedidos
+            .Include(p => p.Clientes).ThenInclude(c => c.Detalles)
+            .SingleAsync();
+        Assert.Equal(creado.IdPedido, pedido.Id);
+        Assert.Equal(15m, pedido.Total);
+        Assert.Equal(e.Beto.Id, pedido.Clientes.Single().IdCliente);
+        Assert.Equal(e.Hielo.Id, pedido.Clientes.Single().Detalles.Single().IdProducto);
+        Assert.Equal(3, pedido.Clientes.Single().Detalles.Single().Cantidad);
+    }
+
+    [Fact]
     public async Task Crear_CantidadIgualAlStockSePermite()
     {
         var e = await CrearEscenarioAsync(stockGalon: 10);

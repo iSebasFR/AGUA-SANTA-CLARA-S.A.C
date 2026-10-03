@@ -20,9 +20,25 @@ public class PedidoService : IPedidoService
     public static bool CelularValido(string? celular) =>
         !string.IsNullOrEmpty(celular) && CelularRegex.IsMatch(celular);
 
-    public async Task<PedidoResultado> CrearAsync(CrearPedidoViewModel modelo, bool enviar)
+    public Task<PedidoResultado> CrearAsync(CrearPedidoViewModel modelo, bool enviar) =>
+        GuardarAsync(modelo, enviar, null);
+
+    public Task<PedidoResultado> ActualizarAsync(long idPedido, CrearPedidoViewModel modelo) =>
+        GuardarAsync(modelo, enviar: false, idPedido);
+
+    private async Task<PedidoResultado> GuardarAsync(CrearPedidoViewModel modelo, bool enviar, long? idPedido)
     {
         var errores = new List<ErrorPedido>();
+        Pedido? pedidoExistente = null;
+
+        if (idPedido.HasValue)
+        {
+            pedidoExistente = await _context.Pedidos
+                .Include(p => p.Clientes).ThenInclude(c => c.Detalles)
+                .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
+            if (pedidoExistente == null)
+                return new PedidoResultado { Errores = { new ErrorPedido("pedido", "El pedido no existe.") } };
+        }
 
         if (modelo.Clientes.Count == 0)
             errores.Add(new ErrorPedido("clientes", "Agrega al menos un cliente."));
@@ -124,7 +140,24 @@ public class PedidoService : IPedidoService
             return new PedidoResultado { Errores = errores };
 
         pedido.Total = pedido.Clientes.Sum(c => c.Subtotal);
-        _context.Pedidos.Add(pedido);
+
+        if (pedidoExistente == null)
+        {
+            _context.Pedidos.Add(pedido);
+        }
+        else
+        {
+            _context.RemoveRange(pedidoExistente.Clientes.SelectMany(c => c.Detalles));
+            _context.RemoveRange(pedidoExistente.Clientes);
+            pedidoExistente.Clientes.Clear();
+            pedidoExistente.IdRepartidor = modelo.IdRepartidor;
+            pedidoExistente.Total = pedido.Total;
+            pedidoExistente.FechaActualizacion = DateTime.UtcNow;
+            foreach (var cliente in pedido.Clientes)
+                pedidoExistente.Clientes.Add(cliente);
+            pedido = pedidoExistente;
+        }
+
         await _context.SaveChangesAsync();
 
         var resultado = new PedidoResultado { IdPedido = pedido.Id, Total = pedido.Total };

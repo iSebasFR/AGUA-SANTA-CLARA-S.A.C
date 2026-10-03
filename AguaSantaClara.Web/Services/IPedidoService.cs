@@ -5,6 +5,7 @@ namespace AguaSantaClara.Web.Services;
 public interface IPedidoService
 {
     Task<PedidoResultado> CrearAsync(CrearPedidoViewModel modelo, bool enviar);
+    Task<PedidoResultado> ActualizarAsync(long idPedido, CrearPedidoViewModel modelo);
     Task<PedidoResultado> EnviarVariosAsync(EnviarPedidosViewModel modelo);
     Task<ClienteBusquedaViewModel?> BuscarClienteAsync(string termino);
     Task<List<ProductoPedidoViewModel>> ProductosDisponiblesAsync();

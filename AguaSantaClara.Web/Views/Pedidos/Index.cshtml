@@ -60,6 +60,10 @@
                 <th>Repartidor</th>
                 <th class="text-end">Total</th>
                 <th>Estado</th>
+                @if (esVendedora)
+                {
+                    <th>Acciones</th>
+                }
             </tr>
         </thead>
         <tbody>
@@ -85,13 +89,22 @@
                         <td>
                             <span class="badge @(pedido.Estado == "Pendiente" ? "text-bg-warning" : "text-bg-primary")">@pedido.Estado</span>
                         </td>
+                        @if (esVendedora)
+                        {
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary pedido-editar"
+                                        data-pedido-id="@pedido.Id" data-bs-toggle="modal" data-bs-target="#pedidoModal">
+                                    <i class="bi bi-pencil me-1"></i> Editar
+                                </button>
+                            </td>
+                        }
                     </tr>
                 }
             }
             else
             {
                 <tr>
-                    <td colspan="@(esVendedora ? 8 : 7)" class="text-center text-muted py-4">No hay pedidos registrados.</td>
+                    <td colspan="@(esVendedora ? 9 : 7)" class="text-center text-muted py-4">No hay pedidos registrados.</td>
                 </tr>
             }
         </tbody>
