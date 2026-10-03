@@ -17,7 +17,7 @@ public class ClientesController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index(string? search)
+    public async Task<IActionResult> Index(string? search, long? id)
     {
         var consulta = _context.Clientes
             .Include(cliente => cliente.Direcciones.Where(direccion => direccion.EstadoRegistro))
@@ -28,16 +28,46 @@ public class ClientesController : Controller
             var patron = $"%{search.Trim()}%";
             consulta = consulta.Where(cliente =>
                 EF.Functions.ILike(cliente.Nombre, patron) ||
-                EF.Functions.ILike(cliente.Telefono, patron));
+                EF.Functions.ILike(cliente.Telefono, patron) ||
+                (cliente.Dni != null && EF.Functions.ILike(cliente.Dni, patron)));
         }
 
         var clientes = await consulta
             .OrderBy(cliente => cliente.Nombre)
             .ToListAsync();
 
-        ViewBag.Search = search;
-        return View(clientes);
+        Cliente? seleccionado = id.HasValue
+            ? clientes.FirstOrDefault(c => c.Id == id.Value)
+            : clientes.FirstOrDefault();
+
+        // Cargar historial de pedidos del cliente seleccionado
+        var pedidos = new List<Pedido>();
+        if (seleccionado != null)
+        {
+            pedidos = await _context.Pedidos
+                .Include(p => p.Local)
+                .Include(p => p.Repartidor)
+                .Include(p => p.Clientes).ThenInclude(pc => pc.Detalles)
+                .Where(p => p.EstadoRegistro && p.Clientes.Any(pc => pc.IdCliente == seleccionado.Id))
+                .OrderByDescending(p => p.FechaCreacion)
+                .ToListAsync();
+        }
+
+        var model = new ClientesIndexViewModel
+        {
+            Clientes = clientes,
+            Seleccionado = seleccionado,
+            Search = search,
+            Pedidos = pedidos
+        };
+
+        return View(model);
     }
+
+    // Compatibilidad: si algún enlace viejo apunta a /Clientes/Details/5
+    [HttpGet]
+    public IActionResult Details(long id) =>
+        RedirectToAction(nameof(Index), new { id });
 
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
@@ -79,17 +109,7 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "Cliente creado correctamente";
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Details(long id)
-    {
-        var cliente = await _context.Clientes
-            .Include(cliente => cliente.Direcciones.Where(direccion => direccion.EstadoRegistro))
-            .FirstOrDefaultAsync(cliente => cliente.Id == id && cliente.EstadoRegistro);
-
-        return cliente == null ? NotFound() : View(cliente);
+        return RedirectToAction(nameof(Index), new { id = cliente.Id });
     }
 
     [HttpGet]
@@ -175,7 +195,7 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "Cliente actualizado correctamente";
-        return RedirectToAction(nameof(Details), new { id = cliente.Id });
+        return RedirectToAction(nameof(Index), new { id = cliente.Id });
     }
 
     [HttpGet]
@@ -237,7 +257,7 @@ public class ClientesController : Controller
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Dirección agregada correctamente";
-        return RedirectToAction(nameof(Details), new { id = model.IdCliente });
+        return RedirectToAction(nameof(Index), new { id = model.IdCliente });
     }
 
     [HttpGet]
@@ -285,7 +305,7 @@ public class ClientesController : Controller
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Dirección actualizada correctamente";
-        return RedirectToAction(nameof(Details), new { id = model.IdCliente });
+        return RedirectToAction(nameof(Index), new { id = model.IdCliente });
     }
 
     [HttpPost]
@@ -306,7 +326,7 @@ public class ClientesController : Controller
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "Dirección principal actualizada correctamente";
-        return RedirectToAction(nameof(Details), new { id = clienteId });
+        return RedirectToAction(nameof(Index), new { id = clienteId });
     }
 
     [HttpGet]
