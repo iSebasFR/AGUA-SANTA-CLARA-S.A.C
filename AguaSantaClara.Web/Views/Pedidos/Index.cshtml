@@ -23,6 +23,7 @@
     <div id="pedidosAcciones" class="card card-body mb-3">
         @Html.AntiForgeryToken()
         <div id="pedidosErrores" class="alert alert-danger d-none" role="alert"></div>
+        <div id="pedidoEstadoActualizado" class="alert alert-success d-none" role="status"></div>
         <div id="pedidosEliminado" class="alert alert-success d-none" role="status"></div>
         <div id="pedidosEnviado" class="alert alert-success d-none" role="status">
             <p class="mb-2">Pedidos asignados y marcados como Enviado.</p>
@@ -88,7 +89,20 @@
                         <td>@(pedido.Repartidor?.Nombre ?? "-")</td>
                         <td class="text-end">S/ @pedido.Total.ToString("0.00")</td>
                         <td>
-                            <span class="badge @(pedido.Estado == "Pendiente" ? "text-bg-warning" : "text-bg-primary")">@pedido.Estado</span>
+                            @if (esVendedora)
+                            {
+                                <select class="form-select form-select-sm pedido-estado" data-pedido-id="@pedido.Id"
+                                        data-estado-original="@pedido.Estado" aria-label="Estado del pedido @pedido.Id">
+                                    @foreach (var estado in AguaSantaClara.Web.Models.Entities.EstadosPedido.Todos)
+                                    {
+                                        <option value="@estado" selected="@(pedido.Estado == estado ? "selected" : null)">@estado</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                <span class="badge @(pedido.Estado == "Pendiente" ? "text-bg-warning" : "text-bg-primary")">@pedido.Estado</span>
+                            }
                         </td>
                         @if (esVendedora)
                         {

@@ -126,6 +126,15 @@ public class PedidosController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> CambiarEstado(long idPedido, [FromBody] ActualizarEstadoPedidoViewModel? modelo)
+    {
+        var resultado = await _pedidoService.CambiarEstadoAsync(idPedido, modelo?.Estado);
+        return resultado.Ok ? Json(new { estado = modelo!.Estado }) : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> EnviarSeleccionados([FromBody] EnviarPedidosViewModel modelo)
     {
         var resultado = await _pedidoService.EnviarVariosAsync(modelo ?? new EnviarPedidosViewModel());

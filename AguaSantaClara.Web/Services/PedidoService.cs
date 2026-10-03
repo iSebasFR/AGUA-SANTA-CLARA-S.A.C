@@ -39,6 +39,22 @@ public class PedidoService : IPedidoService
         return true;
     }
 
+    public async Task<PedidoResultado> CambiarEstadoAsync(long idPedido, string? estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado) || !EstadosPedido.Todos.Contains(estado, StringComparer.Ordinal))
+            return new PedidoResultado { Errores = { new ErrorPedido("estado", "Selecciona un estado válido.") } };
+
+        var pedido = await _context.Pedidos
+            .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
+        if (pedido == null)
+            return new PedidoResultado { Errores = { new ErrorPedido("pedido", "El pedido no existe.") } };
+
+        pedido.Estado = estado;
+        pedido.FechaActualizacion = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return new PedidoResultado();
+    }
+
     private async Task<PedidoResultado> GuardarAsync(CrearPedidoViewModel modelo, bool enviar, long? idPedido)
     {
         var errores = new List<ErrorPedido>();

@@ -141,6 +141,37 @@ public class PedidoServiceTests
         Assert.Equal(0, await e.Db.Pedidos.CountAsync(p => p.EstadoRegistro));
     }
 
+    [Theory]
+    [InlineData(EstadosPedido.Pendiente)]
+    [InlineData(EstadosPedido.Enviado)]
+    [InlineData(EstadosPedido.Entregado)]
+    [InlineData(EstadosPedido.ConIncidencia)]
+    [InlineData(EstadosPedido.Pagado)]
+    [InlineData(EstadosPedido.PagoParcial)]
+    public async Task CambiarEstado_GuardaCadaEstadoPermitido(string estado)
+    {
+        var e = await CrearEscenarioAsync();
+        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+
+        var resultado = await e.Servicio.CambiarEstadoAsync(creado.IdPedido!.Value, estado);
+
+        Assert.True(resultado.Ok);
+        Assert.Equal(estado, (await e.Db.Pedidos.SingleAsync()).Estado);
+    }
+
+    [Fact]
+    public async Task CambiarEstado_RechazaEstadoNoPermitido()
+    {
+        var e = await CrearEscenarioAsync();
+        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+
+        var resultado = await e.Servicio.CambiarEstadoAsync(creado.IdPedido!.Value, "Cancelado");
+
+        Assert.False(resultado.Ok);
+        Assert.Contains(resultado.Errores, error => error.Campo == "estado");
+        Assert.Equal(EstadosPedido.Pendiente, (await e.Db.Pedidos.SingleAsync()).Estado);
+    }
+
     [Fact]
     public async Task Crear_CantidadIgualAlStockSePermite()
     {
