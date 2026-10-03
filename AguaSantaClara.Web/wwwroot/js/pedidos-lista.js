@@ -9,6 +9,7 @@
 	const btnEnviar = $("pedidosEnviarBtn");
 	const selRepartidor = $("pedidosRepartidor");
 	const alertaErrores = $("pedidosErrores");
+	const alertaEliminado = $("pedidosEliminado");
 	const alertaEnviado = $("pedidosEnviado");
 	const token = panel.querySelector("input[name='__RequestVerificationToken']")?.value ?? "";
 
@@ -38,6 +39,41 @@
 	document.addEventListener("change", e => {
 		if (e.target.classList?.contains("pedido-check")) actualizar();
 	});
+
+	document.querySelectorAll(".pedido-eliminar").forEach(btn => btn.addEventListener("click", async () => {
+		if (!window.confirm("¿Está seguro de borrar este pedido?")) return;
+
+		alertaErrores.classList.add("d-none");
+		alertaEliminado.classList.add("d-none");
+		btn.disabled = true;
+		try {
+			const resp = await fetch(`/Pedidos/Eliminar?idPedido=${encodeURIComponent(btn.dataset.pedidoId)}`, {
+				method: "POST",
+				headers: { "RequestVerificationToken": token }
+			});
+			if (!resp.ok) {
+				mostrarErrores([{ mensaje: resp.status === 404 ? "El pedido ya no existe." : "No se pudo borrar el pedido." }]);
+				btn.disabled = false;
+				return;
+			}
+			btn.closest("tr").remove();
+			alertaEliminado.textContent = "Pedido eliminado correctamente.";
+			alertaEliminado.classList.remove("d-none");
+			actualizar();
+			if (!document.querySelector("tbody tr")) {
+				const filaVacia = document.createElement("tr");
+				const celdaVacia = document.createElement("td");
+				celdaVacia.colSpan = 9;
+				celdaVacia.className = "text-center text-muted py-4";
+				celdaVacia.textContent = "No hay pedidos registrados.";
+				filaVacia.append(celdaVacia);
+				document.querySelector("tbody").append(filaVacia);
+			}
+		} catch {
+			mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
+			btn.disabled = false;
+		}
+	}));
 
 	btnEnviar.addEventListener("click", async () => {
 		alertaErrores.classList.add("d-none");

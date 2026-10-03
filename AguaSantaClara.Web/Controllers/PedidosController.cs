@@ -117,6 +117,15 @@ public class PedidosController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> Eliminar(long idPedido)
+    {
+        var eliminado = await _pedidoService.EliminarAsync(idPedido);
+        return eliminado ? Ok() : NotFound();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> EnviarSeleccionados([FromBody] EnviarPedidosViewModel modelo)
     {
         var resultado = await _pedidoService.EnviarVariosAsync(modelo ?? new EnviarPedidosViewModel());

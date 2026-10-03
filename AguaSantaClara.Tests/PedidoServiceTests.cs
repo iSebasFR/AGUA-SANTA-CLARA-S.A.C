@@ -128,6 +128,20 @@ public class PedidoServiceTests
     }
 
     [Fact]
+    public async Task Eliminar_ExcluyePedidoDelListadoSinBorrarElRegistro()
+    {
+        var e = await CrearEscenarioAsync();
+        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+
+        var eliminado = await e.Servicio.EliminarAsync(creado.IdPedido);
+
+        Assert.True(eliminado);
+        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
+        Assert.False((await e.Db.Pedidos.SingleAsync()).EstadoRegistro);
+        Assert.Equal(0, await e.Db.Pedidos.CountAsync(p => p.EstadoRegistro));
+    }
+
+    [Fact]
     public async Task Crear_CantidadIgualAlStockSePermite()
     {
         var e = await CrearEscenarioAsync(stockGalon: 10);

@@ -26,6 +26,19 @@ public class PedidoService : IPedidoService
     public Task<PedidoResultado> ActualizarAsync(long idPedido, CrearPedidoViewModel modelo) =>
         GuardarAsync(modelo, enviar: false, idPedido);
 
+    public async Task<bool> EliminarAsync(long idPedido)
+    {
+        var pedido = await _context.Pedidos
+            .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
+        if (pedido == null)
+            return false;
+
+        pedido.EstadoRegistro = false;
+        pedido.FechaActualizacion = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     private async Task<PedidoResultado> GuardarAsync(CrearPedidoViewModel modelo, bool enviar, long? idPedido)
     {
         var errores = new List<ErrorPedido>();

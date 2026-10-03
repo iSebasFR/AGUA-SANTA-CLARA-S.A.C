@@ -23,6 +23,7 @@
     <div id="pedidosAcciones" class="card card-body mb-3">
         @Html.AntiForgeryToken()
         <div id="pedidosErrores" class="alert alert-danger d-none" role="alert"></div>
+        <div id="pedidosEliminado" class="alert alert-success d-none" role="status"></div>
         <div id="pedidosEnviado" class="alert alert-success d-none" role="status">
             <p class="mb-2">Pedidos asignados y marcados como Enviado.</p>
             <a id="pedidosWhatsapp" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm">
@@ -95,6 +96,10 @@
                                 <button type="button" class="btn btn-sm btn-outline-primary pedido-editar"
                                         data-pedido-id="@pedido.Id" data-bs-toggle="modal" data-bs-target="#pedidoModal">
                                     <i class="bi bi-pencil me-1"></i> Editar
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger pedido-eliminar"
+                                        data-pedido-id="@pedido.Id">
+                                    <i class="bi bi-trash me-1"></i> Borrar
                                 </button>
                             </td>
                         }
