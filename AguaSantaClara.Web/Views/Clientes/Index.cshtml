@@ -4,205 +4,1468 @@
     ViewData["Title"] = "Clientes";
     var puedeCrear = User.IsInRole("Vendedora");
     var puedeAdministrar = User.IsInRole("Vendedora") || User.IsInRole("Gerente") || User.IsInRole("Administradora");
+    var estadoActual = Model.EstadoFiltro;
 }
 
-<div class="container py-4">
+<style>
+    /* ============================================================
+       FONDO CELESTE DESVANECIDO
+       ============================================================ */
+    body.app-body {
+        background: linear-gradient(180deg, #eaf4fb 0%, #f0f7fc 40%, #fbfcfd 100%) !important;
+        background-attachment: fixed !important;
+    }
 
-    <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h1 class="h4 mb-1">Clientes</h1>
-            <p class="text-muted mb-0">Gestión de clientes y direcciones de entrega.</p>
-        </div>
-        @if (puedeCrear)
-        {
-            <button type="button" class="btn btn-primary" id="btnNuevoCliente">
-                <i class="bi bi-plus-lg me-1"></i> Crear cliente
-            </button>
+    /* ============================================================
+       LAYOUT MASTER-DETAIL
+       ============================================================ */
+    .clientes-layout {
+        display: grid;
+        grid-template-columns: minmax(400px, 1fr) 1.3fr;
+        gap: 20px;
+        min-height: calc(100vh - 220px);
+    }
+
+    /* ============================================================
+       PANEL IZQUIERDO
+       ============================================================ */
+    .clientes-list-panel {
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    }
+
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 12px;
+    }
+
+    .panel-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1d1d1f;
+        letter-spacing: -0.03em;
+        margin: 0;
+    }
+
+    .panel-subtitle {
+        font-size: 12.5px;
+        color: #6e6e73;
+        margin: 4px 0 0;
+    }
+
+    /* ============================================================
+       BOTÓN NEGRO APPLE
+       ============================================================ */
+    .btn-apple {
+        height: 36px;
+        padding: 0 16px;
+        background: #1d1d1f;
+        color: #ffffff;
+        border: none;
+        border-radius: 9px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+        text-decoration: none;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-apple:hover {
+        background: #000000;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-apple:active {
+        transform: translateY(0);
+    }
+
+    /* ============================================================
+       TOOLBAR (BÚSQUEDA + FILTROS)
+       ============================================================ */
+    .toolbar-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .search-box {
+        position: relative;
+        flex: 1;
+        min-width: 180px;
+    }
+
+    .search-box input {
+        width: 100%;
+        height: 36px;
+        padding: 0 14px 0 36px;
+        border: 1px solid #e5e5ea;
+        border-radius: 9px;
+        background: #fbfcfd;
+        font-family: inherit;
+        font-size: 12.5px;
+        color: #1d1d1f;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .search-box input::placeholder {
+        color: #a1a1a6;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        background: #ffffff;
+        border-color: #1d1d1f;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .search-box svg {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #a1a1a6;
+        pointer-events: none;
+    }
+
+    /* ============================================================
+       FILTROS PILLS
+       ============================================================ */
+    .filter-pills {
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        background: #fbfcfd;
+        border: 1px solid #e5e5ea;
+        border-radius: 9px;
+        height: 36px;
+        align-items: center;
+    }
+
+    .filter-pill {
+        padding: 0 12px;
+        height: 30px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #6e6e73;
+        background: transparent;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .filter-pill:hover {
+        color: #1d1d1f;
+    }
+
+    .filter-pill.active {
+        background: #1d1d1f;
+        color: #ffffff;
+    }
+
+    /* ============================================================
+       TABLA DE CLIENTES
+       ============================================================ */
+    .clientes-list-scroll {
+        overflow-y: auto;
+        flex: 1;
+        margin: -4px;
+        padding: 4px;
+    }
+
+    .clientes-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .clientes-table thead th {
+        text-align: left;
+        padding: 10px 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid #e5e5ea;
+    }
+
+    .clientes-table tbody tr {
+        cursor: pointer;
+        transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        border-bottom: 1px solid #f0f0f2;
+    }
+
+    .clientes-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .clientes-table tbody tr:hover {
+        background: #fbfcfd;
+    }
+
+    .clientes-table tbody tr.selected {
+        background: #eaf4fb;
+    }
+
+    .clientes-table tbody td {
+        padding: 12px;
+        vertical-align: middle;
+        font-size: 13px;
+        color: #1d1d1f;
+    }
+
+    .client-name {
+        font-weight: 600;
+        color: #1d1d1f;
+        font-size: 13px;
+    }
+
+    /* ============================================================
+       ESTADO DESPLEGABLE EN TABLA
+       ============================================================ */
+    .status-select {
+        height: 30px;
+        padding: 0 26px 0 10px;
+        border-radius: 7px;
+        border: 1px solid #e5e5ea;
+        background-color: #ffffff;
+        font-family: inherit;
+        font-size: 11.5px;
+        font-weight: 500;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='9' height='9' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%236e6e73' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .status-select:focus {
+        outline: none;
+        border-color: #1d1d1f;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .status-select.activo {
+        background-color: #e8f9ee;
+        border-color: #b8e6c6;
+        color: #1a8a3a;
+    }
+
+    .status-select.inactivo {
+        background-color: #f2f2f4;
+        color: #6e6e73;
+    }
+
+    /* ============================================================
+       PANEL DERECHO - FICHA
+       ============================================================ */
+    .clientes-detail-panel {
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    }
+
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e5e5ea;
+    }
+
+    .detail-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1d1d1f;
+        letter-spacing: -0.025em;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .detail-meta {
+        font-size: 12.5px;
+        color: #6e6e73;
+        margin: 6px 0 0;
+    }
+
+    .detail-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-outline {
+        height: 34px;
+        padding: 0 14px;
+        background: #ffffff;
+        color: #1d1d1f;
+        border: 1px solid #d2d2d7;
+        border-radius: 9px;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+    }
+
+    .btn-outline:hover {
+        background: #fbfcfd;
+        border-color: #1d1d1f;
+        color: #1d1d1f;
+    }
+
+    .btn-outline.danger {
+        color: #ff3b30;
+        border-color: #ffd0cc;
+    }
+
+    .btn-outline.danger:hover {
+        background: #ffebea;
+        border-color: #ff3b30;
+        color: #ff3b30;
+    }
+
+    /* ============================================================
+       TABS
+       ============================================================ */
+    .detail-tabs {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+        border-bottom: 1px solid #e5e5ea;
+    }
+
+    .detail-tab {
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-family: inherit;
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #6e6e73;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .detail-tab:hover {
+        color: #1d1d1f;
+    }
+
+    .detail-tab.active {
+        color: #1d1d1f;
+        border-bottom-color: #1d1d1f;
+        font-weight: 600;
+    }
+
+    .tab-count {
+        background: #f2f2f4;
+        color: #6e6e73;
+        padding: 1px 7px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .detail-tab.active .tab-count {
+        background: #1d1d1f;
+        color: #ffffff;
+    }
+
+    /* ============================================================
+       CONTENIDO DE TABS
+       ============================================================ */
+    .tab-content {
+        flex: 1;
+        overflow-y: auto;
+        padding-top: 20px;
+    }
+
+    .tab-pane {
+        display: none;
+    }
+
+    .tab-pane.active {
+        display: block;
+    }
+
+    /* ============================================================
+       INFO GENERAL
+       ============================================================ */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .info-label {
+        font-size: 10.5px;
+        font-weight: 500;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .info-value {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #1d1d1f;
+    }
+
+    /* ============================================================
+       DIRECCIONES
+       ============================================================ */
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        gap: 12px;
+    }
+
+    .section-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 0;
+    }
+
+    .direccion-card {
+        border: 1px solid #e5e5ea;
+        border-radius: 12px;
+        padding: 16px;
+        background: #ffffff;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-bottom: 10px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .direccion-card:hover {
+        border-color: #d2d2d7;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .direccion-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .direccion-titulo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 4px;
+    }
+
+    .direccion-titulo strong {
+        font-size: 14px;
+        color: #1d1d1f;
+        font-weight: 600;
+    }
+
+    .badge-principal {
+        background: #1d1d1f;
+        color: #ffffff;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 10.5px;
+        font-weight: 600;
+    }
+
+    .direccion-text {
+        font-size: 12.5px;
+        color: #6e6e73;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .direccion-link {
+        font-size: 12px;
+        color: #3a8ab8;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 6px;
+    }
+
+    .direccion-link:hover {
+        text-decoration: underline;
+    }
+
+    .direccion-actions {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .btn-icon-small {
+        width: 30px;
+        height: 30px;
+        border: none;
+        background: transparent;
+        color: #6e6e73;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        padding: 0;
+    }
+
+    .btn-icon-small:hover {
+        background: #f2f2f4;
+        color: #1d1d1f;
+    }
+
+    .btn-icon-small.danger:hover {
+        background: #ffebea;
+        color: #ff3b30;
+    }
+
+    .btn-icon-small.primary-star {
+        color: #d4a017;
+    }
+
+    .btn-icon-small.primary-star:hover {
+        background: #fff7e6;
+        color: #b8860b;
+    }
+
+    /* ============================================================
+       ALERT INFO
+       ============================================================ */
+    .alert-info {
+        background: #eaf4fb;
+        border: 1px solid #d0e8f5;
+        border-radius: 10px;
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12.5px;
+        color: #3a8ab8;
+        margin-top: 14px;
+    }
+
+    /* ============================================================
+       EMPTY STATE
+       ============================================================ */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 300px;
+        text-align: center;
+        padding: 40px 20px;
+        color: #6e6e73;
+    }
+
+    .empty-state p {
+        font-size: 13px;
+        margin: 0;
+    }
+
+    /* ============================================================
+       HISTORIAL
+       ============================================================ */
+    .historial-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .historial-table thead th {
+        text-align: left;
+        padding: 10px 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid #e5e5ea;
+    }
+
+    .historial-table tbody td {
+        padding: 12px;
+        font-size: 12.5px;
+        color: #1d1d1f;
+        border-bottom: 1px solid #f0f0f2;
+    }
+
+    .badge-estado {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    /* ============================================================
+       TOASTS BONITOS
+       ============================================================ */
+    .toast-container {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+    }
+
+    .toast-custom {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 18px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: saturate(180%) blur(24px);
+        -webkit-backdrop-filter: saturate(180%) blur(24px);
+        border-radius: 14px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+        min-width: 300px;
+        max-width: 380px;
+        animation: toastIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        pointer-events: auto;
+    }
+
+    .toast-custom.success .toast-icon {
+        background: #e8f9ee;
+        color: #34c759;
+    }
+
+    .toast-custom.error .toast-icon {
+        background: #ffebea;
+        color: #ff3b30;
+    }
+
+    .toast-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .toast-content { flex: 1; }
+
+    .toast-title {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #1d1d1f;
+    }
+
+    .toast-msg {
+        font-size: 12.5px;
+        color: #6e6e73;
+        margin-top: 1px;
+    }
+
+    .toast-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 2px;
+        background: #34c759;
+        animation: progress 3s linear forwards;
+    }
+
+    .toast-custom.error .toast-progress {
+        background: #ff3b30;
+    }
+
+    @@keyframes toastIn {
+        from { opacity: 0; transform: translateX(24px) scale(0.96); }
+        to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @@keyframes progress {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+
+    /* ============================================================
+       RESPONSIVE
+       ============================================================ */
+    @@media (max-width: 992px) {
+        .clientes-layout {
+            grid-template-columns: 1fr;
         }
-    </div>
-
-    <!-- MENSAJES -->
-    @if (TempData["SuccessMessage"] is string successMessage)
-    {
-        <div class="alert alert-success" role="alert">@successMessage</div>
-    }
-    @if (TempData["ErrorMessage"] is string errorMessage)
-    {
-        <div class="alert alert-danger" role="alert">@errorMessage</div>
+        .clientes-list-scroll {
+            max-height: 400px;
+        }
     }
 
-    <!-- FILTROS -->
-    <form asp-action="Index" method="get" class="row g-2 mb-4">
-        <div class="col-md-6">
-            <input name="search" value="@Model.Search" class="form-control"
-                   placeholder="Buscar por nombre, DNI o teléfono" />
-        </div>
-        <div class="col-md-3">
-            <select name="estado" class="form-select" asp-items="Model.Estados"
-                    asp-for="EstadoFiltro">
-            </select>
-        </div>
-        <div class="col-md-3">
-            <button type="submit" class="btn btn-outline-primary w-100">
-                <i class="bi bi-search me-1"></i> Filtrar
-            </button>
-        </div>
-    </form>
+    /* ============================================================
+   MODAL DE CONFIRMACIÓN CUSTOM
+   ============================================================ */
+    .modal-backdrop-custom {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        animation: fadeInCustom 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-    <!-- TABLA -->
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th>Cliente</th>
-                    <th>DNI</th>
-                    <th>Teléfono</th>
-                    <th>Estado</th>
-                    @if (puedeAdministrar)
-                    {
-                        <th>Acciones</th>
-                    }
-                </tr>
-            </thead>
-            <tbody>
-            @if (!Model.Clientes.Any())
+    .modal-backdrop-custom.show { display: flex; }
+
+    @@keyframes fadeInCustom {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-custom {
+        background: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+        width: 100%;
+        max-width: 400px;
+        overflow: hidden;
+        animation: modalInCustom 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @@keyframes modalInCustom {
+        from { opacity: 0; transform: scale(0.92) translateY(15px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-custom-body {
+        padding: 32px 28px 8px;
+        text-align: center;
+    }
+
+    .modal-custom-icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 18px;
+        border-radius: 50%;
+        background: #ffebea;
+        color: #ff3b30;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-custom-icon.info {
+        background: #eaf4fb;
+        color: #3a8ab8;
+    }
+
+    .modal-custom-icon.success {
+        background: #e8f9ee;
+        color: #34c759;
+    }
+
+    .modal-custom-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1d1d1f;
+        letter-spacing: -0.025em;
+        margin: 0 0 8px;
+    }
+
+    .modal-custom-text {
+        font-size: 13.5px;
+        color: #6e6e73;
+        line-height: 1.5;
+        margin: 0;
+        letter-spacing: -0.005em;
+    }
+
+    .modal-custom-text strong {
+        color: #1d1d1f;
+        font-weight: 600;
+    }
+
+    .modal-custom-footer {
+        padding: 24px 24px 24px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .modal-custom-btn {
+        flex: 1;
+        height: 44px;
+        border: none;
+        border-radius: 11px;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        letter-spacing: -0.01em;
+    }
+
+    .modal-custom-btn.secondary {
+        background: #f2f2f4;
+        color: #1d1d1f;
+    }
+
+    .modal-custom-btn.secondary:hover {
+        background: #e8e8ea;
+    }
+
+    .modal-custom-btn.danger {
+        background: #ff3b30;
+        color: #ffffff;
+    }
+
+    .modal-custom-btn.danger:hover {
+        background: #e02e25;
+    }
+
+    .modal-custom-btn.primary {
+        background: #1d1d1f;
+        color: #ffffff;
+    }
+
+    .modal-custom-btn.primary:hover {
+        background: #000000;
+    }
+</style>
+
+<div class="clientes-layout">
+
+    <!-- ==================== PANEL IZQUIERDO ==================== -->
+    <section class="clientes-list-panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Clientes</h2>
+                <p class="panel-subtitle">Gestión de clientes y direcciones</p>
+            </div>
+            @if (puedeCrear)
             {
-                <tr>
-                    <td colspan="5" class="text-center text-muted py-4">No se encontraron clientes.</td>
-                </tr>
+                <button type="button" class="btn-apple" id="btnCrearCliente">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    Crear cliente
+                </button>
             }
-            @foreach (var cliente in Model.Clientes)
-            {
-                <tr>
-                    <td>
-                        <a asp-action="Details" asp-route-id="@cliente.Id" class="fw-semibold text-decoration-none">
-                            @cliente.Nombre
-                        </a>
-                    </td>
-                    <td>@(string.IsNullOrWhiteSpace(cliente.Dni) ? "—" : cliente.Dni)</td>
-                    <td>@cliente.Telefono</td>
-                    <td>
-                        @if (puedeAdministrar)
-                        {
-                            <select class="form-select form-select-sm" style="width:120px;"
-                                    onchange="cambiarEstado(@cliente.Id, this.value)">
-                                <option value="true" selected="@cliente.Estado">Activo</option>
-                                <option value="false" selected="@(!cliente.Estado)">Inactivo</option>
-                            </select>
-                        }
-                        else
-                        {
-                            <span class="badge @(cliente.Estado ? "text-bg-success" : "text-bg-secondary")">
-                                @(cliente.Estado ? "Activo" : "Inactivo")
-                            </span>
-                        }
-                    </td>
-                    @if (puedeAdministrar)
+        </div>
+
+        <!-- ===== TOOLBAR: BUSCADOR + FILTROS ===== -->
+        <div class="toolbar-row">
+            <form method="get" asp-action="Index" class="search-box" id="formBusqueda">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input name="search" value="@Model.Search" placeholder="Buscar por nombre, DNI o teléfono..." />
+                @if (estadoActual.HasValue)
+                {
+                    <input type="hidden" name="estado" value="@estadoActual.Value.ToString().ToLower()" />
+                }
+            </form>
+
+            <div class="filter-pills">
+                <a asp-action="Index" asp-route-search="@Model.Search"
+                   class="filter-pill @(estadoActual == null ? "active" : "")">Todos</a>
+                <a asp-action="Index" asp-route-search="@Model.Search" asp-route-estado="true"
+                   class="filter-pill @(estadoActual == true ? "active" : "")">Activos</a>
+                <a asp-action="Index" asp-route-search="@Model.Search" asp-route-estado="false"
+                   class="filter-pill @(estadoActual == false ? "active" : "")">Inactivos</a>
+            </div>
+        </div>
+
+        <!-- ===== TABLA ===== -->
+        <div class="clientes-list-scroll">
+            <table class="clientes-table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>DNI</th>
+                        <th>Teléfono</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Clientes.Any())
                     {
-                        <td>
-                            <div class="d-flex gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                        onclick="abrirModalEditar(@cliente.Id)">
-                                    <i class="bi bi-pencil me-1"></i> Editar
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                        onclick="confirmarEliminar(@cliente.Id, '@cliente.Nombre')">
-                                    <i class="bi bi-trash me-1"></i> Eliminar
-                                </button>
+                        <tr>
+                            <td colspan="4" style="text-align:center; padding: 30px; color: #6e6e73; font-size: 12.5px;">
+                                No hay clientes registrados.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var c in Model.Clientes)
+                        {
+                            var seleccionado = Model.Seleccionado?.Id == c.Id;
+                            <tr class="@(seleccionado ? "selected" : "")"
+                                onclick="if(event.target.closest('.status-select')) return; window.location='@Url.Action("Index", new { id = c.Id, search = Model.Search, estado = estadoActual })'">
+                                <td>
+                                    <div class="client-name">@c.Nombre</div>
+                                </td>
+                                <td style="color:#6e6e73;">@(string.IsNullOrWhiteSpace(c.Dni) ? "—" : c.Dni)</td>
+                                <td style="color:#6e6e73;">@c.Telefono</td>
+                                <td>
+                                    <select class="status-select @(c.Estado ? "activo" : "inactivo")"
+                                            onchange="cambiarEstado(@c.Id, this.value, this)">
+                                        <option value="true" selected="@c.Estado">Activo</option>
+                                        <option value="false" selected="@(!c.Estado)">Inactivo</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ==================== PANEL DERECHO ==================== -->
+    <section class="clientes-detail-panel">
+        @if (Model.Seleccionado == null)
+        {
+            <div class="empty-state">
+                <p>Selecciona un cliente para ver su ficha</p>
+            </div>
+        }
+        else
+        {
+            var sel = Model.Seleccionado;
+
+            <!-- HEADER -->
+            <div class="detail-header">
+                <div>
+                    <h2 class="detail-name">@sel.Nombre</h2>
+                    <p class="detail-meta">
+                        DNI @(string.IsNullOrWhiteSpace(sel.Dni) ? "—" : sel.Dni) · @sel.Telefono
+                    </p>
+                </div>
+                <div class="detail-actions">
+                    <button type="button" class="btn-outline" id="btnEditarCliente" data-cliente-id="@sel.Id">
+                        Editar
+                    </button>
+                    <form asp-action="Delete" method="post" style="display:inline;" onsubmit="return confirmarEliminarCliente('@sel.Nombre', this);">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@sel.Id" />
+                        <button type="submit" class="btn-outline danger">Eliminar</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="detail-tabs">
+                <button type="button" class="detail-tab active" data-tab="info">Información general</button>
+                <button type="button" class="detail-tab" data-tab="direcciones">
+                    Direcciones <span class="tab-count">@sel.Direcciones.Count</span>
+                </button>
+                <button type="button" class="detail-tab" data-tab="historial">Historial de pedidos</button>
+            </div>
+
+            <!-- CONTENIDO -->
+            <div class="tab-content">
+
+                <!-- TAB: INFO -->
+                <div class="tab-pane active" data-pane="info">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Nombre / Razón social</span>
+                            <span class="info-value">@sel.Nombre</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">DNI / RUC</span>
+                            <span class="info-value">@(string.IsNullOrWhiteSpace(sel.Dni) ? "—" : sel.Dni)</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Teléfono</span>
+                            <span class="info-value">@sel.Telefono</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Estado</span>
+                            <span class="info-value">@(sel.Estado ? "Activo" : "Inactivo")</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Saldo bidones</span>
+                            <span class="info-value">@sel.SaldoBidones</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Deuda total</span>
+                            <span class="info-value">S/ @sel.DeudaTotal.ToString("0.00")</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Cliente desde</span>
+                            <span class="info-value">@sel.FechaCreacion.ToString("dd/MM/yyyy")</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: DIRECCIONES -->
+                <div class="tab-pane" data-pane="direcciones">
+                    <div class="section-header">
+                        <h3 class="section-title">Direcciones de entrega</h3>
+                        <button type="button" class="btn-apple" id="btnAgregarDireccion" data-cliente-id="@sel.Id">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Agregar dirección
+                        </button>
+                    </div>
+
+                    @if (!sel.Direcciones.Any())
+                    {
+                        <p style="color:#6e6e73; font-size:13px;">Este cliente aún no tiene direcciones registradas.</p>
+                    }
+                    else
+                    {
+                        foreach (var d in sel.Direcciones.OrderByDescending(x => x.Principal))
+                        {
+                            <div class="direccion-card">
+                                <div class="direccion-info">
+                                    <div class="direccion-titulo">
+                                        <strong>@d.Direccion</strong>
+                                        @if (d.Principal)
+                                        {
+                                            <span class="badge-principal">Principal</span>
+                                        }
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(d.Ciudad))
+                                    {
+                                        <p class="direccion-text">@d.Ciudad</p>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(d.Referencia))
+                                    {
+                                        <p class="direccion-text">Ref: @d.Referencia</p>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(d.UrlUbicacion))
+                                    {
+                                        <a href="@d.UrlUbicacion" target="_blank" rel="noopener noreferrer" class="direccion-link">Ver ubicación</a>
+                                    }
+                                </div>
+                                <div class="direccion-actions">
+                                    @if (!d.Principal)
+                                    {
+                                        <form asp-action="SetPrimaryAddress" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@d.Id" />
+                                            <input type="hidden" name="clienteId" value="@sel.Id" />
+                                            <button type="submit" class="btn-icon-small primary-star" title="Marcar como principal">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    }
+                                    <button type="button" class="btn-icon-small btn-editar-direccion" data-direccion-id="@d.Id" title="Editar">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        </svg>
+                                    </button>
+                                    @if (sel.Direcciones.Count > 1)
+                                    {
+                                        <button type="button" class="btn-icon-small danger btn-eliminar-direccion"
+                                                data-direccion-id="@d.Id"
+                                                data-direccion-nombre="@d.Direccion"
+                                                data-cliente-id="@sel.Id"
+                                                title="Eliminar">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                            </svg>
+                                        </button>
+                                    }
+                                </div>
                             </div>
-                        </td>
+                        }
+
+                        <div class="alert-info">
+                            La dirección principal se utiliza para la entrega de pedidos por defecto.
+                        </div>
                     }
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
+                </div>
+
+                <!-- TAB: HISTORIAL -->
+                <div class="tab-pane" data-pane="historial">
+                    @if (!Model.Pedidos.Any())
+                    {
+                        <p style="color:#6e6e73; font-size:13px;">Este cliente aún no tiene pedidos registrados.</p>
+                    }
+                    else
+                    {
+                        <table class="historial-table">
+                            <thead>
+                                <tr>
+                                    <th>N°</th>
+                                    <th>Fecha</th>
+                                    <th>Local</th>
+                                    <th>Repartidor</th>
+                                    <th style="text-align:right;">Total</th>
+                                    <th style="text-align:center;">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pedido in Model.Pedidos)
+                                {
+                                    <tr>
+                                        <td><strong>#@pedido.Id</strong></td>
+                                        <td>@pedido.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                                        <td>@pedido.Local.Nombre</td>
+                                        <td>@(pedido.Repartidor?.Nombre ?? "—")</td>
+                                        <td style="text-align:right;">S/ @pedido.Total.ToString("0.00")</td>
+                                        <td style="text-align:center;">
+                                            <span class="badge-estado" style="background:#eaf4fb; color:#3a8ab8;">@pedido.Estado</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        }
+    </section>
 </div>
 
-<!-- FORM OCULTO CAMBIAR ESTADO -->
+<!-- ==================== FORM OCULTO CAMBIAR ESTADO ==================== -->
 <form id="formCambiarEstado" asp-action="CambiarEstado" method="post" style="display:none;">
     @Html.AntiForgeryToken()
     <input type="hidden" name="id" id="estadoId" />
     <input type="hidden" name="estado" id="estadoValor" />
 </form>
 
-<!-- FORM OCULTO ELIMINAR -->
-<form id="formEliminar" asp-action="Delete" method="post" style="display:none;">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="id" id="eliminarId" />
-</form>
+<!-- ==================== MODALES CONTENEDORES ==================== -->
+<div id="modalWrapper"></div>
 
-<!-- MODALES -->
-@if (puedeCrear)
-{
-    <div class="modal fade" id="modalCrearCliente" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content" id="contenidoModalCrear"></div>
+<!-- ==================== CONTENEDOR DE TOASTS ==================== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ==================== MODAL DE CONFIRMACIÓN CUSTOM ==================== -->
+<div class="modal-backdrop-custom" id="modalConfirm">
+    <div class="modal-custom">
+        <div class="modal-custom-body">
+            <div class="modal-custom-icon" id="modalConfirmIcon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4M12 16h.01"/>
+                </svg>
+            </div>
+            <h3 class="modal-custom-title" id="modalConfirmTitle">Confirmar acción</h3>
+            <p class="modal-custom-text" id="modalConfirmText">¿Estás seguro de continuar?</p>
+        </div>
+        <div class="modal-custom-footer">
+            <button type="button" class="modal-custom-btn secondary" onclick="cerrarModalConfirm()">Cancelar</button>
+            <button type="button" class="modal-custom-btn danger" id="modalConfirmBtn">Confirmar</button>
         </div>
     </div>
-}
-
-@if (puedeAdministrar)
-{
-    <div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content" id="contenidoModalEditar"></div>
-        </div>
-    </div>
-}
+</div>
 
 @section Scripts {
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var btnNuevoCliente = document.getElementById('btnNuevoCliente');
-
-            if (btnNuevoCliente) {
-                btnNuevoCliente.addEventListener('click', function () {
-                    fetch('/Clientes/Create')
-                        .then(response => response.text())
-                        .then(html => {
-                            document.getElementById('contenidoModalCrear').innerHTML = html;
-                            var modal = new bootstrap.Modal(document.getElementById('modalCrearCliente'));
-                            modal.show();
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('No se pudo cargar el formulario de creación.');
-                        });
-                });
-            }
+        // ==================== TABS ====================
+        document.querySelectorAll('.detail-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.tab;
+                document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelector(`.tab-pane[data-pane="${target}"]`)?.classList.add('active');
+            });
         });
 
-        function abrirModalEditar(id) {
-            fetch('/Clientes/Edit/' + id)
-                .then(response => response.text())
+        // ==================== MODAL DE CONFIRMACIÓN CUSTOM ====================
+        let accionPendiente = null;
+
+        function abrirModalConfirm(titulo, texto, tipo, callback, textoBoton = 'Confirmar') {
+            const modal = document.getElementById('modalConfirm');
+            const icon = document.getElementById('modalConfirmIcon');
+            const title = document.getElementById('modalConfirmTitle');
+            const text = document.getElementById('modalConfirmText');
+            const btn = document.getElementById('modalConfirmBtn');
+
+            // Configurar icono según tipo
+            icon.className = 'modal-custom-icon';
+            if (tipo === 'danger') icon.classList.add('danger');
+            else if (tipo === 'info') icon.classList.add('info');
+            else if (tipo === 'success') icon.classList.add('success');
+
+            // Cambiar contenido
+            title.textContent = titulo;
+            text.innerHTML = texto;
+            btn.textContent = textoBoton;
+
+            // Configurar botón según tipo
+            btn.className = 'modal-custom-btn';
+            btn.className += tipo === 'danger' ? ' danger' : ' primary';
+
+            // Guardar callback
+            accionPendiente = callback;
+
+            // Mostrar modal
+            modal.classList.add('show');
+        }
+
+        function cerrarModalConfirm() {
+            document.getElementById('modalConfirm').classList.remove('show');
+            accionPendiente = null;
+        }
+
+        document.getElementById('modalConfirmBtn')?.addEventListener('click', function () {
+            if (accionPendiente) {
+                accionPendiente();
+                accionPendiente = null;
+            }
+            cerrarModalConfirm();
+        });
+
+        document.getElementById('modalConfirm')?.addEventListener('click', function (e) {
+            if (e.target === this) cerrarModalConfirm();
+        });
+
+        // ==================== CAMBIAR ESTADO (con modal custom) ====================
+        function cambiarEstado(id, nuevoEstado, selectElement) {
+            const estadoBool = nuevoEstado === 'true';
+            const accion = estadoBool ? 'activar' : 'desactivar';
+
+            abrirModalConfirm(
+                `${estadoBool ? 'Activar' : 'Desactivar'} cliente`,
+                `¿Estás seguro de ${accion} este cliente?`,
+                estadoBool ? 'success' : 'danger',
+                function () {
+                    document.getElementById('estadoId').value = id;
+                    document.getElementById('estadoValor').value = nuevoEstado;
+                    document.getElementById('formCambiarEstado').submit();
+                },
+                estadoBool ? 'Activar' : 'Desactivar'
+            );
+
+            // Si cancela, revertir el select (manejado por el modal)
+            // Guardamos una función por si el usuario cierra el modal
+            const revertir = function () {
+                selectElement.value = (!estadoBool).toString();
+            };
+            window.__revertirEstado = revertir;
+        }
+
+        // ==================== ELIMINAR CLIENTE (con modal custom) ====================
+        function confirmarEliminarCliente(nombre, formElement) {
+            abrirModalConfirm(
+                'Eliminar cliente',
+                `¿Seguro que deseas eliminar a <strong>${nombre}</strong>? Esta acción no se puede deshacer.`,
+                'danger',
+                function () {
+                    formElement.submit();
+                },
+                'Eliminar'
+            );
+            return false;
+        }
+
+        // ==================== MOSTRAR TOAST ====================
+        function mostrarToast(mensaje, tipo = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast-custom ${tipo}`;
+
+            const icono = tipo === 'success' ? '✓' : '!';
+            const titulo = tipo === 'success' ? 'Listo' : 'Error';
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icono}</div>
+                <div class="toast-content">
+                    <div class="toast-title">${titulo}</div>
+                    <div class="toast-msg">${mensaje}</div>
+                </div>
+                <div class="toast-progress"></div>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(24px) scale(0.96)';
+                toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ==================== MODAL CREAR CLIENTE ====================
+        document.getElementById('btnCrearCliente')?.addEventListener('click', function () {
+            fetch('/Clientes/Create')
+                .then(r => r.text())
                 .then(html => {
-                    document.getElementById('contenidoModalEditar').innerHTML = html;
-                    var modal = new bootstrap.Modal(document.getElementById('modalEditarCliente'));
-                    modal.show();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('No se pudo cargar el formulario de edición.');
+                    document.getElementById('modalWrapper').innerHTML = `
+                        <div class="modal fade" id="modalCrear" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-lg modal-dialog-centered">
+                                <div class="modal-content">${html}</div>
+                            </div>
+                        </div>`;
+                    new bootstrap.Modal(document.getElementById('modalCrear')).show();
                 });
-        }
+        });
 
-        function cambiarEstado(id, valor) {
-            if (confirm('¿Está seguro de cambiar el estado de este cliente?')) {
-                document.getElementById('estadoId').value = id;
-                document.getElementById('estadoValor').value = valor;
-                document.getElementById('formCambiarEstado').submit();
-            } else {
-                location.reload();
-            }
-        }
+        // ==================== MODAL EDITAR CLIENTE ====================
+        document.getElementById('btnEditarCliente')?.addEventListener('click', function () {
+            const id = this.dataset.clienteId;
+            fetch('/Clientes/Edit/' + id)
+                .then(r => r.text())
+                .then(html => {
+                    document.getElementById('modalWrapper').innerHTML = `
+                        <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-lg modal-dialog-centered">
+                                <div class="modal-content">${html}</div>
+                            </div>
+                        </div>`;
+                    new bootstrap.Modal(document.getElementById('modalEditar')).show();
+                });
+        });
 
-        function confirmarEliminar(id, nombre) {
-            if (confirm('¿Seguro eliminar al cliente "' + nombre + '"? Esta acción no se puede deshacer.')) {
-                document.getElementById('eliminarId').value = id;
-                document.getElementById('formEliminar').submit();
-            }
+        // ==================== MODAL AGREGAR DIRECCIÓN ====================
+        document.getElementById('btnAgregarDireccion')?.addEventListener('click', function () {
+            const id = this.dataset.clienteId;
+            fetch('/Clientes/AddAddress/' + id)
+                .then(r => r.text())
+                .then(html => {
+                    document.getElementById('modalWrapper').innerHTML = `
+                        <div class="modal fade" id="modalAgregarDir" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">${html}</div>
+                            </div>
+                        </div>`;
+                    new bootstrap.Modal(document.getElementById('modalAgregarDir')).show();
+                });
+        });
+
+        // ==================== MODAL EDITAR DIRECCIÓN ====================
+        document.querySelectorAll('.btn-editar-direccion').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const id = this.dataset.direccionId;
+                fetch('/Clientes/EditAddress/' + id)
+                    .then(r => r.text())
+                    .then(html => {
+                        document.getElementById('modalWrapper').innerHTML = `
+                            <div class="modal fade" id="modalEditarDir" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">${html}</div>
+                                </div>
+                            </div>`;
+                        new bootstrap.Modal(document.getElementById('modalEditarDir')).show();
+                    });
+            });
+        });
+
+        // ==================== ELIMINAR DIRECCIÓN (con modal custom) ====================
+        document.querySelectorAll('.btn-eliminar-direccion').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const dirId = this.dataset.direccionId;
+                const dirNombre = this.dataset.direccionNombre;
+                const clienteId = this.dataset.clienteId;
+
+                abrirModalConfirm(
+                    'Eliminar dirección',
+                    `¿Seguro que deseas eliminar la dirección "<strong>${dirNombre}</strong>"?`,
+                    'danger',
+                    function () {
+                        const form = document.createElement('form');
+                        form.method = 'post';
+                        form.action = '/Clientes/DeleteAddress';
+
+                        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+                        form.innerHTML = `
+                            <input type="hidden" name="__RequestVerificationToken" value="${token}" />
+                            <input type="hidden" name="id" value="${dirId}" />
+                            <input type="hidden" name="clienteId" value="${clienteId}" />
+                        `;
+                        document.body.appendChild(form);
+                        form.submit();
+                    },
+                    'Eliminar'
+                );
+            });
+        });
+
+        // ==================== MOSTRAR TOAST AL CARGAR (TEMPDATA) ====================
+        @if (TempData["SuccessMessage"] is string ok)
+        {
+            <text>
+            document.addEventListener('DOMContentLoaded', function () {
+                mostrarToast('@ok', 'success');
+            });
+            </text>
+        }
+        @if (TempData["ErrorMessage"] is string err)
+        {
+            <text>
+            document.addEventListener('DOMContentLoaded', function () {
+                mostrarToast('@err', 'error');
+            });
+            </text>
         }
     </script>
 

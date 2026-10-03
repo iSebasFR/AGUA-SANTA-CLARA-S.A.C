@@ -17,15 +17,14 @@ public class ClientesController : Controller
         _context = context;
     }
 
-    // ==================== INDEX CON FILTROS ====================
-    public async Task<IActionResult> Index(string? search, bool? estado)
+    // ==================== INDEX ====================
+    public async Task<IActionResult> Index(string? search, bool? estado, long? id)
     {
         var consulta = _context.Clientes
             .Include(c => c.Direcciones.Where(d => d.EstadoRegistro))
             .Where(c => c.EstadoRegistro)
             .AsQueryable();
 
-        // Filtro por búsqueda
         if (!string.IsNullOrWhiteSpace(search))
         {
             var patron = $"%{search.Trim()}%";
@@ -35,48 +34,41 @@ public class ClientesController : Controller
                 (c.Dni != null && EF.Functions.ILike(c.Dni, patron)));
         }
 
-        // Filtro por estado
         if (estado.HasValue)
-        {
             consulta = consulta.Where(c => c.Estado == estado.Value);
-        }
 
         var clientes = await consulta
             .OrderBy(c => c.Nombre)
             .ToListAsync();
 
+        Cliente? seleccionado = null;
+        if (id.HasValue)
+            seleccionado = clientes.FirstOrDefault(c => c.Id == id.Value);
+        seleccionado ??= clientes.FirstOrDefault();
+
+        var pedidos = new List<Pedido>();
+        if (seleccionado != null)
+        {
+            pedidos = await _context.Pedidos
+                .Include(p => p.Local)
+                .Include(p => p.Repartidor)
+                .Include(p => p.Clientes).ThenInclude(pc => pc.Detalles)
+                .AsSplitQuery()
+                .Where(p => p.EstadoRegistro && p.Clientes.Any(pc => pc.IdCliente == seleccionado.Id))
+                .OrderByDescending(p => p.FechaCreacion)
+                .ToListAsync();
+        }
+
         var model = new ClientesIndexViewModel
         {
             Clientes = clientes,
+            Seleccionado = seleccionado,
+            Pedidos = pedidos,
             Search = search,
             EstadoFiltro = estado
         };
 
         return View(model);
-    }
-
-    // ==================== DETAILS (FICHA DEL CLIENTE) ====================
-    [HttpGet]
-    public async Task<IActionResult> Details(long id)
-    {
-        var cliente = await _context.Clientes
-            .Include(c => c.Direcciones.Where(d => d.EstadoRegistro))
-            .FirstOrDefaultAsync(c => c.Id == id && c.EstadoRegistro);
-
-        if (cliente == null)
-            return NotFound();
-
-        var pedidos = await _context.Pedidos
-            .Include(p => p.Local)
-            .Include(p => p.Repartidor)
-            .Include(p => p.Clientes).ThenInclude(pc => pc.Detalles)
-            .AsSplitQuery()
-            .Where(p => p.EstadoRegistro && p.Clientes.Any(pc => pc.IdCliente == cliente.Id))
-            .OrderByDescending(p => p.FechaCreacion)
-            .ToListAsync();
-
-        ViewBag.Pedidos = pedidos;
-        return View(cliente);
     }
 
     // ==================== CREATE (MODAL) ====================
@@ -123,7 +115,9 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "CLIENTE CREADO CORRECTAMENTE";
-        return RedirectToAction(nameof(Index));
+
+        // 🔴 CAMBIO: redirigir a Index con el id del nuevo cliente
+        return RedirectToAction(nameof(Index), new { id = cliente.Id });
     }
 
     // ==================== EDIT (MODAL) ====================
@@ -209,7 +203,7 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "CLIENTE ACTUALIZADO CORRECTAMENTE";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { id = cliente.Id });
     }
 
     // ==================== CAMBIAR ESTADO ====================
@@ -231,7 +225,7 @@ public class ClientesController : Controller
             ? "CLIENTE ACTIVADO CORRECTAMENTE"
             : "CLIENTE DESACTIVADO CORRECTAMENTE";
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { id = cliente.Id });
     }
 
     // ==================== ELIMINAR ====================
@@ -253,7 +247,7 @@ public class ClientesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // ==================== DIRECCIONES (MODAL) ====================
+    // ==================== AGREGAR DIRECCIÓN ====================
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> AddAddress(long id)
@@ -313,9 +307,12 @@ public class ClientesController : Controller
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "DIRECCIÓN AGREGADA CORRECTAMENTE";
-        return RedirectToAction(nameof(Details), new { id = model.IdCliente });
+
+        // 🔴 CAMBIO: redirigir a Index (no Details)
+        return RedirectToAction(nameof(Index), new { id = model.IdCliente });
     }
 
+    // ==================== EDITAR DIRECCIÓN ====================
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> EditAddress(long id)
@@ -362,9 +359,12 @@ public class ClientesController : Controller
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "DIRECCIÓN ACTUALIZADA CORRECTAMENTE";
-        return RedirectToAction(nameof(Details), new { id = model.IdCliente });
+
+        // 🔴 CAMBIO: redirigir a Index (no Details)
+        return RedirectToAction(nameof(Index), new { id = model.IdCliente });
     }
 
+    // ==================== MARCAR COMO PRINCIPAL ====================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]
@@ -383,9 +383,12 @@ public class ClientesController : Controller
 
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "DIRECCIÓN PRINCIPAL ACTUALIZADA CORRECTAMENTE";
-        return RedirectToAction(nameof(Details), new { id = clienteId });
+
+        // 🔴 CAMBIO: redirigir a Index (no Details)
+        return RedirectToAction(nameof(Index), new { id = clienteId });
     }
 
+    // ==================== ELIMINAR DIRECCIÓN ====================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]
@@ -397,21 +400,20 @@ public class ClientesController : Controller
         if (direccion == null)
             return NotFound();
 
-        // No permitir eliminar la única dirección del cliente
         var total = await _context.DireccionesCliente
             .CountAsync(d => d.IdCliente == clienteId && d.EstadoRegistro);
 
         if (total <= 1)
         {
             TempData["ErrorMessage"] = "No se puede eliminar la única dirección del cliente.";
-            return RedirectToAction(nameof(Details), new { id = clienteId });
+            return RedirectToAction(nameof(Index), new { id = clienteId });
         }
 
         _context.DireccionesCliente.Remove(direccion);
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "DIRECCIÓN ELIMINADA CORRECTAMENTE";
-        return RedirectToAction(nameof(Details), new { id = clienteId });
+        return RedirectToAction(nameof(Index), new { id = clienteId });
     }
 
     private Task<bool> DniDuplicadoAsync(string dni, long? excluirId) =>

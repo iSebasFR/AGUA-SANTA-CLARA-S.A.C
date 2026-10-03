@@ -11,158 +11,127 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="light" />
     <title>@ViewData["Title"] - Agua Santa Clara</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <style>
-        /* ===== Sidebar submenús ===== */
-        .sidebar-toggle {
-            width: 100%;
-            background: transparent;
-            border: none;
-            text-align: left;
-            cursor: pointer;
-            color: inherit;
-            font: inherit;
-        }
-        .sidebar-toggle .sidebar-chevron {
-            margin-left: auto;
-            font-size: 0.75rem;
-            transition: transform 0.2s ease;
-        }
-        .sidebar-toggle[aria-expanded="true"] .sidebar-chevron {
-            transform: rotate(180deg);
-        }
-        .sidebar-submenu {
-            display: flex;
-            flex-direction: column;
-            padding-left: 1rem;
-        }
-        .sidebar-sublink {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            padding: 0.4rem 0.75rem;
-            color: inherit;
-            text-decoration: none;
-            font-size: 0.875rem;
-            border-radius: 0.375rem;
-            opacity: 0.85;
-        }
-        .sidebar-sublink:hover {
-            opacity: 1;
-            background: rgba(255, 255, 255, 0.06);
-        }
-        .sidebar-sublink i {
-            font-size: 1.25rem;
-            line-height: 1;
-        }
-    </style>
 </head>
 <body class="app-body @(isAuthenticated ? "with-sidebar" : "guest-layout")">
     <div class="app-shell">
+
         @if (isAuthenticated)
         {
             <aside class="app-sidebar" id="appSidebar" aria-label="Navegación principal">
+
+                <!-- ===== LOGO (sin ícono circular) ===== -->
                 <div class="sidebar-brand-row">
                     <a asp-controller="Home" asp-action="Index" class="sidebar-brand">
-                        <span class="sidebar-brand-mark">AS</span>
                         <span class="sidebar-label">Agua Santa Clara</span>
                     </a>
                 </div>
 
+                <!-- ===== NAV ===== -->
                 <nav class="sidebar-nav">
+
                     @if (User.IsInRole("Gerente"))
                     {
-                        @* ===== MENÚ GERENTE ===== *@
-                        <a asp-controller="Home" asp-action="Index" class="sidebar-link" title="Inicio">
+                        <div class="sidebar-section-title sidebar-label">General</div>
+                        <a asp-controller="Home" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-speedometer2"></i><span class="sidebar-label">Inicio</span>
                         </a>
-                        <a asp-controller="Usuarios" asp-action="Index" class="sidebar-link" title="Usuarios">
+
+                        <div class="sidebar-section-title sidebar-label">Administración</div>
+                        <a asp-controller="Usuarios" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-people"></i><span class="sidebar-label">Usuarios</span>
                         </a>
-                        <a asp-controller="Pagos" asp-action="Index" class="sidebar-link" title="Pagos y Finanzas">
+                        <a asp-controller="Pagos" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-cash-coin"></i><span class="sidebar-label">Pagos / Finanzas</span>
                         </a>
                     }
                     else if (User.IsInRole("Administradora"))
                     {
-                        @* ===== MENÚ ADMINISTRADORA ===== *@
-                        <a asp-controller="Home" asp-action="Index" class="sidebar-link" title="Inicio">
+                        <div class="sidebar-section-title sidebar-label">General</div>
+                        <a asp-controller="Home" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-speedometer2"></i><span class="sidebar-label">Inicio</span>
                         </a>
-                        <a asp-controller="Clientes" asp-action="Index" class="sidebar-link" title="Clientes">
+
+                        <div class="sidebar-section-title sidebar-label">Gestión</div>
+                        <a asp-controller="Clientes" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-person-vcard"></i><span class="sidebar-label">Clientes</span>
                         </a>
 
-                        @* Catálogo (desplegable) *@
+                        <!-- Catálogo desplegable -->
                         <button type="button" class="sidebar-link sidebar-toggle"
                                 data-bs-toggle="collapse" data-bs-target="#menuCatalogo"
-                                aria-expanded="false" aria-controls="menuCatalogo" title="Catálogo">
+                                aria-expanded="false" aria-controls="menuCatalogo">
                             <i class="bi bi-box-seam"></i>
                             <span class="sidebar-label">Catálogo</span>
                             <i class="bi bi-chevron-down sidebar-chevron"></i>
                         </button>
                         <div class="collapse sidebar-submenu" id="menuCatalogo">
                             <a asp-controller="Productos" asp-action="Index" class="sidebar-sublink">
-                                <i class="bi bi-dot"></i><span class="sidebar-label">Productos</span>
+                                <span class="sidebar-label">Productos</span>
                             </a>
                             <a asp-controller="Insumos" asp-action="Index" class="sidebar-sublink">
-                                <i class="bi bi-dot"></i><span class="sidebar-label">Insumos</span>
+                                <span class="sidebar-label">Insumos</span>
                             </a>
                         </div>
 
-                        @* Inventario (desplegable) *@
+                        <!-- Inventario desplegable -->
                         <button type="button" class="sidebar-link sidebar-toggle"
                                 data-bs-toggle="collapse" data-bs-target="#menuInventario"
-                                aria-expanded="false" aria-controls="menuInventario" title="Inventario">
+                                aria-expanded="false" aria-controls="menuInventario">
                             <i class="bi bi-boxes"></i>
                             <span class="sidebar-label">Inventario</span>
                             <i class="bi bi-chevron-down sidebar-chevron"></i>
                         </button>
                         <div class="collapse sidebar-submenu" id="menuInventario">
                             <a asp-controller="Inventario" asp-action="Productos" class="sidebar-sublink">
-                                <i class="bi bi-dot"></i><span class="sidebar-label">Productos</span>
+                                <span class="sidebar-label">Productos</span>
                             </a>
                             <a asp-controller="Inventario" asp-action="Insumos" class="sidebar-sublink">
-                                <i class="bi bi-dot"></i><span class="sidebar-label">Insumos</span>
+                                <span class="sidebar-label">Insumos</span>
                             </a>
                         </div>
 
-                        <a asp-controller="Repartidores" asp-action="Index" class="sidebar-link" title="Repartidores">
+                        <div class="sidebar-section-title sidebar-label">Operaciones</div>
+                        <a asp-controller="Repartidores" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-truck"></i><span class="sidebar-label">Repartidores</span>
                         </a>
-
-                        <a asp-controller="Pagos" asp-action="Index" class="sidebar-link" title="Pagos y Finanzas">
+                        <a asp-controller="Pagos" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-cash-coin"></i><span class="sidebar-label">Pagos / Finanzas</span>
                         </a>
                     }
                     else if (User.IsInRole("Vendedora"))
                     {
-                        @* ===== MENÚ VENDEDORA ===== *@
-                        <a asp-controller="Home" asp-action="Index" class="sidebar-link" title="Inicio">
+                        <div class="sidebar-section-title sidebar-label">General</div>
+                        <a asp-controller="Home" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-speedometer2"></i><span class="sidebar-label">Inicio</span>
                         </a>
-                        <a asp-controller="Clientes" asp-action="Index" class="sidebar-link" title="Clientes">
+
+                        <div class="sidebar-section-title sidebar-label">Operaciones</div>
+                        <a asp-controller="Clientes" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-person-vcard"></i><span class="sidebar-label">Clientes</span>
                         </a>
-                        <a asp-controller="Pedidos" asp-action="Index" class="sidebar-link" title="Pedidos">
+                        <a asp-controller="Pedidos" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-cart-check"></i><span class="sidebar-label">Pedidos</span>
                         </a>
                     }
                 </nav>
 
+                <!-- ===== CUENTA (sin ícono de avatar) ===== -->
                 <div class="sidebar-account">
-                    <div class="account-avatar" aria-hidden="true"><i class="bi bi-person"></i></div>
                     <div class="account-copy sidebar-label">
                         <strong>@userName</strong>
                         <span>@roleName</span>
                     </div>
                     <form asp-controller="Account" asp-action="Logout" method="post" class="sidebar-logout">
                         <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión">
-                            <i class="bi bi-box-arrow-right"></i><span class="sidebar-label">Salir</span>
+                            <i class="bi bi-box-arrow-right"></i>
                         </button>
                     </form>
                 </div>
@@ -177,7 +146,7 @@
                     <button type="button" id="sidebarToggle" class="icon-button" aria-label="Abrir menú" aria-expanded="false" title="Menú">
                         <i class="bi bi-list"></i>
                     </button>
-                    <span class="topbar-caption">Sistema de Pedidos y Distribución</span>
+                    <span class="topbar-caption">Sistema de Pedidos y Distribución de la empresa Agua Santa Clara S.A.C</span>
                 }
                 else
                 {
@@ -187,13 +156,6 @@
             </header>
 
             <main class="app-content">
-                @if (isAuthenticated)
-                {
-                    <div class="page-heading">
-                        <h1>@ViewData["Title"]</h1>
-                        <span>Agua Santa Clara S.A.C.</span>
-                    </div>
-                }
                 @RenderBody()
             </main>
 

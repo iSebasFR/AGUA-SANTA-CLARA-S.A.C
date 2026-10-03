@@ -5,7 +5,16 @@ namespace AguaSantaClara.Web.Models;
 
 public class ClientesIndexViewModel
 {
+    // ===== LISTA =====
     public List<Cliente> Clientes { get; set; } = new();
+
+    // ===== FICHA SELECCIONADA (PANEL DERECHO) =====
+    public Cliente? Seleccionado { get; set; }
+
+    // ===== HISTORIAL DE PEDIDOS DEL CLIENTE SELECCIONADO =====
+    public List<Pedido> Pedidos { get; set; } = new();
+
+    // ===== FILTROS =====
     public string? Search { get; set; }
     public bool? EstadoFiltro { get; set; }
 

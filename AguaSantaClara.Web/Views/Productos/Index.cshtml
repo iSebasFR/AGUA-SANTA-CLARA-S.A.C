@@ -3,161 +3,722 @@
 @{
     ViewData["Title"] = "Catálogo de productos";
     var puedeAdministrar = User.IsInRole("Administradora") || User.IsInRole("Gerente");
+    var categoriaActual = Model.CategoriaFiltro;
+    var estadoActual = Model.EstadoFiltro;
 }
 
-<div class="container py-4">
+<style>
+    /* ============================================================
+       FONDO CELESTE DESVANECIDO
+       ============================================================ */
+    body.app-body {
+        background: linear-gradient(180deg, #eaf4fb 0%, #f0f7fc 40%, #fbfcfd 100%) !important;
+        background-attachment: fixed !important;
+    }
 
-    <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    /* ============================================================
+       LAYOUT
+       ============================================================ */
+    .productos-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* ============================================================
+       HEADER
+       ============================================================ */
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .panel-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1d1d1f;
+        letter-spacing: -0.03em;
+        margin: 0;
+    }
+
+    .panel-subtitle {
+        font-size: 12.5px;
+        color: #6e6e73;
+        margin: 4px 0 0;
+    }
+
+    /* ============================================================
+       BOTÓN NEGRO APPLE
+       ============================================================ */
+    .btn-apple {
+        height: 36px;
+        padding: 0 16px;
+        background: #1d1d1f;
+        color: #ffffff;
+        border: none;
+        border-radius: 9px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+        text-decoration: none;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-apple:hover {
+        background: #000000;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-apple:active {
+        transform: translateY(0);
+    }
+
+    /* ============================================================
+       TOOLBAR: BUSCADOR + FILTROS
+       ============================================================ */
+    .toolbar-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 16px 20px;
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .search-box {
+        position: relative;
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .search-box input {
+        width: 100%;
+        height: 36px;
+        padding: 0 14px 0 36px;
+        border: 1px solid #e5e5ea;
+        border-radius: 9px;
+        background: #fbfcfd;
+        font-family: inherit;
+        font-size: 12.5px;
+        color: #1d1d1f;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .search-box input::placeholder {
+        color: #a1a1a6;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        background: #ffffff;
+        border-color: #1d1d1f;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .search-box svg {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #a1a1a6;
+        pointer-events: none;
+    }
+
+    .select-filter {
+        height: 36px;
+        padding: 0 32px 0 12px;
+        border: 1px solid #e5e5ea;
+        border-radius: 9px;
+        background: #fbfcfd;
+        font-family: inherit;
+        font-size: 12.5px;
+        color: #1d1d1f;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%236e6e73' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        min-width: 140px;
+    }
+
+    .select-filter:focus {
+        outline: none;
+        background-color: #ffffff;
+        border-color: #1d1d1f;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    /* ============================================================
+       TABLA
+       ============================================================ */
+    .card-tabla {
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .tabla-productos {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+
+    .tabla-productos thead th {
+        text-align: left;
+        padding: 14px 16px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        background: #fbfcfd;
+        border-bottom: 1px solid #e5e5ea;
+        white-space: nowrap;
+    }
+
+    .tabla-productos tbody td {
+        padding: 16px;
+        font-size: 13px;
+        color: #1d1d1f;
+        border-bottom: 1px solid #f0f0f2;
+        vertical-align: middle;
+    }
+
+    .tabla-productos tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .tabla-productos tbody tr:hover {
+        background: #fbfcfd;
+    }
+
+    .prod-name {
+        font-weight: 600;
+        color: #1d1d1f;
+        font-size: 13px;
+    }
+
+    .badge-categoria {
+        display: inline-block;
+        padding: 3px 10px;
+        background: #eaf4fb;
+        color: #3a8ab8;
+        border-radius: 6px;
+        font-size: 11.5px;
+        font-weight: 600;
+    }
+
+    .text-muted-cell {
+        color: #6e6e73;
+        font-size: 12.5px;
+    }
+
+    /* ============================================================
+       ESTADO DESPLEGABLE
+       ============================================================ */
+    .status-select {
+        height: 30px;
+        padding: 0 26px 0 10px;
+        border-radius: 7px;
+        border: 1px solid #e5e5ea;
+        background-color: #ffffff;
+        font-family: inherit;
+        font-size: 11.5px;
+        font-weight: 500;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='9' height='9' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%236e6e73' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 110px;
+    }
+
+    .status-select:focus {
+        outline: none;
+        border-color: #1d1d1f;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .status-select.activo {
+        background-color: #e8f9ee;
+        border-color: #b8e6c6;
+        color: #1a8a3a;
+    }
+
+    .status-select.inactivo {
+        background-color: #f2f2f4;
+        color: #6e6e73;
+    }
+
+    /* ============================================================
+       BOTONES DE ACCIÓN
+       ============================================================ */
+    .acciones-tabla {
+        display: inline-flex;
+        gap: 6px;
+    }
+
+    .btn-tabla {
+        height: 32px;
+        padding: 0 14px;
+        background: #ffffff;
+        color: #1d1d1f;
+        border: 1px solid #e5e5ea;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .btn-tabla:hover {
+        background: #1d1d1f;
+        color: #ffffff;
+        border-color: #1d1d1f;
+    }
+
+    .btn-tabla.danger {
+        color: #ff3b30;
+        border-color: #ffd0cc;
+    }
+
+    .btn-tabla.danger:hover {
+        background: #ff3b30;
+        color: #ffffff;
+        border-color: #ff3b30;
+    }
+
+    /* ============================================================
+       EMPTY STATE
+       ============================================================ */
+    .empty-row {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6e6e73;
+        font-size: 13px;
+    }
+
+    /* ============================================================
+       TOASTS
+       ============================================================ */
+    .toast-container {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+    }
+
+    .toast-custom {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 18px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: saturate(180%) blur(24px);
+        -webkit-backdrop-filter: saturate(180%) blur(24px);
+        border-radius: 14px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+        min-width: 300px;
+        max-width: 380px;
+        animation: toastIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        pointer-events: auto;
+    }
+
+    .toast-custom.success .toast-icon {
+        background: #e8f9ee;
+        color: #34c759;
+    }
+
+    .toast-custom.error .toast-icon {
+        background: #ffebea;
+        color: #ff3b30;
+    }
+
+    .toast-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .toast-content { flex: 1; }
+
+    .toast-title {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #1d1d1f;
+    }
+
+    .toast-msg {
+        font-size: 12.5px;
+        color: #6e6e73;
+        margin-top: 1px;
+    }
+
+    .toast-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 2px;
+        background: #34c759;
+        animation: progress 3s linear forwards;
+    }
+
+    .toast-custom.error .toast-progress {
+        background: #ff3b30;
+    }
+
+    @@keyframes toastIn {
+        from { opacity: 0; transform: translateX(24px) scale(0.96); }
+        to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    @@keyframes progress {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+
+    /* ============================================================
+       MODAL DE CONFIRMACIÓN CUSTOM
+       ============================================================ */
+    .modal-backdrop-custom {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        animation: fadeInCustom 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .modal-backdrop-custom.show { display: flex; }
+
+    @@keyframes fadeInCustom {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-custom {
+        background: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+        width: 100%;
+        max-width: 400px;
+        overflow: hidden;
+        animation: modalInCustom 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @@keyframes modalInCustom {
+        from { opacity: 0; transform: scale(0.92) translateY(15px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-custom-body {
+        padding: 32px 28px 8px;
+        text-align: center;
+    }
+
+    .modal-custom-icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 18px;
+        border-radius: 50%;
+        background: #ffebea;
+        color: #ff3b30;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-custom-icon.info {
+        background: #eaf4fb;
+        color: #3a8ab8;
+    }
+
+    .modal-custom-icon.success {
+        background: #e8f9ee;
+        color: #34c759;
+    }
+
+    .modal-custom-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1d1d1f;
+        letter-spacing: -0.025em;
+        margin: 0 0 8px;
+    }
+
+    .modal-custom-text {
+        font-size: 13.5px;
+        color: #6e6e73;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .modal-custom-text strong {
+        color: #1d1d1f;
+        font-weight: 600;
+    }
+
+    .modal-custom-footer {
+        padding: 24px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .modal-custom-btn {
+        flex: 1;
+        height: 44px;
+        border: none;
+        border-radius: 11px;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .modal-custom-btn.secondary {
+        background: #f2f2f4;
+        color: #1d1d1f;
+    }
+
+    .modal-custom-btn.secondary:hover {
+        background: #e8e8ea;
+    }
+
+    .modal-custom-btn.danger {
+        background: #ff3b30;
+        color: #ffffff;
+    }
+
+    .modal-custom-btn.danger:hover {
+        background: #e02e25;
+    }
+
+    .modal-custom-btn.primary {
+        background: #1d1d1f;
+        color: #ffffff;
+    }
+
+    .modal-custom-btn.primary:hover {
+        background: #000000;
+    }
+</style>
+
+<div class="container py-4 productos-layout">
+
+    <!-- ==================== HEADER ==================== -->
+    <div class="panel-header">
         <div>
-            <h1 class="h4 mb-1">Catálogo de productos</h1>
-            <p class="text-muted mb-0">Administra los productos disponibles.</p>
+            <h1 class="panel-title">Catálogo de productos</h1>
+            <p class="panel-subtitle">Administra los productos disponibles.</p>
         </div>
         @if (puedeAdministrar)
         {
-            <button type="button" class="btn btn-primary" id="btnNuevoProducto">
-                <i class="bi bi-plus-lg me-1"></i> Nuevo producto
+            <button type="button" class="btn-apple" id="btnNuevoProducto">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Nuevo producto
             </button>
         }
     </div>
 
-    <!-- MENSAJES -->
-    @if (TempData["SuccessMessage"] is string successMessage)
-    {
-        <div class="alert alert-success" role="alert">@successMessage</div>
-    }
-    @if (TempData["ErrorMessage"] is string errorMessage)
-    {
-        <div class="alert alert-danger" role="alert">@errorMessage</div>
-    }
+    <!-- ==================== TOOLBAR ==================== -->
+    <form asp-action="Index" method="get" class="toolbar-row">
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input name="search" value="@Model.Search" placeholder="Buscar por nombre de producto..." />
+        </div>
 
-    <!-- FILTROS -->
-    <form asp-action="Index" method="get" class="row g-2 mb-4">
-        <div class="col-md-4">
-            <input name="search" value="@Model.Search" class="form-control"
-                   placeholder="Buscar por nombre de producto" />
-        </div>
-        <div class="col-md-3">
-            <select name="categoria" class="form-select" asp-items="Model.Categorias"
-                    asp-for="CategoriaFiltro">
-            </select>
-        </div>
-        <div class="col-md-3">
-            <select name="estado" class="form-select" asp-items="Model.Estados"
-                    asp-for="EstadoFiltro">
-            </select>
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-outline-primary w-100">
-                <i class="bi bi-search me-1"></i> Filtrar
-            </button>
-        </div>
+        <select name="categoria" class="select-filter" asp-items="Model.Categorias" asp-for="CategoriaFiltro"></select>
+
+        <select name="estado" class="select-filter" asp-items="Model.Estados" asp-for="EstadoFiltro"></select>
+
+        <button type="submit" class="btn-apple">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+            </svg>
+            Filtrar
+        </button>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Search)
+            || !string.IsNullOrWhiteSpace(categoriaActual)
+            || estadoActual.HasValue)
+        {
+            <a asp-action="Index" class="btn-apple" style="background:#f2f2f4;color:#1d1d1f;">
+                Limpiar
+            </a>
+        }
     </form>
 
-    <!-- TABLA -->
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Categoría</th>
-                    <th>Descripción</th>
-                    <th>Precio venta</th>
-                    <th>Costo</th>
-                    <th>Estado</th>
-                    @if (puedeAdministrar)
-                    {
-                        <th>Acciones</th>
-                    }
-                </tr>
-            </thead>
-            <tbody>
-            @if (!Model.Productos.Any())
-            {
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-4">No se encontraron productos.</td>
-                </tr>
-            }
-            @foreach (var producto in Model.Productos)
-            {
-                <tr>
-                    <td><strong>@producto.Nombre</strong></td>
-                    <td>
-                        <span class="badge text-bg-light border">@producto.Categoria</span>
-                    </td>
-                    <td>@(string.IsNullOrWhiteSpace(producto.Descripcion) ? "—" : producto.Descripcion)</td>
-                    <td>S/ @producto.PrecioVenta.ToString("0.00")</td>
-                    <td>S/ @producto.Costo.ToString("0.00")</td>
-                    <td>
+    <!-- ==================== TABLA ==================== -->
+    <div class="card-tabla">
+        <div class="table-responsive">
+            <table class="tabla-productos">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Descripción</th>
+                        <th>Precio venta</th>
+                        <th>Costo</th>
+                        <th>Estado</th>
                         @if (puedeAdministrar)
                         {
-                            <select class="form-select form-select-sm" style="width:120px;"
-                                    onchange="cambiarEstado(@producto.Id, this.value)">
-                                <option value="true" selected="@producto.Estado">Activo</option>
-                                <option value="false" selected="@(!producto.Estado)">Inactivo</option>
-                            </select>
+                            <th>Acciones</th>
                         }
-                        else
-                        {
-                            <span class="badge @(producto.Estado ? "text-bg-success" : "text-bg-secondary")">
-                                @(producto.Estado ? "Activo" : "Inactivo")
-                            </span>
-                        }
-                    </td>
-                    @if (puedeAdministrar)
-                    {
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.Productos.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="empty-row">No se encontraron productos.</td>
+                    </tr>
+                }
+                @foreach (var producto in Model.Productos)
+                {
+                    <tr>
+                        <td><span class="prod-name">@producto.Nombre</span></td>
+                        <td><span class="badge-categoria">@producto.Categoria</span></td>
+                        <td class="text-muted-cell">@(string.IsNullOrWhiteSpace(producto.Descripcion) ? "—" : producto.Descripcion)</td>
+                        <td>S/ @producto.PrecioVenta.ToString("0.00")</td>
+                        <td class="text-muted-cell">S/ @producto.Costo.ToString("0.00")</td>
                         <td>
-                            <div class="d-flex gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                        onclick="abrirModalEditar(@producto.Id)">
-                                    <i class="bi bi-pencil me-1"></i> Editar
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                        onclick="confirmarEliminar(@producto.Id, '@producto.Nombre')">
-                                    <i class="bi bi-trash me-1"></i> Eliminar
-                                </button>
-                            </div>
+                            @if (puedeAdministrar)
+                            {
+                                <select class="status-select @(producto.Estado ? "activo" : "inactivo")"
+                                        onchange="cambiarEstado(@producto.Id, this.value, this)">
+                                    <option value="true" selected="@producto.Estado">Activo</option>
+                                    <option value="false" selected="@(!producto.Estado)">Inactivo</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <span class="badge-categoria" style="background:@(producto.Estado ? "#e8f9ee" : "#f2f2f4"); color:@(producto.Estado ? "#1a8a3a" : "#6e6e73");">
+                                    @(producto.Estado ? "Activo" : "Inactivo")
+                                </span>
+                            }
                         </td>
-                    }
-                </tr>
-            }
-            </tbody>
-        </table>
+                        @if (puedeAdministrar)
+                        {
+                            <td>
+                                <div class="acciones-tabla">
+                                    <button type="button" class="btn-tabla" onclick="abrirModalEditar(@producto.Id)">
+                                        Editar
+                                    </button>
+                                    <button type="button" class="btn-tabla danger" onclick="confirmarEliminar(@producto.Id, '@producto.Nombre')">
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
     </div>
+
 </div>
 
-<!-- FORM OCULTO CAMBIAR ESTADO -->
+<!-- ==================== FORMS OCULTOS ==================== -->
 <form id="formCambiarEstado" asp-action="CambiarEstado" method="post" style="display:none;">
     @Html.AntiForgeryToken()
     <input type="hidden" name="id" id="estadoId" />
     <input type="hidden" name="estado" id="estadoValor" />
 </form>
 
-<!-- FORM OCULTO ELIMINAR -->
 <form id="formEliminar" asp-action="Delete" method="post" style="display:none;">
     @Html.AntiForgeryToken()
     <input type="hidden" name="id" id="eliminarId" />
 </form>
 
-<!-- MODAL CREAR -->
+<!-- ==================== MODALES ==================== -->
 @if (puedeAdministrar)
 {
     <div class="modal fade" id="modalCrearProducto" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" id="contenidoModalCrear">
-                <!-- Contenido cargado vía AJAX -->
-            </div>
+            <div class="modal-content" id="contenidoModalCrear"></div>
         </div>
     </div>
 
     <div class="modal fade" id="modalEditarProducto" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" id="contenidoModalEditar">
-                <!-- Contenido cargado vía AJAX -->
-            </div>
+            <div class="modal-content" id="contenidoModalEditar"></div>
         </div>
     </div>
 }
+
+<!-- ==================== MODAL CONFIRMACIÓN CUSTOM ==================== -->
+<div class="modal-backdrop-custom" id="modalConfirm">
+    <div class="modal-custom">
+        <div class="modal-custom-body">
+            <div class="modal-custom-icon" id="modalConfirmIcon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4M12 16h.01"/>
+                </svg>
+            </div>
+            <h3 class="modal-custom-title" id="modalConfirmTitle">Confirmar acción</h3>
+            <p class="modal-custom-text" id="modalConfirmText">¿Estás seguro de continuar?</p>
+        </div>
+        <div class="modal-custom-footer">
+            <button type="button" class="modal-custom-btn secondary" onclick="cerrarModalConfirm()">Cancelar</button>
+            <button type="button" class="modal-custom-btn danger" id="modalConfirmBtn">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== TOASTS ==================== -->
+<div class="toast-container" id="toastContainer"></div>
 
 @section Scripts {
     <script>
@@ -168,18 +729,10 @@
             if (btnNuevoProducto) {
                 btnNuevoProducto.addEventListener('click', function () {
                     fetch('/Productos/Create')
-                        .then(response => {
-                            if (!response.ok) throw new Error('Error al cargar el formulario');
-                            return response.text();
-                        })
+                        .then(r => r.text())
                         .then(html => {
                             document.getElementById('contenidoModalCrear').innerHTML = html;
-                            var modal = new bootstrap.Modal(document.getElementById('modalCrearProducto'));
-                            modal.show();
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('No se pudo cargar el formulario de creación.');
+                            new bootstrap.Modal(document.getElementById('modalCrearProducto')).show();
                         });
                 });
             }
@@ -188,38 +741,129 @@
         // ==================== ABRIR MODAL EDITAR ====================
         function abrirModalEditar(id) {
             fetch('/Productos/Edit/' + id)
-                .then(response => {
-                    if (!response.ok) throw new Error('Error al cargar el formulario');
-                    return response.text();
-                })
+                .then(r => r.text())
                 .then(html => {
                     document.getElementById('contenidoModalEditar').innerHTML = html;
-                    var modal = new bootstrap.Modal(document.getElementById('modalEditarProducto'));
-                    modal.show();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('No se pudo cargar el formulario de edición.');
+                    new bootstrap.Modal(document.getElementById('modalEditarProducto')).show();
                 });
         }
 
-        // ==================== CAMBIAR ESTADO ====================
-        function cambiarEstado(id, valor) {
-            if (confirm('¿Está seguro de cambiar el estado de este producto?')) {
-                document.getElementById('estadoId').value = id;
-                document.getElementById('estadoValor').value = valor;
-                document.getElementById('formCambiarEstado').submit();
-            } else {
-                location.reload();
+        // ==================== MODAL DE CONFIRMACIÓN ====================
+        let accionPendiente = null;
+
+        function abrirModalConfirm(titulo, texto, tipo, callback, textoBoton) {
+            const modal = document.getElementById('modalConfirm');
+            const icon = document.getElementById('modalConfirmIcon');
+            const title = document.getElementById('modalConfirmTitle');
+            const text = document.getElementById('modalConfirmText');
+            const btn = document.getElementById('modalConfirmBtn');
+
+            icon.className = 'modal-custom-icon';
+            if (tipo === 'danger') icon.classList.add('danger');
+            else if (tipo === 'info') icon.classList.add('info');
+            else if (tipo === 'success') icon.classList.add('success');
+
+            title.textContent = titulo;
+            text.innerHTML = texto;
+            btn.textContent = textoBoton || 'Confirmar';
+            btn.className = 'modal-custom-btn ' + (tipo === 'danger' ? 'danger' : 'primary');
+
+            accionPendiente = callback;
+            modal.classList.add('show');
+        }
+
+        function cerrarModalConfirm() {
+            document.getElementById('modalConfirm').classList.remove('show');
+            accionPendiente = null;
+        }
+
+        document.getElementById('modalConfirmBtn')?.addEventListener('click', function () {
+            if (accionPendiente) {
+                accionPendiente();
+                accionPendiente = null;
             }
+            cerrarModalConfirm();
+        });
+
+        document.getElementById('modalConfirm')?.addEventListener('click', function (e) {
+            if (e.target === this) cerrarModalConfirm();
+        });
+
+        // ==================== CAMBIAR ESTADO ====================
+        function cambiarEstado(id, valor, selectElement) {
+            const estadoBool = valor === 'true';
+            const accion = estadoBool ? 'activar' : 'desactivar';
+
+            abrirModalConfirm(
+                (estadoBool ? 'Activar' : 'Desactivar') + ' producto',
+                '¿Estás seguro de ' + accion + ' este producto?',
+                estadoBool ? 'success' : 'danger',
+                function () {
+                    document.getElementById('estadoId').value = id;
+                    document.getElementById('estadoValor').value = valor;
+                    document.getElementById('formCambiarEstado').submit();
+                },
+                estadoBool ? 'Activar' : 'Desactivar'
+            );
         }
 
         // ==================== ELIMINAR ====================
         function confirmarEliminar(id, nombre) {
-            if (confirm('¿Seguro eliminar el producto "' + nombre + '"? Esta acción no se puede deshacer.')) {
-                document.getElementById('eliminarId').value = id;
-                document.getElementById('formEliminar').submit();
-            }
+            abrirModalConfirm(
+                'Eliminar producto',
+                '¿Seguro que deseas eliminar el producto "<strong>' + nombre + '</strong>"? Esta acción no se puede deshacer.',
+                'danger',
+                function () {
+                    document.getElementById('eliminarId').value = id;
+                    document.getElementById('formEliminar').submit();
+                },
+                'Eliminar'
+            );
+        }
+
+        // ==================== MOSTRAR TOAST ====================
+        function mostrarToast(mensaje, tipo) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast-custom ' + (tipo || 'success');
+
+            const icono = tipo === 'error' ? '!' : '✓';
+            const titulo = tipo === 'error' ? 'Error' : 'Listo';
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icono}</div>
+                <div class="toast-content">
+                    <div class="toast-title">${titulo}</div>
+                    <div class="toast-msg">${mensaje}</div>
+                </div>
+                <div class="toast-progress"></div>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(24px) scale(0.96)';
+                toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ==================== MOSTRAR TOAST AL CARGAR ====================
+        @if (TempData["SuccessMessage"] is string ok)
+        {
+            <text>
+            document.addEventListener('DOMContentLoaded', function () {
+                mostrarToast('@ok', 'success');
+            });
+            </text>
+        }
+        @if (TempData["ErrorMessage"] is string err)
+        {
+            <text>
+            document.addEventListener('DOMContentLoaded', function () {
+                mostrarToast('@err', 'error');
+            });
+            </text>
         }
     </script>
 

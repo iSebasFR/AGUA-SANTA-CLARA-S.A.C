@@ -89,9 +89,6 @@ public class AccountController : Controller
         if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
             return Redirect(model.ReturnUrl);
 
-        if (usuario.Rol?.Name == "Vendedora")
-            return RedirectToAction("Index", "Clientes");
-
         return RedirectToAction("Index", "Home");
     }
 
