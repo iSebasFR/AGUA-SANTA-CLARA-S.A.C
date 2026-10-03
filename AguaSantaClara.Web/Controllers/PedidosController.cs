@@ -1,5 +1,6 @@
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models;
+using AguaSantaClara.Web.Models.Entities;
 using AguaSantaClara.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,25 +20,84 @@ public class PedidosController : Controller
         _pedidoService = pedidoService;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(
+        DateOnly? fechaDesde,
+        DateOnly? fechaHasta,
+        string? estado,
+        long? idCliente,
+        long? idRepartidor,
+        long? idProducto)
     {
+        var filtrosActivos = (fechaDesde.HasValue || fechaHasta.HasValue ? 1 : 0)
+            + (!string.IsNullOrWhiteSpace(estado) ? 1 : 0)
+            + (idCliente.HasValue ? 1 : 0)
+            + (idRepartidor.HasValue ? 1 : 0)
+            + (idProducto.HasValue ? 1 : 0);
+        var errorFiltros = filtrosActivos > 3
+            ? "Puedes combinar como máximo 3 filtros."
+            : fechaDesde.HasValue && fechaHasta.HasValue && fechaDesde > fechaHasta
+                ? "La fecha Desde no puede ser posterior a la fecha Hasta."
+                : !string.IsNullOrWhiteSpace(estado) && !EstadosPedido.Todos.Contains(estado, StringComparer.Ordinal)
+                    ? "Selecciona un estado válido."
+                    : null;
+
+        var consultaPedidos = _context.Pedidos.Where(p => p.EstadoRegistro);
+        if (errorFiltros == null)
+        {
+            if (fechaDesde.HasValue)
+                consultaPedidos = consultaPedidos.Where(p => p.FechaCreacion >= InicioDelDiaUtc(fechaDesde.Value));
+            if (fechaHasta.HasValue && fechaHasta.Value < DateOnly.MaxValue)
+                consultaPedidos = consultaPedidos.Where(p => p.FechaCreacion < InicioDelDiaUtc(fechaHasta.Value.AddDays(1)));
+            if (!string.IsNullOrWhiteSpace(estado))
+                consultaPedidos = consultaPedidos.Where(p => p.Estado == estado);
+            if (idCliente.HasValue)
+                consultaPedidos = consultaPedidos.Where(p => p.Clientes.Any(pc => pc.EstadoRegistro && pc.IdCliente == idCliente.Value));
+            if (idRepartidor.HasValue)
+                consultaPedidos = consultaPedidos.Where(p => p.IdRepartidor == idRepartidor.Value);
+            if (idProducto.HasValue)
+                consultaPedidos = consultaPedidos.Where(p => p.Clientes.Any(pc => pc.EstadoRegistro
+                    && pc.Detalles.Any(d => d.EstadoRegistro && d.IdProducto == idProducto.Value)));
+        }
+
         var modelo = new PedidosIndexViewModel
         {
-            Pedidos = await _context.Pedidos
+            Pedidos = await consultaPedidos
                 .Include(p => p.Local)
                 .Include(p => p.Repartidor)
                 .Include(p => p.Clientes).ThenInclude(c => c.Cliente)
-                .Where(p => p.EstadoRegistro)
                 .OrderByDescending(p => p.Id)
                 .ToListAsync(),
             Repartidores = await _context.Repartidores
                 .Where(r => r.Estado && r.EstadoRegistro)
                 .OrderBy(r => r.Nombre)
-                .ToListAsync()
+                .ToListAsync(),
+            RepartidoresFiltro = await _context.Repartidores
+                .Where(r => r.EstadoRegistro)
+                .OrderBy(r => r.Nombre)
+                .ToListAsync(),
+            ClientesFiltro = await _context.Clientes
+                .Where(c => c.EstadoRegistro)
+                .OrderBy(c => c.Nombre)
+                .ToListAsync(),
+            ProductosFiltro = await _context.Productos
+                .Where(p => p.EstadoRegistro)
+                .OrderBy(p => p.Nombre)
+                .ToListAsync(),
+            FechaDesde = fechaDesde,
+            FechaHasta = fechaHasta,
+            EstadoFiltro = estado,
+            IdClienteFiltro = idCliente,
+            IdRepartidorFiltro = idRepartidor,
+            IdProductoFiltro = idProducto,
+            ErrorFiltros = errorFiltros,
+            TieneFiltrosAplicados = filtrosActivos > 0 && errorFiltros == null
         };
 
         return View(modelo);
     }
+
+    private static DateTime InicioDelDiaUtc(DateOnly fecha) =>
+        DateTime.SpecifyKind(fecha.ToDateTime(TimeOnly.MinValue), DateTimeKind.Local).ToUniversalTime();
 
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
