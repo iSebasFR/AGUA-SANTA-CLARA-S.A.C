@@ -9,4 +9,5 @@ public class PedidoResultado
     public long? IdPedido { get; set; }
     public decimal Total { get; set; }
     public string? WhatsappUrl { get; set; }
+    public string? Mensaje { get; set; }
 }

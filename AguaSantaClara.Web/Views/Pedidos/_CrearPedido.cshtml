@@ -20,15 +20,31 @@
                 <div id="pedidoFormulario">
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
+                            <label for="pedidoLocal" class="form-label">Local de despacho <span class="text-danger">*</span></label>
+                            <select id="pedidoLocal" class="form-select" data-campo="idLocal">
+                                <option value="">Selecciona un local</option>
+                                @foreach (var local in Model.Locales)
+                                {
+                                    <option value="@local.Id">@local.Nombre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label for="pedidoFechaCreacion" class="form-label">Fecha de creación</label>
                             <input id="pedidoFechaCreacion" type="text" class="form-control" readonly value="@DateTime.Now.ToString("dd/MM/yyyy")" />
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="pedidoBuscar" class="form-label">Buscar cliente por teléfono o DNI</label>
+                        <label class="form-label">Buscar cliente</label>
                         <div class="input-group">
-                            <input id="pedidoBuscar" type="text" class="form-control" inputmode="numeric" data-campo="clientes" autocomplete="off" />
+                            <select id="pedidoBuscarTipo" class="form-select" style="max-width: 140px;" aria-label="Tipo de búsqueda">
+                                <option value="telefono">Teléfono</option>
+                                <option value="dni">DNI</option>
+                                <option value="nombre">Nombre</option>
+                            </select>
+                            <input id="pedidoBuscar" type="text" class="form-control" data-campo="clientes"
+                                   autocomplete="off" placeholder="987654321" inputmode="numeric" maxlength="9" />
                             <button type="button" id="pedidoBuscarBtn" class="btn btn-outline-primary">
                                 <i class="bi bi-search me-1"></i> Buscar
                             </button>

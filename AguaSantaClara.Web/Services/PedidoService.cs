@@ -9,29 +9,27 @@ namespace AguaSantaClara.Web.Services;
 public class PedidoService : IPedidoService
 {
     private static readonly Regex CelularRegex = new(@"^519\d{8}$", RegexOptions.Compiled);
-
     private readonly AppDbContext _context;
 
-    public PedidoService(AppDbContext context)
-    {
-        _context = context;
-    }
+    public PedidoService(AppDbContext context) => _context = context;
 
     public static bool CelularValido(string? celular) =>
         !string.IsNullOrEmpty(celular) && CelularRegex.IsMatch(celular);
 
     public Task<PedidoResultado> CrearAsync(CrearPedidoViewModel modelo, bool enviar) =>
-        GuardarAsync(modelo, enviar, null);
+        GuardarAsync(modelo, enviar, null, persistir: true);
+
+    public Task<PedidoResultado> PreviewCrearAsync(CrearPedidoViewModel modelo) =>
+        GuardarAsync(modelo, enviar: true, null, persistir: false);
 
     public Task<PedidoResultado> ActualizarAsync(long idPedido, CrearPedidoViewModel modelo) =>
-        GuardarAsync(modelo, enviar: false, idPedido);
+        GuardarAsync(modelo, enviar: false, idPedido, persistir: true);
 
     public async Task<bool> EliminarAsync(long idPedido)
     {
         var pedido = await _context.Pedidos
             .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
-        if (pedido == null)
-            return false;
+        if (pedido == null) return false;
 
         pedido.EstadoRegistro = false;
         pedido.FechaActualizacion = DateTime.UtcNow;
@@ -55,10 +53,18 @@ public class PedidoService : IPedidoService
         return new PedidoResultado();
     }
 
-    private async Task<PedidoResultado> GuardarAsync(CrearPedidoViewModel modelo, bool enviar, long? idPedido)
+    private async Task<PedidoResultado> GuardarAsync(CrearPedidoViewModel modelo, bool enviar, long? idPedido, bool persistir)
     {
         var errores = new List<ErrorPedido>();
         Pedido? pedidoExistente = null;
+
+        Local? local = null;
+        if (modelo.IdLocal != null)
+            local = await _context.Locales
+                .FirstOrDefaultAsync(l => l.Id == modelo.IdLocal && l.Estado && l.EstadoRegistro);
+
+        if (local == null)
+            errores.Add(new ErrorPedido("idLocal", "Selecciona el local de despacho."));
 
         if (idPedido.HasValue)
         {
@@ -93,17 +99,25 @@ public class PedidoService : IPedidoService
             .Where(c => idsClientes.Contains(c.Id) && c.Estado && c.EstadoRegistro)
             .ToDictionaryAsync(c => c.Id);
 
-        var disponibles = await _context.Productos
-            .Where(p => idsProductos.Contains(p.Id) && p.Estado && p.EstadoRegistro)
-            .ToDictionaryAsync(p => p.Id);
+        var disponibles = local == null
+            ? new Dictionary<long, ProductoLocal>()
+            : await _context.ProductosLocal
+                .Include(pl => pl.Producto)
+                .Where(pl => pl.IdLocal == local.Id
+                    && idsProductos.Contains(pl.IdProducto)
+                    && pl.Estado && pl.EstadoRegistro
+                    && pl.Producto.Estado && pl.Producto.EstadoRegistro)
+                .ToDictionaryAsync(pl => pl.IdProducto);
 
         var pedido = new Pedido
         {
+            IdLocal = local?.Id,
             IdRepartidor = repartidor?.Id,
             Estado = enviar ? EstadosPedido.Enviado : EstadosPedido.Pendiente
         };
 
         var paresUsados = new HashSet<(long, long)>();
+        var cantidadPorProducto = new Dictionary<long, int>();
 
         for (var i = 0; i < modelo.Clientes.Count; i++)
         {
@@ -138,9 +152,9 @@ public class PedidoService : IPedidoService
                 var detalle = linea.Detalles[j];
                 var campo = $"{prefijo}.detalles[{j}]";
 
-                if (!disponibles.TryGetValue(detalle.IdProducto, out var producto))
+                if (!disponibles.TryGetValue(detalle.IdProducto, out var productoLocal))
                 {
-                    errores.Add(new ErrorPedido($"{campo}.idProducto", "Selecciona un producto disponible."));
+                    errores.Add(new ErrorPedido($"{campo}.idProducto", "El producto no está disponible en este local."));
                     continue;
                 }
 
@@ -150,11 +164,14 @@ public class PedidoService : IPedidoService
                     continue;
                 }
 
-                var precio = producto.PrecioVenta;
+                cantidadPorProducto[detalle.IdProducto] =
+                    cantidadPorProducto.GetValueOrDefault(detalle.IdProducto) + detalle.Cantidad;
+
+                var precio = productoLocal.Producto.PrecioVenta;
                 pedidoCliente.Detalles.Add(new DetallePedido
                 {
                     IdProducto = detalle.IdProducto,
-                    Producto = producto,
+                    Producto = productoLocal.Producto,
                     Cantidad = detalle.Cantidad,
                     PrecioUnitario = precio,
                     Subtotal = detalle.Cantidad * precio
@@ -165,6 +182,18 @@ public class PedidoService : IPedidoService
             pedido.Clientes.Add(pedidoCliente);
         }
 
+        if (local != null)
+        {
+            foreach (var (idProducto, cantidad) in cantidadPorProducto)
+            {
+                var productoLocal = disponibles[idProducto];
+                if (cantidad > productoLocal.Stock)
+                    errores.Add(new ErrorPedido(
+                        $"stock:{idProducto}",
+                        $"Stock insuficiente en {local.Nombre}: {productoLocal.Producto.Nombre} (disponible: {productoLocal.Stock})"));
+            }
+        }
+
         if (errores.Count > 0)
             return new PedidoResultado { Errores = errores };
 
@@ -172,27 +201,36 @@ public class PedidoService : IPedidoService
 
         if (pedidoExistente == null)
         {
-            _context.Pedidos.Add(pedido);
+            if (persistir) _context.Pedidos.Add(pedido);
         }
         else
         {
-            _context.RemoveRange(pedidoExistente.Clientes.SelectMany(c => c.Detalles));
-            _context.RemoveRange(pedidoExistente.Clientes);
-            pedidoExistente.Clientes.Clear();
-            pedidoExistente.IdRepartidor = modelo.IdRepartidor;
-            pedidoExistente.Total = pedido.Total;
-            pedidoExistente.FechaActualizacion = DateTime.UtcNow;
-            foreach (var cliente in pedido.Clientes)
-                pedidoExistente.Clientes.Add(cliente);
+            if (persistir)
+            {
+                _context.RemoveRange(pedidoExistente.Clientes.SelectMany(c => c.Detalles));
+                _context.RemoveRange(pedidoExistente.Clientes);
+                pedidoExistente.Clientes.Clear();
+                pedidoExistente.IdLocal = local?.Id;
+                pedidoExistente.IdRepartidor = modelo.IdRepartidor;
+                pedidoExistente.Total = pedido.Total;
+                pedidoExistente.FechaActualizacion = DateTime.UtcNow;
+                foreach (var cliente in pedido.Clientes)
+                    pedidoExistente.Clientes.Add(cliente);
+            }
             pedido = pedidoExistente;
         }
 
-        await _context.SaveChangesAsync();
+        if (persistir)
+            await _context.SaveChangesAsync();
 
         var resultado = new PedidoResultado { IdPedido = pedido.Id, Total = pedido.Total };
         if (enviar)
         {
+            if (pedido.Local == null && local != null)
+                pedido.Local = local;
+
             var mensaje = PedidoMensajeBuilder.Construir(pedido);
+            resultado.Mensaje = mensaje;
             resultado.WhatsappUrl = PedidoMensajeBuilder.ConstruirUrl(repartidor!.Celular, mensaje);
         }
 
@@ -200,6 +238,45 @@ public class PedidoService : IPedidoService
     }
 
     public async Task<PedidoResultado> EnviarVariosAsync(EnviarPedidosViewModel modelo)
+    {
+        var (errores, pedidos, repartidor) = await ValidarEnvioVariosAsync(modelo);
+        if (errores.Count > 0)
+            return new PedidoResultado { Errores = errores };
+
+        foreach (var pedido in pedidos!)
+        {
+            pedido.IdRepartidor = repartidor!.Id;
+            if (pedido.Estado == EstadosPedido.Pendiente)
+                pedido.Estado = EstadosPedido.Enviado;
+            pedido.FechaActualizacion = DateTime.UtcNow;
+        }
+        await _context.SaveChangesAsync();
+
+        var mensaje = PedidoMensajeBuilder.ConstruirVarios(pedidos!);
+        return new PedidoResultado
+        {
+            Total = pedidos!.Sum(p => p.Total),
+            Mensaje = mensaje,
+            WhatsappUrl = PedidoMensajeBuilder.ConstruirUrl(repartidor!.Celular, mensaje)
+        };
+    }
+
+    public async Task<PedidoResultado> PreviewEnviarVariosAsync(EnviarPedidosViewModel modelo)
+    {
+        var (errores, pedidos, repartidor) = await ValidarEnvioVariosAsync(modelo);
+        if (errores.Count > 0)
+            return new PedidoResultado { Errores = errores };
+
+        var mensaje = PedidoMensajeBuilder.ConstruirVarios(pedidos!);
+        return new PedidoResultado
+        {
+            Total = pedidos!.Sum(p => p.Total),
+            Mensaje = mensaje,
+            WhatsappUrl = PedidoMensajeBuilder.ConstruirUrl(repartidor!.Celular, mensaje)
+        };
+    }
+
+    private async Task<(List<ErrorPedido>, List<Pedido>?, Repartidor?)> ValidarEnvioVariosAsync(EnviarPedidosViewModel modelo)
     {
         var errores = new List<ErrorPedido>();
         var ids = modelo.IdsPedidos.Distinct().ToList();
@@ -218,6 +295,7 @@ public class PedidoService : IPedidoService
             errores.Add(new ErrorPedido("idRepartidor", "El celular del repartidor no tiene un formato válido."));
 
         var pedidos = await _context.Pedidos
+            .Include(p => p.Local)
             .Include(p => p.Clientes).ThenInclude(c => c.Cliente)
             .Include(p => p.Clientes).ThenInclude(c => c.Direccion)
             .Include(p => p.Clientes).ThenInclude(c => c.Detalles).ThenInclude(d => d.Producto)
@@ -227,41 +305,34 @@ public class PedidoService : IPedidoService
         if (pedidos.Count != ids.Count)
             errores.Add(new ErrorPedido("pedidos", "Algún pedido seleccionado no existe."));
 
-        foreach (var pedido in pedidos.Where(p => p.Estado != EstadosPedido.Pendiente))
-            errores.Add(new ErrorPedido("pedidos", $"El pedido N° {pedido.Id} ya no está Pendiente."));
-
-        if (errores.Count > 0)
-            return new PedidoResultado { Errores = errores };
-
-        foreach (var pedido in pedidos)
-        {
-            pedido.IdRepartidor = repartidor!.Id;
-            pedido.Estado = EstadosPedido.Enviado;
-            pedido.FechaActualizacion = DateTime.UtcNow;
-        }
-        await _context.SaveChangesAsync();
-
-        return new PedidoResultado
-        {
-            Total = pedidos.Sum(p => p.Total),
-            WhatsappUrl = PedidoMensajeBuilder.ConstruirUrl(repartidor!.Celular, PedidoMensajeBuilder.ConstruirVarios(pedidos))
-        };
+        return (errores, pedidos, repartidor);
     }
 
-    public async Task<ClienteBusquedaViewModel?> BuscarClienteAsync(string termino)
+    public async Task<ClienteBusquedaViewModel?> BuscarClienteAsync(string tipo, string termino)
     {
         var valor = termino?.Trim();
-        if (string.IsNullOrEmpty(valor))
-            return null;
+        if (string.IsNullOrEmpty(valor)) return null;
 
-        var cliente = await _context.Clientes
+        var query = _context.Clientes
             .Include(c => c.Direcciones.Where(d => d.EstadoRegistro))
-            .Where(c => c.Estado && c.EstadoRegistro && (c.Telefono == valor || c.Dni == valor))
+            .Where(c => c.Estado && c.EstadoRegistro);
+
+        query = tipo?.ToLowerInvariant() switch
+        {
+            "telefono" => query.Where(c => EF.Functions.ILike(c.Telefono, $"%{valor}%")),
+            "dni" => query.Where(c => c.Dni != null && EF.Functions.ILike(c.Dni, $"%{valor}%")),
+            "nombre" => query.Where(c => EF.Functions.ILike(c.Nombre, $"%{valor}%")),
+            _ => query.Where(c =>
+                EF.Functions.ILike(c.Telefono, $"%{valor}%") ||
+                (c.Dni != null && EF.Functions.ILike(c.Dni, $"%{valor}%")) ||
+                EF.Functions.ILike(c.Nombre, $"%{valor}%"))
+        };
+
+        var cliente = await query
             .OrderBy(c => c.Nombre)
             .FirstOrDefaultAsync();
 
-        if (cliente == null)
-            return null;
+        if (cliente == null) return null;
 
         return new ClienteBusquedaViewModel
         {
@@ -284,15 +355,18 @@ public class PedidoService : IPedidoService
         };
     }
 
-    public Task<List<ProductoPedidoViewModel>> ProductosDisponiblesAsync() =>
-        _context.Productos
-            .Where(p => p.Estado && p.EstadoRegistro)
-            .OrderBy(p => p.Nombre)
-            .Select(p => new ProductoPedidoViewModel
+    public Task<List<ProductoPedidoViewModel>> ProductosPorLocalAsync(long idLocal) =>
+        _context.ProductosLocal
+            .Where(pl => pl.IdLocal == idLocal
+                && pl.Estado && pl.EstadoRegistro
+                && pl.Producto.Estado && pl.Producto.EstadoRegistro)
+            .OrderBy(pl => pl.Producto.Nombre)
+            .Select(pl => new ProductoPedidoViewModel
             {
-                IdProducto = p.Id,
-                Nombre = p.Nombre,
-                Precio = p.PrecioVenta
+                IdProducto = pl.IdProducto,
+                Nombre = pl.Producto.Nombre,
+                Precio = pl.Producto.PrecioVenta,
+                Stock = pl.Stock
             })
             .ToListAsync();
 }

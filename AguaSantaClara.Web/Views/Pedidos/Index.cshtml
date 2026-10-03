@@ -91,7 +91,7 @@
         <div id="pedidoEstadoActualizado" class="alert alert-success d-none" role="status"></div>
         <div id="pedidosEliminado" class="alert alert-success d-none" role="status"></div>
         <div id="pedidosEnviado" class="alert alert-success d-none" role="status">
-            <p class="mb-2">Pedidos asignados y marcados como Enviado.</p>
+            <p class="mb-2">Pedidos procesados correctamente.</p>
             <a id="pedidosWhatsapp" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm">
                 <i class="bi bi-whatsapp me-1"></i> Abrir WhatsApp
             </a>
@@ -143,8 +143,7 @@
                         {
                             <td>
                                 <input type="checkbox" class="form-check-input pedido-check" value="@pedido.Id"
-                                       aria-label="Seleccionar pedido @pedido.Id"
-                                       @(pedido.Estado == "Pendiente" ? "" : "disabled") />
+                                       aria-label="Seleccionar pedido @pedido.Id" />
                             </td>
                         }
                         <td>@pedido.Id</td>
@@ -172,14 +171,21 @@
                         @if (esVendedora)
                         {
                             <td>
-                                <button type="button" class="btn btn-sm btn-outline-primary pedido-editar"
-                                        data-pedido-id="@pedido.Id" data-bs-toggle="modal" data-bs-target="#pedidoModal">
-                                    <i class="bi bi-pencil me-1"></i> Editar
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger pedido-eliminar"
-                                        data-pedido-id="@pedido.Id">
-                                    <i class="bi bi-trash me-1"></i> Borrar
-                                </button>
+                                @if (pedido.Estado == "Pendiente")
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-primary pedido-editar"
+                                            data-pedido-id="@pedido.Id" data-bs-toggle="modal" data-bs-target="#pedidoModal">
+                                        <i class="bi bi-pencil me-1"></i> Editar
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger pedido-eliminar"
+                                            data-pedido-id="@pedido.Id">
+                                        <i class="bi bi-trash me-1"></i> Borrar
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small fst-italic">Usa el checkbox para reenviar</span>
+                                }
                             </td>
                         }
                     </tr>
@@ -201,6 +207,33 @@
 {
     <partial name="_CrearPedido" model="Model" />
 }
+
+<!-- Modal de Preview antes de enviar -->
+<div class="modal fade" id="previewEnvioModal" tabindex="-1" aria-labelledby="previewEnvioLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewEnvioLabel">Vista previa del mensaje</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-2">
+                    Destinatario: <strong id="previewEnvioDestinatario"></strong>
+                </p>
+                <pre id="previewEnvioMensaje" class="bg-light p-3 rounded border"
+                     style="white-space: pre-wrap; font-family: inherit; font-size: 0.9rem;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" id="previewEnvioConfirmar" class="btn btn-success">
+                    <i class="bi bi-whatsapp me-1"></i> Confirmar y abrir WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="~/js/pedidos-filtros.js" asp-append-version="true"></script>

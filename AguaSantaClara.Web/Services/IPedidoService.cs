@@ -5,10 +5,12 @@ namespace AguaSantaClara.Web.Services;
 public interface IPedidoService
 {
     Task<PedidoResultado> CrearAsync(CrearPedidoViewModel modelo, bool enviar);
+    Task<PedidoResultado> PreviewCrearAsync(CrearPedidoViewModel modelo);
     Task<PedidoResultado> ActualizarAsync(long idPedido, CrearPedidoViewModel modelo);
     Task<bool> EliminarAsync(long idPedido);
     Task<PedidoResultado> CambiarEstadoAsync(long idPedido, string? estado);
     Task<PedidoResultado> EnviarVariosAsync(EnviarPedidosViewModel modelo);
-    Task<ClienteBusquedaViewModel?> BuscarClienteAsync(string termino);
-    Task<List<ProductoPedidoViewModel>> ProductosDisponiblesAsync();
+    Task<PedidoResultado> PreviewEnviarVariosAsync(EnviarPedidosViewModel modelo);
+    Task<ClienteBusquedaViewModel?> BuscarClienteAsync(string tipo, string termino);
+    Task<List<ProductoPedidoViewModel>> ProductosPorLocalAsync(long idLocal);
 }

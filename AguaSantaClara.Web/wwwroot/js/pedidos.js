@@ -3,6 +3,8 @@
 	if (!modalEl) return;
 
 	const $ = id => document.getElementById(id);
+	const selLocal = $("pedidoLocal");
+	const selBuscarTipo = $("pedidoBuscarTipo");
 	const inpBuscar = $("pedidoBuscar");
 	const msgBuscar = $("pedidoBuscarMensaje");
 	const contenedor = $("pedidoClientes");
@@ -19,6 +21,7 @@
 	let bloques = [];
 	let pedidoRegistrado = false;
 	let pedidoAEditar = null;
+	let detallesPendientes = null;
 
 	const moneda = valor => "S/ " + valor.toFixed(2);
 
@@ -47,7 +50,12 @@
 		alertaErrores.classList.remove("d-none");
 
 		for (const error of errores) {
-			modalEl.querySelectorAll(`[data-campo='${CSS.escape(error.campo)}']`).forEach(nodo => nodo.classList.add("is-invalid"));
+			if (error.campo.startsWith("stock:")) {
+				const id = error.campo.slice(6);
+				modalEl.querySelectorAll(`[data-producto-id='${id}']`).forEach(nodo => nodo.classList.add("is-invalid"));
+			} else {
+				modalEl.querySelectorAll(`[data-campo='${CSS.escape(error.campo)}']`).forEach(nodo => nodo.classList.add("is-invalid"));
+			}
 		}
 	};
 
@@ -79,7 +87,7 @@
 
 	const opcionesProducto = () => [
 		h("option", { value: "" }, "Selecciona un producto"),
-		...productos.map(p => h("option", { value: p.idProducto }, `${p.nombre} - ${moneda(p.precio)}`))
+		...productos.map(p => h("option", { value: p.idProducto }, `${p.nombre} - ${moneda(p.precio)} (stock: ${p.stock})`))
 	];
 
 	const agregarFila = bloque => {
@@ -130,6 +138,17 @@
 			agregarFila(bloque);
 		}
 		actualizarTotales();
+	};
+
+	const actualizarOpcionesProductos = () => {
+		for (const bloque of bloques) {
+			for (const fila of bloque.filas) {
+				const valorActual = fila.select.value;
+				fila.select.replaceChildren(...opcionesProducto());
+				if (valorActual && fila.select.querySelector(`option[value='${valorActual}']`))
+					fila.select.value = valorActual;
+			}
+		}
 	};
 
 	const agregarBloque = (cliente, idDireccion, detalles = null) => {
@@ -195,20 +214,59 @@
 		actualizarBotonesDireccion();
 	};
 
+	const configurarInputBusqueda = () => {
+		const tipo = selBuscarTipo.value;
+		if (tipo === "telefono") {
+			inpBuscar.placeholder = "987654321";
+			inpBuscar.setAttribute("inputmode", "numeric");
+			inpBuscar.setAttribute("maxlength", "9");
+			inpBuscar.value = inpBuscar.value.replace(/\D/g, "").slice(0, 9);
+		} else if (tipo === "dni") {
+			inpBuscar.placeholder = "12345678";
+			inpBuscar.setAttribute("inputmode", "numeric");
+			inpBuscar.setAttribute("maxlength", "8");
+			inpBuscar.value = inpBuscar.value.replace(/\D/g, "").slice(0, 8);
+		} else {
+			inpBuscar.placeholder = "Ana Torres";
+			inpBuscar.removeAttribute("inputmode");
+			inpBuscar.setAttribute("maxlength", "100");
+		}
+		msgBuscar.textContent = "";
+		inpBuscar.classList.remove("is-invalid");
+	};
+
 	const buscarCliente = async () => {
 		msgBuscar.textContent = "";
 		inpBuscar.classList.remove("is-invalid");
+		const tipo = selBuscarTipo.value;
 		const termino = inpBuscar.value.trim();
+
 		if (!termino) {
 			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "Ingresa un teléfono o DNI.";
+			msgBuscar.textContent = "Ingresa un valor para buscar.";
 			return;
 		}
 
-		const resp = await fetch(`/Pedidos/BuscarCliente?q=${encodeURIComponent(termino)}`);
+		if (tipo === "telefono" && termino.length < 6) {
+			inpBuscar.classList.add("is-invalid");
+			msgBuscar.textContent = "Ingresa al menos 6 dígitos del teléfono.";
+			return;
+		}
+		if (tipo === "dni" && termino.length < 4) {
+			inpBuscar.classList.add("is-invalid");
+			msgBuscar.textContent = "Ingresa al menos 4 dígitos del DNI.";
+			return;
+		}
+		if (tipo === "nombre" && termino.length < 2) {
+			inpBuscar.classList.add("is-invalid");
+			msgBuscar.textContent = "Ingresa al menos 2 letras del nombre.";
+			return;
+		}
+
+		const resp = await fetch(`/Pedidos/BuscarCliente?tipo=${encodeURIComponent(tipo)}&q=${encodeURIComponent(termino)}`);
 		if (!resp.ok) {
 			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "No se encontró un cliente con ese teléfono o DNI.";
+			msgBuscar.textContent = "No se encontró un cliente con esos criterios.";
 			return;
 		}
 
@@ -231,22 +289,49 @@
 		inpBuscar.value = "";
 	};
 
-	const cargarProductos = async () => {
+	const cargarProductos = async (reiniciar = false) => {
 		productos = [];
-		const resp = await fetch("/Pedidos/ProductosDisponibles");
-		if (resp.ok) productos = await resp.json();
-		reiniciarFilas();
-		if (pedidoAEditar === null) return;
+		if (selLocal.value) {
+			const resp = await fetch(`/Pedidos/ProductosPorLocal?idLocal=${encodeURIComponent(selLocal.value)}`);
+			if (resp.ok) productos = await resp.json();
+		}
+		if (reiniciar) {
+			reiniciarFilas();
+		} else {
+			actualizarOpcionesProductos();
+			actualizarTotales();
+		}
+	};
 
+	const cargarPedidoParaEditar = async () => {
 		try {
 			const respuesta = await fetch(`/Pedidos/ObtenerParaEditar?idPedido=${pedidoAEditar}`);
 			if (!respuesta.ok) throw new Error();
 			const pedido = await respuesta.json();
-			selRepartidor.value = pedido.idRepartidor == null ? "" : String(pedido.idRepartidor);
-			for (const linea of pedido.clientes)
-				agregarBloque(linea.cliente, linea.idDireccion, linea.detalles);
+
 			$("pedidoModalLabel").textContent = `Editar pedido N° ${pedido.idPedido}`;
 			btnEnviar.classList.add("d-none");
+			selRepartidor.value = pedido.idRepartidor == null ? "" : String(pedido.idRepartidor);
+
+			if (pedido.idLocal == null) {
+				detallesPendientes = pedido.clientes;
+				selLocal.value = "";
+				productos = [];
+				bloques = [];
+				contenedor.replaceChildren();
+				lblTotal.textContent = moneda(0);
+				mostrarErrores([{
+					campo: "idLocal",
+					mensaje: "Este pedido no tiene Local asignado. Selecciona uno para editar los productos."
+				}]);
+				return;
+			}
+
+			detallesPendientes = null;
+			selLocal.value = String(pedido.idLocal);
+			await cargarProductos(true);
+			for (const linea of pedido.clientes)
+				agregarBloque(linea.cliente, linea.idDireccion, linea.detalles);
 			actualizarTotales();
 		} catch {
 			mostrarErrores([{ campo: "", mensaje: "No se pudo cargar el pedido para editar." }]);
@@ -269,6 +354,7 @@
 		});
 
 		return {
+			idLocal: Number(selLocal.value) || null,
 			idRepartidor: Number(selRepartidor.value) || null,
 			clientes
 		};
@@ -309,10 +395,74 @@
 		}
 	};
 
+	const previewYEnviar = async () => {
+		limpiarErrores();
+		const cuerpo = serializar();
+		btnEnviar.disabled = true;
+
+		try {
+			const resp = await fetch("/Pedidos/PreviewEnviar", {
+				method: "POST",
+				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+				body: JSON.stringify(cuerpo)
+			});
+			const datos = await resp.json().catch(() => null);
+
+			if (!resp.ok) {
+				mostrarErrores(datos?.errores ?? [{ campo: "", mensaje: "No se pudo validar el pedido." }]);
+				btnEnviar.disabled = false;
+				return;
+			}
+
+			const previewModalEl = document.getElementById("previewEnvioModal");
+			document.getElementById("previewEnvioMensaje").textContent = datos.mensaje ?? "";
+			document.getElementById("previewEnvioDestinatario").textContent =
+				selRepartidor.options[selRepartidor.selectedIndex]?.text ?? "Repartidor";
+
+			const confirmBtn = document.getElementById("previewEnvioConfirmar");
+			const nuevoBtn = confirmBtn.cloneNode(true);
+			confirmBtn.parentNode.replaceChild(nuevoBtn, confirmBtn);
+
+			nuevoBtn.addEventListener("click", async () => {
+				nuevoBtn.disabled = true;
+				try {
+					const resp2 = await fetch("/Pedidos/Enviar", {
+						method: "POST",
+						headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+						body: JSON.stringify(cuerpo)
+					});
+					const datos2 = await resp2.json().catch(() => null);
+					if (!resp2.ok) {
+						mostrarErrores(datos2?.errores ?? [{ campo: "", mensaje: "No se pudo guardar el pedido." }]);
+						nuevoBtn.disabled = false;
+						return;
+					}
+
+					pedidoRegistrado = true;
+					const previewModal = bootstrap.Modal.getInstance(previewModalEl);
+					if (previewModal) previewModal.hide();
+					bootstrap.Modal.getInstance(modalEl).hide();
+					window.open(datos2.whatsappUrl, "_blank");
+				} catch {
+					mostrarErrores([{ campo: "", mensaje: "No se pudo conectar con el servidor." }]);
+					nuevoBtn.disabled = false;
+				}
+			});
+
+			new bootstrap.Modal(previewModalEl).show();
+			btnEnviar.disabled = false;
+		} catch {
+			mostrarErrores([{ campo: "", mensaje: "No se pudo conectar con el servidor." }]);
+			btnEnviar.disabled = false;
+		}
+	};
+
 	const reiniciar = () => {
 		limpiarErrores();
 		alertaEnviado.classList.add("d-none");
 		formulario.classList.remove("d-none");
+		selLocal.value = "";
+		selBuscarTipo.value = "telefono";
 		inpBuscar.value = "";
 		selRepartidor.value = "";
 		productos = [];
@@ -323,12 +473,50 @@
 		$("pedidoModalLabel").textContent = "Crear pedido";
 		btnEnviar.classList.remove("d-none");
 		pedidoAEditar = null;
+		detallesPendientes = null;
+		configurarInputBusqueda();
 	};
 
-	modalEl.addEventListener("show.bs.modal", cargarProductos);
-	document.querySelectorAll(".pedido-editar").forEach(btn => btn.addEventListener("click", () => {
-		pedidoAEditar = btn.dataset.pedidoId;
-	}));
+	selLocal.addEventListener("change", async () => {
+		if (pedidoAEditar === null) {
+			await cargarProductos(true);
+		} else {
+			await cargarProductos(bloques.length === 0);
+			if (detallesPendientes && productos.length > 0) {
+				for (const linea of detallesPendientes)
+					agregarBloque(linea.cliente, linea.idDireccion, linea.detalles);
+				detallesPendientes = null;
+				limpiarErrores();
+			}
+			actualizarTotales();
+		}
+	});
+
+	selBuscarTipo.addEventListener("change", configurarInputBusqueda);
+
+	inpBuscar.addEventListener("input", () => {
+		if (selBuscarTipo.value === "telefono") inpBuscar.value = inpBuscar.value.replace(/\D/g, "").slice(0, 9);
+		else if (selBuscarTipo.value === "dni") inpBuscar.value = inpBuscar.value.replace(/\D/g, "").slice(0, 8);
+	});
+
+	// ✅ Cambio clave: leer el botón que disparó el modal
+	modalEl.addEventListener("show.bs.modal", async (evento) => {
+		const trigger = evento.relatedTarget;
+		if (trigger && trigger.classList?.contains("pedido-editar")) {
+			pedidoAEditar = trigger.dataset.pedidoId;
+		} else {
+			pedidoAEditar = null;
+		}
+
+		configurarInputBusqueda();
+		if (pedidoAEditar === null) {
+			productos = [];
+			reiniciarFilas();
+		} else {
+			await cargarPedidoParaEditar();
+		}
+	});
+
 	$("pedidoBuscarBtn").addEventListener("click", buscarCliente);
 	inpBuscar.addEventListener("keydown", evento => {
 		if (evento.key === "Enter") {
@@ -336,10 +524,12 @@
 			buscarCliente();
 		}
 	});
+
 	btnGuardar.addEventListener("click", () => registrar(
 		pedidoAEditar === null ? "/Pedidos/Guardar" : `/Pedidos/Actualizar?idPedido=${pedidoAEditar}`,
 		false));
-	btnEnviar.addEventListener("click", () => registrar("/Pedidos/Enviar", true));
+	btnEnviar.addEventListener("click", previewYEnviar);
+
 	modalEl.addEventListener("hidden.bs.modal", () => {
 		if (pedidoRegistrado) {
 			window.location.reload();

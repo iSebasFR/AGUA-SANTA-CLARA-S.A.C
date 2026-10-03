@@ -33,13 +33,17 @@
 		alertaErrores.classList.remove("d-none");
 	};
 
+	// ============= SELECCIONAR TODOS =============
 	todos.addEventListener("change", () => {
 		checks().forEach(c => c.checked = todos.checked);
 		actualizar();
 	});
+
 	document.addEventListener("change", e => {
 		if (e.target.classList?.contains("pedido-check")) actualizar();
 	});
+
+	// ============= CAMBIAR ESTADO =============
 	document.querySelectorAll(".pedido-estado").forEach(select => select.addEventListener("change", async () => {
 		const estadoAnterior = select.dataset.estadoOriginal;
 		alertaErrores.classList.add("d-none");
@@ -61,14 +65,11 @@
 
 			select.value = datos.estado;
 			select.dataset.estadoOriginal = datos.estado;
-			const checkPedido = select.closest("tr").querySelector(".pedido-check");
-			if (checkPedido) {
-				checkPedido.disabled = datos.estado !== "Pendiente";
-				if (checkPedido.disabled) checkPedido.checked = false;
-			}
 			actualizar();
 			alertaEstado.textContent = `Pedido N° ${select.dataset.pedidoId}: estado actualizado a ${datos.estado}.`;
 			alertaEstado.classList.remove("d-none");
+
+			setTimeout(() => window.location.reload(), 700);
 		} catch {
 			select.value = estadoAnterior;
 			mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
@@ -77,6 +78,7 @@
 		}
 	}));
 
+	// ============= ELIMINAR =============
 	document.querySelectorAll(".pedido-eliminar").forEach(btn => btn.addEventListener("click", async () => {
 		if (!window.confirm("¿Está seguro de borrar este pedido?")) return;
 
@@ -112,6 +114,7 @@
 		}
 	}));
 
+	// ============= ENVIAR / REENVIAR SELECCIONADOS =============
 	btnEnviar.addEventListener("click", async () => {
 		alertaErrores.classList.add("d-none");
 		const seleccionados = marcados();
@@ -120,47 +123,76 @@
 			return;
 		}
 
-		const ventanaWhatsapp = window.open("about:blank", "_blank");
-		const cerrarVentanaWhatsapp = () => {
-			if (ventanaWhatsapp && !ventanaWhatsapp.closed) ventanaWhatsapp.close();
-		};
 		btnEnviar.disabled = true;
+		const cuerpo = {
+			idsPedidos: seleccionados.map(c => Number(c.value)),
+			idRepartidor: Number(selRepartidor.value) || null
+		};
 
 		try {
-			const resp = await fetch("/Pedidos/EnviarSeleccionados", {
+			const resp = await fetch("/Pedidos/PreviewEnviarSeleccionados", {
 				method: "POST",
 				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
-				body: JSON.stringify({
-					idsPedidos: seleccionados.map(c => Number(c.value)),
-					idRepartidor: Number(selRepartidor.value) || null
-				})
+				body: JSON.stringify(cuerpo)
 			});
 			const datos = await resp.json().catch(() => null);
 
 			if (!resp.ok) {
-				cerrarVentanaWhatsapp();
-				mostrarErrores(datos?.errores ?? [{ mensaje: "No se pudo enviar los pedidos." }]);
+				mostrarErrores(datos?.errores ?? [{ mensaje: "No se pudo validar los pedidos." }]);
 				actualizar();
 				return;
 			}
 
-			$("pedidosWhatsapp").href = datos.whatsappUrl;
-			$("pedidosWhatsapp").onclick = () => setTimeout(() => window.location.reload(), 500);
-			if (ventanaWhatsapp) ventanaWhatsapp.location.href = datos.whatsappUrl;
-			for (const check of seleccionados) {
-				check.checked = false;
-				check.disabled = true;
-				const estado = check.closest("tr").querySelector(".pedido-estado");
-				if (estado) {
-					estado.value = "Enviado";
-					estado.dataset.estadoOriginal = "Enviado";
+			const previewModalEl = document.getElementById("previewEnvioModal");
+			document.getElementById("previewEnvioMensaje").textContent = datos.mensaje ?? "";
+			document.getElementById("previewEnvioDestinatario").textContent =
+				selRepartidor.options[selRepartidor.selectedIndex]?.text ?? "Repartidor";
+
+			const confirmBtn = document.getElementById("previewEnvioConfirmar");
+			const nuevoBtn = confirmBtn.cloneNode(true);
+			confirmBtn.parentNode.replaceChild(nuevoBtn, confirmBtn);
+
+			nuevoBtn.addEventListener("click", async () => {
+				nuevoBtn.disabled = true;
+				try {
+					const resp2 = await fetch("/Pedidos/EnviarSeleccionados", {
+						method: "POST",
+						headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+						body: JSON.stringify(cuerpo)
+					});
+					const datos2 = await resp2.json().catch(() => null);
+					if (!resp2.ok) {
+						mostrarErrores(datos2?.errores ?? [{ mensaje: "No se pudo procesar los pedidos." }]);
+						nuevoBtn.disabled = false;
+						return;
+					}
+
+					for (const check of seleccionados) {
+						check.checked = false;
+						const estado = check.closest("tr").querySelector(".pedido-estado");
+						if (estado) {
+							estado.value = "Enviado";
+							estado.dataset.estadoOriginal = "Enviado";
+						}
+					}
+					$("pedidosWhatsapp").href = datos2.whatsappUrl;
+					alertaEnviado.classList.remove("d-none");
+					selRepartidor.value = "";
+					actualizar();
+
+					const previewModal = bootstrap.Modal.getInstance(previewModalEl);
+					if (previewModal) previewModal.hide();
+					window.open(datos2.whatsappUrl, "_blank");
+					setTimeout(() => window.location.reload(), 800);
+				} catch {
+					mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
+					nuevoBtn.disabled = false;
 				}
-			}
-			alertaEnviado.classList.remove("d-none");
-			selRepartidor.value = "";
-			actualizar();
+			});
+
+			new bootstrap.Modal(previewModalEl).show();
+			btnEnviar.disabled = false;
 		} catch {
-			cerrarVentanaWhatsapp();
 			mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
 			actualizar();
 		}

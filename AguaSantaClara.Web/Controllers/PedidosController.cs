@@ -67,6 +67,10 @@ public class PedidosController : Controller
                 .Include(p => p.Clientes).ThenInclude(c => c.Cliente)
                 .OrderByDescending(p => p.Id)
                 .ToListAsync(),
+            Locales = await _context.Locales
+                .Where(l => l.Estado && l.EstadoRegistro)
+                .OrderBy(l => l.Nombre)
+                .ToListAsync(),
             Repartidores = await _context.Repartidores
                 .Where(r => r.Estado && r.EstadoRegistro)
                 .OrderBy(r => r.Nombre)
@@ -108,6 +112,7 @@ public class PedidosController : Controller
             .Select(p => new
             {
                 idPedido = p.Id,
+                idLocal = p.IdLocal,
                 idRepartidor = p.IdRepartidor,
                 clientes = p.Clientes.Where(pc => pc.EstadoRegistro).Select(pc => new
                 {
@@ -143,18 +148,18 @@ public class PedidosController : Controller
 
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
-    public async Task<IActionResult> BuscarCliente(string q)
+    public async Task<IActionResult> BuscarCliente(string tipo, string q)
     {
-        var cliente = await _pedidoService.BuscarClienteAsync(q);
+        var cliente = await _pedidoService.BuscarClienteAsync(tipo, q);
         return cliente == null
-            ? NotFound(new { mensaje = "No se encontró un cliente con ese teléfono o DNI." })
+            ? NotFound(new { mensaje = "No se encontró un cliente con esos criterios." })
             : Json(cliente);
     }
 
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
-    public async Task<IActionResult> ProductosDisponibles() =>
-        Json(await _pedidoService.ProductosDisponiblesAsync());
+    public async Task<IActionResult> ProductosPorLocal(long idLocal) =>
+        Json(await _pedidoService.ProductosPorLocalAsync(idLocal));
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -204,9 +209,27 @@ public class PedidosController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> PreviewEnviarSeleccionados([FromBody] EnviarPedidosViewModel modelo)
+    {
+        var resultado = await _pedidoService.PreviewEnviarVariosAsync(modelo ?? new EnviarPedidosViewModel());
+        return resultado.Ok ? Json(resultado) : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> Enviar([FromBody] CrearPedidoViewModel modelo)
     {
         var resultado = await _pedidoService.CrearAsync(modelo ?? new CrearPedidoViewModel(), enviar: true);
+        return resultado.Ok ? Json(resultado) : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> PreviewEnviar([FromBody] CrearPedidoViewModel modelo)
+    {
+        var resultado = await _pedidoService.PreviewCrearAsync(modelo ?? new CrearPedidoViewModel());
         return resultado.Ok ? Json(resultado) : BadRequest(resultado);
     }
 }
