@@ -17,8 +17,8 @@ public class InsumosController : Controller
         _context = context;
     }
 
-    // ==================== INDEX CON FILTRO POR LÍNEA ====================
-    public async Task<IActionResult> Index(string? linea)
+    // ==================== INDEX CON FILTROS ====================
+    public async Task<IActionResult> Index(string? linea, bool? estado)
     {
         var consulta = _context.Insumos
             .Where(i => i.EstadoRegistro)
@@ -30,12 +30,20 @@ public class InsumosController : Controller
             consulta = consulta.Where(i => i.LineaProducto == linea);
         }
 
+        // Filtro por estado
+        if (estado.HasValue)
+        {
+            consulta = consulta.Where(i => i.Estado == estado.Value);
+        }
+
         var insumos = await consulta
             .OrderBy(i => i.LineaProducto)
             .ThenBy(i => i.Nombre)
             .ToListAsync();
 
         ViewBag.LineaFiltro = linea;
+        ViewBag.EstadoFiltro = estado;
+
         return View(insumos);
     }
 

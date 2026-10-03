@@ -1,8 +1,97 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Inicio";
+
+    // Determinamos el rol
+    var esGerente = User.IsInRole("Gerente");
+    var esAdministradora = User.IsInRole("Administradora");
+    var esVendedora = User.IsInRole("Vendedora");
+
+    // Nombre a mostrar
+    string saludo;
+
+    if (esGerente)
+    {
+        // Gerente: "Bienvenido" + nombre completo
+        var nombreCompleto = User.FindFirst("NombreCompleto")?.Value?.Trim();
+
+        if (string.IsNullOrWhiteSpace(nombreCompleto))
+        {
+            nombreCompleto = User.Identity?.Name?.Trim() ?? "Gerente";
+        }
+
+        saludo = $"Bienvenido {nombreCompleto}!";
+    }
+    else
+    {
+        // Administradora y Vendedora: "Bienvenida" + UserName
+        var userName = User.Identity?.Name?.Trim();
+
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            userName = "Usuario";
+        }
+
+        saludo = $"Bienvenida {userName}!";
+    }
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="home-container">
+    <section class="home-hero">
+        <h1 class="home-greeting">@saludo</h1>
+        <p class="home-system-name">SISTEMA DE PEDIDOS Y DISTRIBUCIÓN DE LA EMPRESA AGUA SANTA CLARA S.A.C.</p>
+    </section>
 </div>
+
+<style>
+    .home-container {
+        min-height: calc(100vh - 220px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .home-hero {
+        text-align: center;
+        max-width: 900px;
+    }
+
+    .home-greeting {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 72px;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+        color: var(--text);
+        margin: 0 0 24px;
+    }
+
+    .home-system-name {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        line-height: 1.6;
+        color: var(--text-secondary);
+        margin: 0 auto;
+        max-width: 720px;
+    }
+
+    @@media (max-width: 768px) {
+        .home-greeting {
+            font-size: 42px;
+            margin-bottom: 18px;
+        }
+        .home-system-name {
+            font-size: 11px;
+            letter-spacing: 0.1em;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .home-greeting {
+            font-size: 32px;
+        }
+    }
+</style>
