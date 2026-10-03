@@ -17,180 +17,184 @@ public class ProductosController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index(string? search)
+    // ==================== INDEX CON FILTROS ====================
+    public async Task<IActionResult> Index(string? search, string? categoria, bool? estado)
     {
-        var consulta = _context.Productos.AsQueryable();
+        var consulta = _context.Productos
+            .Where(p => p.EstadoRegistro)
+            .AsQueryable();
 
+        // Filtro por búsqueda
         if (!string.IsNullOrWhiteSpace(search))
         {
             var termino = search.Trim();
+            consulta = consulta.Where(p => p.Nombre.Contains(termino));
+        }
 
-            consulta = consulta.Where(p =>
-                p.Nombre.Contains(termino));
+        // Filtro por categoría
+        if (!string.IsNullOrWhiteSpace(categoria))
+        {
+            consulta = consulta.Where(p => p.Categoria == categoria);
+        }
+
+        // Filtro por estado
+        if (estado.HasValue)
+        {
+            consulta = consulta.Where(p => p.Estado == estado.Value);
         }
 
         var productos = await consulta
-            .OrderBy(p => p.Nombre)
+            .OrderBy(p => p.Categoria)
+            .ThenBy(p => p.Nombre)
             .ToListAsync();
 
-        ViewBag.Search = search;
+        var model = new ProductosIndexViewModel
+        {
+            Productos = productos,
+            Search = search,
+            CategoriaFiltro = categoria,
+            EstadoFiltro = estado
+        };
 
-        return View(productos);
+        return View(model);
     }
 
+    // ==================== CREATE ====================
     [HttpGet]
     [Authorize(Roles = "Administradora,Gerente")]
     public IActionResult Create()
     {
-        return View(new CrearProductoViewModel());
+        return PartialView("_Create", new CrearProductoViewModel());
     }
 
     [HttpPost]
-[ValidateAntiForgeryToken]
+    [ValidateAntiForgeryToken]
     [Authorize(Roles = "Administradora,Gerente")]
-public async Task<IActionResult> Create(CrearProductoViewModel model)
-{
-    if (!ModelState.IsValid)
+    public async Task<IActionResult> Create(CrearProductoViewModel model)
     {
-        return View(model);
+        // Validar nombre duplicado
+        var nombreDuplicado = await _context.Productos
+            .AnyAsync(p => p.Nombre == model.Nombre.Trim() && p.EstadoRegistro);
+
+        if (nombreDuplicado)
+            ModelState.AddModelError(nameof(model.Nombre), "Ya existe un producto con ese nombre.");
+
+        if (!ModelState.IsValid)
+            return PartialView("_Create", model);
+
+        var producto = new Producto
+        {
+            Nombre = model.Nombre.Trim(),
+            Descripcion = string.IsNullOrWhiteSpace(model.Descripcion) ? null : model.Descripcion.Trim(),
+            Categoria = model.Categoria,
+            PrecioVenta = model.PrecioVenta,
+            Costo = model.Costo,
+            Estado = model.Estado,
+            EstadoRegistro = true
+        };
+
+        _context.Productos.Add(producto);
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "PRODUCTO CREADO CORRECTAMENTE";
+        return RedirectToAction(nameof(Index));
     }
 
-    var producto = new Producto
+    // ==================== EDIT ====================
+    [HttpGet]
+    [Authorize(Roles = "Administradora,Gerente")]
+    public async Task<IActionResult> Edit(long id)
     {
-        Nombre = model.Nombre.Trim(),
-        Descripcion = string.IsNullOrWhiteSpace(model.Descripcion)
-            ? null
-            : model.Descripcion.Trim(),
-        PrecioVenta = model.PrecioVenta,
-        Costo = model.Costo,
-        StockActual = model.StockActual,
-        StockMinimo = model.StockMinimo,
-        Estado = model.Estado,
-        EstadoRegistro = true
-    };
+        var producto = await _context.Productos
+            .FirstOrDefaultAsync(p => p.Id == id && p.EstadoRegistro);
 
-    _context.Productos.Add(producto);
-    await _context.SaveChangesAsync();
+        if (producto == null)
+            return NotFound();
 
-    TempData["SuccessMessage"] = "PRODUCTO CREADO CORRECTAMENTE";
+        var model = new EditarProductoViewModel
+        {
+            Id = producto.Id,
+            Nombre = producto.Nombre,
+            Descripcion = producto.Descripcion,
+            Categoria = producto.Categoria ?? string.Empty,
+            PrecioVenta = producto.PrecioVenta,
+            Costo = producto.Costo
+        };
 
-    return RedirectToAction(nameof(Index));
-}
-
-[HttpGet]
-[Authorize(Roles = "Administradora,Gerente")]
-public async Task<IActionResult> Edit(long id)
-{
-    var producto = await _context.Productos
-        .FirstOrDefaultAsync(p => p.Id == id);
-
-    if (producto == null)
-        return NotFound();
-
-    var model = new EditarProductoViewModel
-    {
-        Id = producto.Id,
-        Nombre = producto.Nombre,
-        Descripcion = producto.Descripcion,
-        PrecioVenta = producto.PrecioVenta,
-        Costo = producto.Costo,
-        StockActual = producto.StockActual,
-        StockMinimo = producto.StockMinimo,
-        Estado = producto.Estado
-    };
-
-    return View(model);
-}
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-[Authorize(Roles = "Administradora,Gerente")]
-public async Task<IActionResult> Edit(EditarProductoViewModel model)
-{
-    if (!ModelState.IsValid)
-    {
-        return View(model);
+        return PartialView("_Edit", model);
     }
 
-    var producto = await _context.Productos
-        .FirstOrDefaultAsync(p => p.Id == model.Id);
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administradora,Gerente")]
+    public async Task<IActionResult> Edit(EditarProductoViewModel model)
+    {
+        var producto = await _context.Productos
+            .FirstOrDefaultAsync(p => p.Id == model.Id && p.EstadoRegistro);
 
-    if (producto == null)
-        return NotFound();
+        if (producto == null)
+            return NotFound();
 
-    producto.Nombre = model.Nombre.Trim();
-    producto.Descripcion = string.IsNullOrWhiteSpace(model.Descripcion)
-        ? null
-        : model.Descripcion.Trim();
-    producto.PrecioVenta = model.PrecioVenta;
-    producto.Costo = model.Costo;
-    producto.StockActual = model.StockActual;
-    producto.StockMinimo = model.StockMinimo;
-    producto.Estado = model.Estado;
+        // Validar nombre duplicado (excepto el mismo producto)
+        var nombreDuplicado = await _context.Productos
+            .AnyAsync(p => p.Nombre == model.Nombre.Trim() && p.Id != model.Id && p.EstadoRegistro);
 
-    await _context.SaveChangesAsync();
+        if (nombreDuplicado)
+            ModelState.AddModelError(nameof(model.Nombre), "Ya existe un producto con ese nombre.");
 
-    TempData["SuccessMessage"] = "PRODUCTO ACTUALIZADO CORRECTAMENTE";
+        if (!ModelState.IsValid)
+            return PartialView("_Edit", model);
 
-    return RedirectToAction(nameof(Index));
-}
+        producto.Nombre = model.Nombre.Trim();
+        producto.Descripcion = string.IsNullOrWhiteSpace(model.Descripcion) ? null : model.Descripcion.Trim();
+        producto.Categoria = model.Categoria;
+        producto.PrecioVenta = model.PrecioVenta;
+        producto.Costo = model.Costo;
 
-[HttpPost]
-[ValidateAntiForgeryToken]
-[Authorize(Roles = "Administradora,Gerente")]
-public async Task<IActionResult> Deactivate(long id)
-{
-    var producto = await _context.Productos
-        .FirstOrDefaultAsync(p => p.Id == id);
+        await _context.SaveChangesAsync();
 
-    if (producto == null)
-        return NotFound();
+        TempData["SuccessMessage"] = "PRODUCTO ACTUALIZADO CORRECTAMENTE";
+        return RedirectToAction(nameof(Index));
+    }
 
-    producto.Estado = false;
+    // ==================== CAMBIAR ESTADO ====================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administradora,Gerente")]
+    public async Task<IActionResult> CambiarEstado(long id, bool estado)
+    {
+        var producto = await _context.Productos
+            .FirstOrDefaultAsync(p => p.Id == id && p.EstadoRegistro);
 
-    await _context.SaveChangesAsync();
+        if (producto == null)
+            return NotFound();
 
-    TempData["SuccessMessage"] = "PRODUCTO DESACTIVADO CORRECTAMENTE";
+        producto.Estado = estado;
+        await _context.SaveChangesAsync();
 
-    return RedirectToAction(nameof(Index));
-}
-[HttpPost]
-[ValidateAntiForgeryToken]
-[Authorize(Roles = "Administradora,Gerente")]
-public async Task<IActionResult> Activate(long id)
-{
-    var producto = await _context.Productos
-        .FirstOrDefaultAsync(p => p.Id == id);
+        TempData["SuccessMessage"] = estado
+            ? "PRODUCTO ACTIVADO CORRECTAMENTE"
+            : "PRODUCTO DESACTIVADO CORRECTAMENTE";
 
-    if (producto == null)
-        return NotFound();
+        return RedirectToAction(nameof(Index));
+    }
 
-    producto.Estado = true;
+    // ==================== ELIMINAR ====================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administradora,Gerente")]
+    public async Task<IActionResult> Delete(long id)
+    {
+        var producto = await _context.Productos
+            .FirstOrDefaultAsync(p => p.Id == id && p.EstadoRegistro);
 
-    await _context.SaveChangesAsync();
+        if (producto == null)
+            return NotFound();
 
-    TempData["SuccessMessage"] = "PRODUCTO ACTIVADO CORRECTAMENTE";
+        _context.Productos.Remove(producto);
+        await _context.SaveChangesAsync();
 
-    return RedirectToAction(nameof(Index));
-}
-[HttpPost]
-[ValidateAntiForgeryToken]
-[Authorize(Roles = "Administradora,Gerente")]
-
-public async Task<IActionResult> Delete(long id)
-{
-    var producto = await _context.Productos
-        .FirstOrDefaultAsync(p => p.Id == id);
-
-    if (producto == null)
-        return NotFound();
-
-    _context.Productos.Remove(producto);
-    await _context.SaveChangesAsync();
-
-    TempData["SuccessMessage"] = "PRODUCTO ELIMINADO CORRECTAMENTE";
-
-    return RedirectToAction(nameof(Index));
-}
-
+        TempData["SuccessMessage"] = "PRODUCTO ELIMINADO CORRECTAMENTE";
+        return RedirectToAction(nameof(Index));
+    }
 }
