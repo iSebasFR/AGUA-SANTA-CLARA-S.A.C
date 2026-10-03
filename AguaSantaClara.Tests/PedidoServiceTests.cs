@@ -1,7 +1,9 @@
 using AguaSantaClara.Web.Data;
+using AguaSantaClara.Web.Controllers;
 using AguaSantaClara.Web.Models;
 using AguaSantaClara.Web.Models.Entities;
 using AguaSantaClara.Web.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Tests;
@@ -104,6 +106,146 @@ public class PedidoServiceTests
 
         Assert.True(resultado.Ok);
         Assert.Null(resultado.WhatsappUrl);
+        Assert.Equal(EstadosPedido.Pendiente, (await e.Db.Pedidos.SingleAsync()).Estado);
+    }
+
+    [Fact]
+    public async Task Actualizar_ReemplazaDatosYDetallesSinCrearOtroPedido()
+    {
+        var e = await CrearEscenarioAsync();
+        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+
+        var actualizado = await e.Servicio.ActualizarAsync(creado.IdPedido, Modelo(e, Linea(e.Beto, 0, (e.Hielo, 3))));
+
+        Assert.True(actualizado.Ok);
+        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
+        var pedido = await e.Db.Pedidos
+            .Include(p => p.Clientes).ThenInclude(c => c.Detalles)
+            .SingleAsync();
+        Assert.Equal(creado.IdPedido, pedido.Id);
+        Assert.Equal(15m, pedido.Total);
+        Assert.Equal(e.Beto.Id, pedido.Clientes.Single().IdCliente);
+        Assert.Equal(e.Hielo.Id, pedido.Clientes.Single().Detalles.Single().IdProducto);
+        Assert.Equal(3, pedido.Clientes.Single().Detalles.Single().Cantidad);
+    }
+
+    [Fact]
+    public async Task Eliminar_ExcluyePedidoDelListadoSinBorrarElRegistro()
+    {
+        var e = await CrearEscenarioAsync();
+        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+
+        var eliminado = await e.Servicio.EliminarAsync(creado.IdPedido);
+
+        Assert.True(eliminado);
+        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
+        Assert.False((await e.Db.Pedidos.SingleAsync()).EstadoRegistro);
+        Assert.Equal(0, await e.Db.Pedidos.CountAsync(p => p.EstadoRegistro));
+    }
+
+    [Fact]
+    public async Task Listado_FiltraPorEstadoClienteYProductoEnInterseccion()
+    {
+        var e = await CrearEscenarioAsync();
+        var pedidoAna = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Beto, 0, (e.Hielo, 1))), enviar: false);
+        await e.Servicio.EnviarVariosAsync(new EnviarPedidosViewModel
+        {
+            IdsPedidos = { pedidoAna.IdPedido!.Value },
+            IdRepartidor = e.Repartidor.Id
+        });
+
+        var controller = new PedidosController(e.Db, e.Servicio);
+        var resultado = await controller.Index(
+            fechaDesde: null,
+            fechaHasta: null,
+            estado: EstadosPedido.Enviado,
+            idCliente: e.Ana.Id,
+            idRepartidor: null,
+            idProducto: e.Galon.Id);
+
+        var modelo = Assert.IsType<PedidosIndexViewModel>(Assert.IsType<ViewResult>(resultado).Model);
+        Assert.Single(modelo.Pedidos);
+        Assert.Equal(pedidoAna.IdPedido, modelo.Pedidos[0].Id);
+    }
+
+    [Fact]
+    public async Task Listado_FiltraPorFechaYRepartidor()
+    {
+        var e = await CrearEscenarioAsync();
+        var pedidoAnterior = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+        var pedidoHoy = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Beto, 0, (e.Hielo, 1))), enviar: false);
+        await e.Servicio.EnviarVariosAsync(new EnviarPedidosViewModel
+        {
+            IdsPedidos = { pedidoAnterior.IdPedido!.Value, pedidoHoy.IdPedido!.Value },
+            IdRepartidor = e.Repartidor.Id
+        });
+        var anterior = await e.Db.Pedidos.SingleAsync(p => p.Id == pedidoAnterior.IdPedido);
+        anterior.FechaCreacion = DateTime.SpecifyKind(DateTime.Today.AddDays(-1), DateTimeKind.Local).ToUniversalTime();
+        await e.Db.SaveChangesAsync();
+
+        var controller = new PedidosController(e.Db, e.Servicio);
+        var resultado = await controller.Index(
+            fechaDesde: DateOnly.FromDateTime(DateTime.Today),
+            fechaHasta: DateOnly.FromDateTime(DateTime.Today),
+            estado: null,
+            idCliente: null,
+            idRepartidor: e.Repartidor.Id,
+            idProducto: null);
+
+        var modelo = Assert.IsType<PedidosIndexViewModel>(Assert.IsType<ViewResult>(resultado).Model);
+        Assert.Single(modelo.Pedidos);
+        Assert.Equal(pedidoHoy.IdPedido, modelo.Pedidos[0].Id);
+    }
+
+    [Fact]
+    public async Task Listado_RechazaMasDeTresTiposDeFiltro()
+    {
+        var e = await CrearEscenarioAsync();
+        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+        var controller = new PedidosController(e.Db, e.Servicio);
+
+        var resultado = await controller.Index(
+            fechaDesde: DateOnly.FromDateTime(DateTime.Today),
+            fechaHasta: null,
+            estado: EstadosPedido.Pendiente,
+            idCliente: e.Ana.Id,
+            idRepartidor: e.Repartidor.Id,
+            idProducto: e.Galon.Id);
+
+        var modelo = Assert.IsType<PedidosIndexViewModel>(Assert.IsType<ViewResult>(resultado).Model);
+        Assert.Equal("Puedes combinar como máximo 3 filtros.", modelo.ErrorFiltros);
+        Assert.Single(modelo.Pedidos);
+    }
+
+    [Theory]
+    [InlineData(EstadosPedido.Pendiente)]
+    [InlineData(EstadosPedido.Enviado)]
+    [InlineData(EstadosPedido.Entregado)]
+    [InlineData(EstadosPedido.ConIncidencia)]
+    [InlineData(EstadosPedido.Pagado)]
+    [InlineData(EstadosPedido.PagoParcial)]
+    public async Task CambiarEstado_GuardaCadaEstadoPermitido(string estado)
+    {
+        var e = await CrearEscenarioAsync();
+        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+
+        var resultado = await e.Servicio.CambiarEstadoAsync(creado.IdPedido!.Value, estado);
+
+        Assert.True(resultado.Ok);
+        Assert.Equal(estado, (await e.Db.Pedidos.SingleAsync()).Estado);
+    }
+
+    [Fact]
+    public async Task CambiarEstado_RechazaEstadoNoPermitido()
+    {
+        var e = await CrearEscenarioAsync();
+        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+
+        var resultado = await e.Servicio.CambiarEstadoAsync(creado.IdPedido!.Value, "Cancelado");
+
+        Assert.False(resultado.Ok);
+        Assert.Contains(resultado.Errores, error => error.Campo == "estado");
         Assert.Equal(EstadosPedido.Pendiente, (await e.Db.Pedidos.SingleAsync()).Estado);
     }
 

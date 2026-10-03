@@ -18,11 +18,78 @@
     }
 </div>
 
+<form asp-action="Index" method="get" id="pedidosFiltros" class="border-bottom pb-3 mb-3">
+    @if (!string.IsNullOrEmpty(Model.ErrorFiltros))
+    {
+        <div class="alert alert-danger" role="alert">@Model.ErrorFiltros</div>
+    }
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6 col-xl-4" data-tipo-filtro="fecha">
+            <label class="form-label">Fecha</label>
+            <div class="d-flex gap-2">
+                <input type="date" name="fechaDesde" class="form-control" aria-label="Fecha desde"
+                       value="@(Model.FechaDesde?.ToString("yyyy-MM-dd"))" />
+                <input type="date" name="fechaHasta" class="form-control" aria-label="Fecha hasta"
+                       value="@(Model.FechaHasta?.ToString("yyyy-MM-dd"))" />
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-2" data-tipo-filtro="estado">
+            <label for="filtroEstado" class="form-label">Estado</label>
+            <select id="filtroEstado" name="estado" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var estado in AguaSantaClara.Web.Models.Entities.EstadosPedido.Todos)
+                {
+                    <option value="@estado" selected="@(Model.EstadoFiltro == estado ? "selected" : null)">@estado</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6 col-xl-2" data-tipo-filtro="cliente">
+            <label for="filtroCliente" class="form-label">Cliente</label>
+            <select id="filtroCliente" name="idCliente" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var cliente in Model.ClientesFiltro)
+                {
+                    <option value="@cliente.Id" selected="@(Model.IdClienteFiltro == cliente.Id ? "selected" : null)">@cliente.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6 col-xl-2" data-tipo-filtro="repartidor">
+            <label for="filtroRepartidor" class="form-label">Repartidor</label>
+            <select id="filtroRepartidor" name="idRepartidor" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var repartidor in Model.RepartidoresFiltro)
+                {
+                    <option value="@repartidor.Id" selected="@(Model.IdRepartidorFiltro == repartidor.Id ? "selected" : null)">@repartidor.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6 col-xl-2" data-tipo-filtro="producto">
+            <label for="filtroProducto" class="form-label">Producto</label>
+            <select id="filtroProducto" name="idProducto" class="form-select">
+                <option value="">Todos</option>
+                @foreach (var producto in Model.ProductosFiltro)
+                {
+                    <option value="@producto.Id" selected="@(Model.IdProductoFiltro == producto.Id ? "selected" : null)">@producto.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="col-12 d-flex justify-content-end align-items-center gap-3">
+            <span id="pedidosFiltrosContador" class="small text-muted" role="status"></span>
+            <a asp-controller="Pedidos" asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-funnel me-1"></i> Filtrar
+            </button>
+        </div>
+    </div>
+</form>
+
 @if (esVendedora)
 {
     <div id="pedidosAcciones" class="card card-body mb-3">
         @Html.AntiForgeryToken()
         <div id="pedidosErrores" class="alert alert-danger d-none" role="alert"></div>
+        <div id="pedidoEstadoActualizado" class="alert alert-success d-none" role="status"></div>
+        <div id="pedidosEliminado" class="alert alert-success d-none" role="status"></div>
         <div id="pedidosEnviado" class="alert alert-success d-none" role="status">
             <p class="mb-2">Pedidos asignados y marcados como Enviado.</p>
             <a id="pedidosWhatsapp" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm">
@@ -60,6 +127,10 @@
                 <th>Repartidor</th>
                 <th class="text-end">Total</th>
                 <th>Estado</th>
+                @if (esVendedora)
+                {
+                    <th>Acciones</th>
+                }
             </tr>
         </thead>
         <tbody>
@@ -83,15 +154,43 @@
                         <td>@(pedido.Repartidor?.Nombre ?? "-")</td>
                         <td class="text-end">S/ @pedido.Total.ToString("0.00")</td>
                         <td>
-                            <span class="badge @(pedido.Estado == "Pendiente" ? "text-bg-warning" : "text-bg-primary")">@pedido.Estado</span>
+                            @if (esVendedora)
+                            {
+                                <select class="form-select form-select-sm pedido-estado" data-pedido-id="@pedido.Id"
+                                        data-estado-original="@pedido.Estado" aria-label="Estado del pedido @pedido.Id">
+                                    @foreach (var estado in AguaSantaClara.Web.Models.Entities.EstadosPedido.Todos)
+                                    {
+                                        <option value="@estado" selected="@(pedido.Estado == estado ? "selected" : null)">@estado</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                <span class="badge @(pedido.Estado == "Pendiente" ? "text-bg-warning" : "text-bg-primary")">@pedido.Estado</span>
+                            }
                         </td>
+                        @if (esVendedora)
+                        {
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary pedido-editar"
+                                        data-pedido-id="@pedido.Id" data-bs-toggle="modal" data-bs-target="#pedidoModal">
+                                    <i class="bi bi-pencil me-1"></i> Editar
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger pedido-eliminar"
+                                        data-pedido-id="@pedido.Id">
+                                    <i class="bi bi-trash me-1"></i> Borrar
+                                </button>
+                            </td>
+                        }
                     </tr>
                 }
             }
             else
             {
                 <tr>
-                    <td colspan="@(esVendedora ? 8 : 7)" class="text-center text-muted py-4">No hay pedidos registrados.</td>
+                    <td colspan="@(esVendedora ? 9 : 7)" class="text-center text-muted py-4">
+                        @(Model.TieneFiltrosAplicados ? "No se encontraron pedidos con esos filtros." : "No hay pedidos registrados.")
+                    </td>
                 </tr>
             }
         </tbody>
@@ -104,6 +203,7 @@
 }
 
 @section Scripts {
+    <script src="~/js/pedidos-filtros.js" asp-append-version="true"></script>
     @if (esVendedora)
     {
         <script src="~/js/pedidos.js" asp-append-version="true"></script>

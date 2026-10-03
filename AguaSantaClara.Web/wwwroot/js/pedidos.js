@@ -18,6 +18,7 @@
 	let productos = [];
 	let bloques = [];
 	let pedidoRegistrado = false;
+	let pedidoAEditar = null;
 
 	const moneda = valor => "S/ " + valor.toFixed(2);
 
@@ -131,7 +132,7 @@
 		actualizarTotales();
 	};
 
-	const agregarBloque = (cliente, idDireccion) => {
+	const agregarBloque = (cliente, idDireccion, detalles = null) => {
 		const bloque = { cliente, filas: [] };
 		const varias = cliente.direcciones.length > 1;
 
@@ -181,6 +182,16 @@
 		bloques.push(bloque);
 		contenedor.append(bloque.root);
 		agregarFila(bloque);
+		if (detalles?.length) {
+			for (let i = 1; i < detalles.length; i++) agregarFila(bloque);
+			detalles.forEach((detalle, i) => {
+				const fila = bloque.filas[i];
+				fila.select.value = String(detalle.idProducto);
+				fila.cantidad.value = String(detalle.cantidad);
+				fila.select.dispatchEvent(new Event("change"));
+				fila.cantidad.dispatchEvent(new Event("input"));
+			});
+		}
 		actualizarBotonesDireccion();
 	};
 
@@ -225,6 +236,21 @@
 		const resp = await fetch("/Pedidos/ProductosDisponibles");
 		if (resp.ok) productos = await resp.json();
 		reiniciarFilas();
+		if (pedidoAEditar === null) return;
+
+		try {
+			const respuesta = await fetch(`/Pedidos/ObtenerParaEditar?idPedido=${pedidoAEditar}`);
+			if (!respuesta.ok) throw new Error();
+			const pedido = await respuesta.json();
+			selRepartidor.value = pedido.idRepartidor == null ? "" : String(pedido.idRepartidor);
+			for (const linea of pedido.clientes)
+				agregarBloque(linea.cliente, linea.idDireccion, linea.detalles);
+			$("pedidoModalLabel").textContent = `Editar pedido N° ${pedido.idPedido}`;
+			btnEnviar.classList.add("d-none");
+			actualizarTotales();
+		} catch {
+			mostrarErrores([{ campo: "", mensaje: "No se pudo cargar el pedido para editar." }]);
+		}
 	};
 
 	const serializar = () => {
@@ -294,9 +320,15 @@
 		contenedor.replaceChildren();
 		lblTotal.textContent = moneda(0);
 		btnGuardar.disabled = btnEnviar.disabled = false;
+		$("pedidoModalLabel").textContent = "Crear pedido";
+		btnEnviar.classList.remove("d-none");
+		pedidoAEditar = null;
 	};
 
 	modalEl.addEventListener("show.bs.modal", cargarProductos);
+	document.querySelectorAll(".pedido-editar").forEach(btn => btn.addEventListener("click", () => {
+		pedidoAEditar = btn.dataset.pedidoId;
+	}));
 	$("pedidoBuscarBtn").addEventListener("click", buscarCliente);
 	inpBuscar.addEventListener("keydown", evento => {
 		if (evento.key === "Enter") {
@@ -304,7 +336,9 @@
 			buscarCliente();
 		}
 	});
-	btnGuardar.addEventListener("click", () => registrar("/Pedidos/Guardar", false));
+	btnGuardar.addEventListener("click", () => registrar(
+		pedidoAEditar === null ? "/Pedidos/Guardar" : `/Pedidos/Actualizar?idPedido=${pedidoAEditar}`,
+		false));
 	btnEnviar.addEventListener("click", () => registrar("/Pedidos/Enviar", true));
 	modalEl.addEventListener("hidden.bs.modal", () => {
 		if (pedidoRegistrado) {
