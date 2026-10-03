@@ -6,7 +6,6 @@ public class Cliente
     public string Nombre { get; set; } = null!;
     public string Telefono { get; set; } = null!;
     public string? Dni { get; set; }
-    public string? Email { get; set; }
     public bool Estado { get; set; } = true;
     public bool EstadoRegistro { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
