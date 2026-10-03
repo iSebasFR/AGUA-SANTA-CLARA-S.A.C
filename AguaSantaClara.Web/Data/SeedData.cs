@@ -68,66 +68,6 @@ public static class SeedData
             }
         }
 
-        // 4. Crear Usuario Administradora inicial (para pruebas de HU-03)
-        var rolAdmin = await roleManager.FindByNameAsync("Administradora");
-
-        if (rolAdmin != null)
-        {
-            string usernameAdmin = "admin";
-            var adminExistente = await userManager.FindByNameAsync(usernameAdmin);
-
-            if (adminExistente == null)
-            {
-                var adminUser = new Usuario
-                {
-                    UserName = usernameAdmin,
-                    Email = "admin@aguasantaclara.pe",
-                    EmailConfirmed = true,
-                    Nombres = "Maria",
-                    Apellidos = "Cordova",
-                    Estado = true,
-                    EstadoRegistro = true,
-                    FechaCreacion = DateTime.UtcNow,
-                    SecurityStamp = Guid.NewGuid().ToString("D"),
-                    IdRol = rolAdmin.Id
-                };
-
-                var resultAdmin = await userManager.CreateAsync(adminUser, "Admin1234*");
-
-                if (resultAdmin.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(adminUser, "Administradora");
-                }
-            }
-        }
-
-        // 5. Crear Usuario Vendedora inicial (para pruebas de HU-04 y HU-05)
-        var rolVendedora = await roleManager.FindByNameAsync("Vendedora");
-
-        if (rolVendedora != null && await userManager.FindByNameAsync("vendedora") == null)
-        {
-            var vendedoraUser = new Usuario
-            {
-                UserName = "vendedora",
-                Email = "vendedora@aguasantaclara.pe",
-                EmailConfirmed = true,
-                Nombres = "Rosa",
-                Apellidos = "Quispe",
-                Estado = true,
-                EstadoRegistro = true,
-                FechaCreacion = DateTime.UtcNow,
-                SecurityStamp = Guid.NewGuid().ToString("D"),
-                IdRol = rolVendedora.Id
-            };
-
-            var resultVendedora = await userManager.CreateAsync(vendedoraUser, "Vendedora123*");
-
-            if (resultVendedora.Succeeded)
-            {
-                await userManager.AddToRoleAsync(vendedoraUser, "Vendedora");
-            }
-        }
-
         await SeedPedidosAsync(services.GetRequiredService<AppDbContext>());
     }
     private static async Task SeedMetodosPagoAsync(AppDbContext db)
