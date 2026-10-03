@@ -18,7 +18,7 @@ builder.Services.AddIdentity<Usuario, Rol>(options =>
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
-    options.User.RequireUniqueEmail = true;
+    options.User.RequireUniqueEmail = false; // <-- CAMBIO: ya no usamos Email
 })
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
@@ -30,6 +30,14 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/Account/Logout";
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true; // <-- CAMBIO: renueva la cookie mientras el usuario está activo
+});
+
+// 4. CORRECCIÓN: Desactivar la revalidación del SecurityStamp en cada request
+// Esto evita que al crear/editar un usuario se invalide la cookie del Gerente actual
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromHours(8); // Revalida cada 8 horas (o usa TimeSpan.Zero para desactivar)
 });
 
 builder.Services.AddScoped<IPedidoService, PedidoService>();
@@ -51,7 +59,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// 4. Migración automática + Seed DENTRO del mismo scope al arrancar
+// 5. Migración automática + Seed DENTRO del mismo scope al arrancar
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -76,6 +84,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
 // Swagger (solo en desarrollo)
 if (app.Environment.IsDevelopment())
 {
@@ -86,10 +95,9 @@ if (app.Environment.IsDevelopment())
         options.RoutePrefix = "swagger";
     });
 }
+
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
