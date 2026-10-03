@@ -34,7 +34,7 @@ public static class SeedData
             }
         }
 
-        // 2. Obtener la entidad del Rol Gerente (aquí se declara la variable)
+        // 2. Obtener la entidad del Rol Gerente
         var rolGerente = await roleManager.FindByNameAsync("Gerente");
 
         if (rolGerente == null)
@@ -70,6 +70,7 @@ public static class SeedData
 
         await SeedPedidosAsync(services.GetRequiredService<AppDbContext>());
     }
+
     private static async Task SeedMetodosPagoAsync(AppDbContext db)
     {
         var metodos = new[] { "Efectivo", "Yape", "Transferencia Bancaria" };
@@ -80,43 +81,25 @@ public static class SeedData
         }
         await db.SaveChangesAsync();
     }
+
     private static async Task SeedPedidosAsync(AppDbContext db)
     {
-        var catalogo = new[]
+        // ============================================================
+        // ❌ PRODUCTOS PREDETERMINADOS ELIMINADOS
+        // Los productos se registran manualmente desde el módulo Catálogo.
+        // ============================================================
+
+        // ============================================================
+        // LOCALES (se mantienen por si se usan en el sistema)
+        // ============================================================
+        var localesIniciales = new[]
         {
-            new { Nombre = "Galones 11L", Precio = 12.00m, Costo = 7.00m },
-            new { Nombre = "Galones 8L", Precio = 9.00m, Costo = 5.00m },
-            new { Nombre = "Bidones 20L", Precio = 10.00m, Costo = 6.00m },
-            new { Nombre = "Bolsas de Hielo", Precio = 5.00m, Costo = 2.50m },
-            new { Nombre = "Papel Higiénico", Precio = 25.00m, Costo = 18.00m }
+            "Santa Rosa",
+            "Niño Jesús",
+            "Apurímac"
         };
 
-        var stockPorLocal = new[]
-        {
-            new { Local = "Santa Rosa", Producto = "Galones 11L", Stock = 120 },
-            new { Local = "Santa Rosa", Producto = "Galones 8L", Stock = 80 },
-            new { Local = "Santa Rosa", Producto = "Bidones 20L", Stock = 150 },
-            new { Local = "Niño Jesús", Producto = "Galones 11L", Stock = 90 },
-            new { Local = "Niño Jesús", Producto = "Bolsas de Hielo", Stock = 3 },
-            new { Local = "Apurímac", Producto = "Papel Higiénico", Stock = 60 }
-        };
-
-        foreach (var item in catalogo)
-        {
-            if (await db.Productos.AnyAsync(p => p.Nombre == item.Nombre))
-                continue;
-
-            db.Productos.Add(new Producto
-            {
-                Nombre = item.Nombre,
-                PrecioVenta = item.Precio,
-                Costo = item.Costo,
-                StockActual = stockPorLocal.Where(s => s.Producto == item.Nombre).Sum(s => s.Stock),
-                StockMinimo = 5
-            });
-        }
-
-        foreach (var nombre in stockPorLocal.Select(s => s.Local).Distinct())
+        foreach (var nombre in localesIniciales)
         {
             if (!await db.Locales.AnyAsync(l => l.Nombre == nombre))
                 db.Locales.Add(new Local { Nombre = nombre });
@@ -124,22 +107,9 @@ public static class SeedData
 
         await db.SaveChangesAsync();
 
-        foreach (var item in stockPorLocal)
-        {
-            var local = await db.Locales.FirstAsync(l => l.Nombre == item.Local);
-            var producto = await db.Productos.FirstAsync(p => p.Nombre == item.Producto);
-
-            if (await db.ProductosLocal.AnyAsync(p => p.IdLocal == local.Id && p.IdProducto == producto.Id))
-                continue;
-
-            db.ProductosLocal.Add(new ProductoLocal
-            {
-                IdLocal = local.Id,
-                IdProducto = producto.Id,
-                Stock = item.Stock
-            });
-        }
-
+        // ============================================================
+        // REPARTIDORES (se mantienen para pruebas de pedidos)
+        // ============================================================
         var repartidores = new[]
         {
             new { Nombre = "Carlos Ramos", Celular = "51991093927" },

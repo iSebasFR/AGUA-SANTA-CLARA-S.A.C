@@ -191,6 +191,17 @@ public class ProductosController : Controller
         if (producto == null)
             return NotFound();
 
+        // 1. Eliminar primero los registros relacionados en ProductoLocal
+        var productosLocal = await _context.ProductosLocal
+            .Where(pl => pl.IdProducto == id)
+            .ToListAsync();
+
+        if (productosLocal.Any())
+        {
+            _context.ProductosLocal.RemoveRange(productosLocal);
+        }
+
+        // 2. Ahora eliminar el producto
         _context.Productos.Remove(producto);
         await _context.SaveChangesAsync();
 
