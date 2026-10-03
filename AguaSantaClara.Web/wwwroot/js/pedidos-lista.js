@@ -114,6 +114,16 @@
 
 	btnEnviar.addEventListener("click", async () => {
 		alertaErrores.classList.add("d-none");
+		const seleccionados = marcados();
+		if (!selRepartidor.value) {
+			mostrarErrores([{ mensaje: "Selecciona un repartidor." }]);
+			return;
+		}
+
+		const ventanaWhatsapp = window.open("about:blank", "_blank");
+		const cerrarVentanaWhatsapp = () => {
+			if (ventanaWhatsapp && !ventanaWhatsapp.closed) ventanaWhatsapp.close();
+		};
 		btnEnviar.disabled = true;
 
 		try {
@@ -121,25 +131,36 @@
 				method: "POST",
 				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
 				body: JSON.stringify({
-					idsPedidos: marcados().map(c => Number(c.value)),
+					idsPedidos: seleccionados.map(c => Number(c.value)),
 					idRepartidor: Number(selRepartidor.value) || null
 				})
 			});
 			const datos = await resp.json().catch(() => null);
 
 			if (!resp.ok) {
+				cerrarVentanaWhatsapp();
 				mostrarErrores(datos?.errores ?? [{ mensaje: "No se pudo enviar los pedidos." }]);
 				actualizar();
 				return;
 			}
 
 			$("pedidosWhatsapp").href = datos.whatsappUrl;
-			$("pedidosWhatsapp").addEventListener("click", () => setTimeout(() => window.location.reload(), 500), { once: true });
+			$("pedidosWhatsapp").onclick = () => setTimeout(() => window.location.reload(), 500);
+			if (ventanaWhatsapp) ventanaWhatsapp.location.href = datos.whatsappUrl;
+			for (const check of seleccionados) {
+				check.checked = false;
+				check.disabled = true;
+				const estado = check.closest("tr").querySelector(".pedido-estado");
+				if (estado) {
+					estado.value = "Enviado";
+					estado.dataset.estadoOriginal = "Enviado";
+				}
+			}
 			alertaEnviado.classList.remove("d-none");
-			selRepartidor.disabled = true;
-			todos.disabled = true;
-			checks().forEach(c => c.disabled = true);
+			selRepartidor.value = "";
+			actualizar();
 		} catch {
+			cerrarVentanaWhatsapp();
 			mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
 			actualizar();
 		}
