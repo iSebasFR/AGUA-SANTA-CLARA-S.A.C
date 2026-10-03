@@ -1,479 +1,66 @@
-@model AguaSantaClara.Web.Models.ClientesIndexViewModel
-@using AguaSantaClara.Web.Models
+@model IEnumerable<AguaSantaClara.Web.Models.Entities.Cliente>
 
 @{
     ViewData["Title"] = "Clientes";
-    var seleccionado = Model.Seleccionado;
-    var canEdit = User.IsInRole("Vendedora") || User.IsInRole("Gerente") || User.IsInRole("Administradora");
+    var successMessage = TempData["SuccessMessage"] as string;
 }
 
-<div class="clientes-layout">
-
-    <!-- ===================== PANEL IZQUIERDO: LISTA ===================== -->
-    <section class="clientes-list-panel">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-            <div>
-                <h2 class="h5 mb-1">Clientes</h2>
-                <p class="text-muted small mb-0">Gestión de clientes y direcciones de entrega.</p>
-            </div>
-            @if (User.IsInRole("Vendedora"))
-            {
-                <a asp-action="Create" class="btn btn-primary btn-sm">
-                    <i class="bi bi-plus-lg me-1"></i> Crear cliente
-                </a>
-            }
-        </div>
-
-        <form asp-action="Index" method="get" class="mb-3">
-            <div class="input-group input-group-sm">
-                <span class="input-group-text bg-body"><i class="bi bi-search"></i></span>
-                <input name="search" value="@Model.Search" class="form-control"
-                       placeholder="Buscar por nombre, DNI o teléfono..." />
-            </div>
-        </form>
-
-        <div class="clientes-list-scroll">
-            <table class="table table-hover align-middle mb-0 clientes-table">
-                <thead class="table-light">
-                    <tr>
-                        <th>Cliente</th>
-                        <th>DNI / RUC</th>
-                        <th>Teléfono</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!Model.Clientes.Any())
-                    {
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">
-                                No hay clientes registrados.
-                            </td>
-                        </tr>
-                    }
-                    else
-                    {
-                        foreach (var c in Model.Clientes)
-                        {
-                            var activo = seleccionado?.Id == c.Id;
-                            <tr class="@(activo ? "table-active" : "")"
-                                onclick="window.location='@Url.Action("Index", new { id = c.Id, search = Model.Search })'"
-                                style="cursor:pointer;">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-circle">@ObtenerIniciales(c.Nombre)</div>
-                                        <div class="ms-2">
-                                            <div class="fw-semibold">@c.Nombre</div>
-                                            <div class="text-muted small">@(c.Email ?? "—")</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>@(string.IsNullOrWhiteSpace(c.Dni) ? "—" : c.Dni)</td>
-                                <td>@c.Telefono</td>
-                                <td>
-                                    @if (c.Estado)
-                                    {
-                                        <span class="badge rounded-pill text-bg-success">Activo</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge rounded-pill text-bg-secondary">Inactivo</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- ===================== PANEL DERECHO: DETALLE ===================== -->
-    <section class="clientes-detail-panel">
-        @if (seleccionado == null)
-        {
-            <div class="empty-state">
-                <i class="bi bi-person-vcard"></i>
-                <p class="mb-0">Selecciona un cliente para ver su ficha</p>
-            </div>
-        }
-        else
-        {
-            <!-- Header -->
-            <header class="detail-header">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="avatar-circle avatar-lg">@ObtenerIniciales(seleccionado.Nombre)</div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <h3 class="h5 mb-0">@seleccionado.Nombre</h3>
-                            @if (seleccionado.Estado)
-                            {
-                                <span class="badge rounded-pill text-bg-success">Activo</span>
-                            }
-                            else
-                            {
-                                <span class="badge rounded-pill text-bg-secondary">Inactivo</span>
-                            }
-                        </div>
-                        <div class="text-muted small mt-1">
-                            <span>DNI @(string.IsNullOrWhiteSpace(seleccionado.Dni) ? "—" : seleccionado.Dni)</span>
-                            <span class="mx-2">·</span>
-                            <span>@seleccionado.Telefono</span>
-                        </div>
-                    </div>
-                    @if (canEdit)
-                    {
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-primary btn-sm"
-                                    data-bs-toggle="modal" data-bs-target="#editarClienteModal">
-                                <i class="bi bi-pencil me-1"></i> Editar
-                            </button>
-                            <form asp-action="Delete" method="post" class="d-inline"
-                                  onsubmit="return confirm('¿Eliminar este cliente y sus direcciones?');">
-                                <input type="hidden" name="id" value="@seleccionado.Id" />
-                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                    <i class="bi bi-trash me-1"></i> Eliminar
-                                </button>
-                            </form>
-                        </div>
-                    }
-                </div>
-
-                <!-- Tabs -->
-                <ul class="nav nav-tabs mt-4" role="tablist">
-                    <li class="nav-item">
-                        <button class="nav-link active" data-bs-toggle="tab"
-                                data-bs-target="#tab-info" type="button" role="tab">
-                            Información general
-                        </button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" data-bs-toggle="tab"
-                                data-bs-target="#tab-direcciones" type="button" role="tab">
-                            Direcciones <span class="badge text-bg-secondary ms-1">@seleccionado.Direcciones.Count</span>
-                        </button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" data-bs-toggle="tab"
-                                data-bs-target="#tab-historial" type="button" role="tab">
-                            Historial de pedidos
-                        </button>
-                    </li>
-                </ul>
-            </header>
-
-            <!-- Body -->
-            <div class="detail-body tab-content">
-
-                <!-- TAB: Información -->
-                <div class="tab-pane fade show active" id="tab-info">
-                    <h6 class="section-title">Datos del cliente</h6>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="info-item">
-                                <span class="info-label">Nombre / Razón social</span>
-                                <span class="info-value">@seleccionado.Nombre</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-item">
-                                <span class="info-label">DNI / RUC</span>
-                                <span class="info-value">@(string.IsNullOrWhiteSpace(seleccionado.Dni) ? "—" : seleccionado.Dni)</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-item">
-                                <span class="info-label">Teléfono</span>
-                                <span class="info-value">@seleccionado.Telefono</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-item">
-                                <span class="info-label">Email</span>
-                                <span class="info-value">@(string.IsNullOrWhiteSpace(seleccionado.Email) ? "—" : seleccionado.Email)</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-item">
-                                <span class="info-label">Estado</span>
-                                <span class="info-value">@(seleccionado.Estado ? "Activo" : "Inactivo")</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-item">
-                                <span class="info-label">Fecha de registro</span>
-                                <span class="info-value">@seleccionado.FechaCreacion.ToString("dd/MM/yyyy")</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TAB: Direcciones -->
-                <div class="tab-pane fade" id="tab-direcciones">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="section-title mb-0">Direcciones de entrega</h6>
-                        @if (User.IsInRole("Vendedora"))
-                        {
-                            <button type="button" class="btn btn-primary btn-sm"
-                                    data-bs-toggle="modal" data-bs-target="#agregarDireccionModal">
-                                <i class="bi bi-plus-lg me-1"></i> Agregar dirección
-                            </button>
-                        }
-                    </div>
-
-                    @if (!seleccionado.Direcciones.Any())
-                    {
-                        <p class="text-muted mb-0">Este cliente aún no tiene direcciones registradas.</p>
-                    }
-                    else
-                    {
-                        <div class="d-grid gap-2">
-                            @foreach (var d in seleccionado.Direcciones.OrderByDescending(x => x.Principal))
-                            {
-                                <div class="direccion-card">
-                                    <div class="d-flex align-items-start gap-3">
-                                        <div class="direccion-icon">
-                                            <i class="bi bi-geo-alt"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                                                <strong>@d.Direccion</strong>
-                                                @if (d.Principal)
-                                                {
-                                                    <span class="badge rounded-pill text-bg-primary">Principal</span>
-                                                }
-                                            </div>
-                                            @if (!string.IsNullOrWhiteSpace(d.Ciudad))
-                                            {
-                                                <div class="text-muted small">@d.Ciudad</div>
-                                            }
-                                            @if (!string.IsNullOrWhiteSpace(d.Referencia))
-                                            {
-                                                <div class="text-muted small">Ref: @d.Referencia</div>
-                                            }
-                                            @if (!string.IsNullOrWhiteSpace(d.UrlUbicacion))
-                                            {
-                                                <a href="@d.UrlUbicacion" target="_blank" rel="noopener noreferrer" class="small">
-                                                    <i class="bi bi-geo"></i> Ver ubicación
-                                                </a>
-                                            }
-                                        </div>
-                                        @if (User.IsInRole("Vendedora"))
-                                        {
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-link text-muted" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end">
-                                                    <li>
-                                                        <a class="dropdown-item" asp-action="EditAddress" asp-route-id="@d.Id">
-                                                            <i class="bi bi-pencil me-2"></i> Editar
-                                                        </a>
-                                                    </li>
-                                                    @if (!d.Principal)
-                                                    {
-                                                        <li>
-                                                            <form asp-action="SetPrimaryAddress" method="post">
-                                                                <input type="hidden" name="id" value="@d.Id" />
-                                                                <input type="hidden" name="clienteId" value="@seleccionado.Id" />
-                                                                <button type="submit" class="dropdown-item">
-                                                                    <i class="bi bi-star me-2"></i> Marcar principal
-                                                                </button>
-                                                            </form>
-                                                        </li>
-                                                    }
-                                                </ul>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        </div>
-
-                        <div class="alert alert-info mt-3 mb-0 small">
-                            <i class="bi bi-info-circle me-1"></i>
-                            La dirección principal se utiliza para la entrega de pedidos por defecto.
-                        </div>
-                    }
-                </div>
-
-                <!-- TAB: Historial -->
-                <div class="tab-pane fade" id="tab-historial">
-                    @if (!Model.Pedidos.Any())
-                    {
-                        <div class="empty-state-small">
-                            <i class="bi bi-cart-x"></i>
-                            <p class="mb-0">Este cliente aún no tiene pedidos registrados.</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="section-title mb-0">Historial de pedidos</h6>
-                            <span class="text-muted small">@Model.Pedidos.Count pedido(s)</span>
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0 historial-table">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 70px;">N°</th>
-                                        <th>Fecha</th>
-                                        <th>Local</th>
-                                        <th>Repartidor</th>
-                                        <th class="text-end">Total</th>
-                                        <th class="text-center">Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var pedido in Model.Pedidos)
-                                    {
-                                        <tr>
-                                            <td><strong>#@pedido.Id</strong></td>
-                                            <td>
-                                                <div class="small">@pedido.FechaCreacion.ToString("dd/MM/yyyy")</div>
-                                                <div class="text-muted" style="font-size:0.75rem;">
-                                                    @pedido.FechaEntrega.ToString("dd/MM/yyyy HH:mm")
-                                                </div>
-                                            </td>
-                                            <td class="small">@pedido.Local.Nombre</td>
-                                            <td class="small">
-                                                @(pedido.Repartidor?.Nombre ?? "—")
-                                            </td>
-                                            <td class="text-end fw-semibold">S/ @pedido.Total.ToString("0.00")</td>
-                                            <td class="text-center">
-                                                @{
-                                                    var badgeClass = pedido.Estado switch
-                                                    {
-                                                        "Pendiente" => "text-bg-warning",
-                                                        "Enviado" => "text-bg-info",
-                                                        "Entregado" => "text-bg-primary",
-                                                        "Con Incidencia" => "text-bg-danger",
-                                                        "Pagado" => "text-bg-success",
-                                                        "Pago Parcial" => "text-bg-secondary",
-                                                        _ => "text-bg-secondary"
-                                                    };
-                                                }
-                                                <span class="badge rounded-pill @badgeClass">@pedido.Estado</span>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
-            </div>
-
-            <!-- ===================== MODAL: Editar cliente ===================== -->
-            <div class="modal fade" id="editarClienteModal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-lg modal-dialog-centered">
-                    <div class="modal-content">
-                        <form asp-action="Edit" method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="Id" value="@seleccionado.Id" />
-                            <div class="modal-header">
-                                <h5 class="modal-title">Editar cliente</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Nombre / Razón social</label>
-                                        <input name="Nombre" value="@seleccionado.Nombre" class="form-control" required />
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Teléfono</label>
-                                        <input name="Telefono" value="@seleccionado.Telefono" class="form-control" required />
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">DNI</label>
-                                        <input name="Dni" value="@seleccionado.Dni" class="form-control" maxlength="8" />
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Email</label>
-                                        <input name="Email" value="@seleccionado.Email" class="form-control" />
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="Estado" value="true"
-                                                   id="editEstado" @(seleccionado.Estado ? "checked" : "") />
-                                            <label class="form-check-label" for="editEstado">Activo</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Guardar cambios</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===================== MODAL: Agregar dirección ===================== -->
-            @if (User.IsInRole("Vendedora"))
-            {
-                <div class="modal fade" id="agregarDireccionModal" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-lg modal-dialog-centered">
-                        <div class="modal-content">
-                            <form asp-action="AddAddress" method="post">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="IdCliente" value="@seleccionado.Id" />
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Agregar dirección</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="row g-3">
-                                        <div class="col-12">
-                                            <label class="form-label">Dirección</label>
-                                            <input name="Direccion" class="form-control" required />
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label">Ciudad</label>
-                                            <input name="Ciudad" class="form-control" />
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label">Referencia</label>
-                                            <input name="Referencia" class="form-control" />
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label">URL de ubicación (opcional)</label>
-                                            <input name="UrlUbicacion" class="form-control" />
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="Principal"
-                                                       value="true" id="addPrincipal" />
-                                                <label class="form-check-label" for="addPrincipal">
-                                                    Usar como dirección principal
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary">Guardar dirección</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            }
-        }
-    </section>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h4 mb-1">Clientes</h2>
+        <p class="text-muted mb-0">Gestión de clientes.</p>
+    </div>
+    @if (User.IsInRole("Vendedora"))
+    {
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Crear cliente
+        </a>
+    }
 </div>
 
-@functions {
-    string ObtenerIniciales(string? nombre)
-    {
-        if (string.IsNullOrWhiteSpace(nombre)) return "?";
-        var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (partes.Length == 1)
-            return partes[0].Substring(0, Math.Min(2, partes[0].Length)).ToUpper();
-        return $"{partes[0][0]}{partes[1][0]}".ToUpper();
-    }
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="alert alert-success" role="alert">@successMessage</div>
 }
+
+<form asp-action="Index" method="get" class="mb-3">
+    <div class="input-group">
+        <input name="search" value="@ViewBag.Search" class="form-control" placeholder="Buscar por nombre o teléfono" aria-label="Buscar clientes por nombre o teléfono" />
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i> Buscar
+        </button>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Nombre / Razón social</th>
+                <th>Teléfono</th>
+                <th>Dirección principal</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Any())
+            {
+                @foreach (var cliente in Model)
+                {
+                    <tr>
+                        <td><a asp-action="Details" asp-route-id="@cliente.Id">@cliente.Nombre</a></td>
+                        <td>@cliente.Telefono</td>
+                        <td>@(cliente.Direcciones.FirstOrDefault(direccion => direccion.Principal)?.Direccion ?? cliente.Direcciones.FirstOrDefault()?.Direccion ?? "-")</td>
+                        <td>@(cliente.Estado ? "Activo" : "Inactivo")</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">No hay clientes registrados.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
