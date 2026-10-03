@@ -17,11 +17,6 @@ public class CrearUsuarioViewModel
     [Display(Name = "Usuario")]
     public string UserName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "El correo electrónico es obligatorio.")]
-    [EmailAddress(ErrorMessage = "Ingrese un correo electrónico válido.")]
-    [Display(Name = "Correo electrónico")]
-    public string Email { get; set; } = string.Empty;
-
     [Required(ErrorMessage = "La contraseña es obligatoria.")]
     [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.")]
     [DataType(DataType.Password)]

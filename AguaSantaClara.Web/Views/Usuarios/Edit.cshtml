@@ -21,12 +21,7 @@
     <div class="row g-3">
         <div class="col-md-6">
             <label asp-for="UserName" class="form-label"></label>
-            <input asp-for="UserName" class="form-control" readonly />
-        </div>
-        <div class="col-md-6">
-            <label asp-for="Email" class="form-label"></label>
-            <input asp-for="Email" class="form-control" autocomplete="email" />
-            <span asp-validation-for="Email" class="text-danger"></span>
+            <input asp-for="UserName" class="form-control" />
         </div>
         <div class="col-md-6">
             <label asp-for="Nombres" class="form-label"></label>
@@ -77,12 +72,6 @@
         <button type="submit" class="btn btn-primary">
             <i class="bi bi-save me-1"></i> Guardar cambios
         </button>
-        @if (Model.Estado)
-        {
-            <button type="submit" class="btn btn-outline-danger" formaction="@Url.Action("Deactivate", "Usuarios")">
-                <i class="bi bi-person-dash me-1"></i> Desactivar
-            </button>
-        }
     </div>
 </form>
 
