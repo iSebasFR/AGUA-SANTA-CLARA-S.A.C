@@ -5,7 +5,6 @@ namespace AguaSantaClara.Web.Models;
 public class PedidosIndexViewModel
 {
     public List<Pedido> Pedidos { get; set; } = new();
-    public List<Local> Locales { get; set; } = new();
     public List<Repartidor> Repartidores { get; set; } = new();
 }
 
@@ -27,10 +26,9 @@ public class DireccionBusquedaViewModel
     public bool Principal { get; set; }
 }
 
-public class ProductoLocalViewModel
+public class ProductoPedidoViewModel
 {
     public long IdProducto { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public decimal Precio { get; set; }
-    public int Stock { get; set; }
 }

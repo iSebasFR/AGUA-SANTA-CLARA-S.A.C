@@ -18,16 +18,15 @@ public static class EstadosPedido
 public class Pedido
 {
     public long Id { get; set; }
-    public long IdLocal { get; set; }
+    public long? IdLocal { get; set; }
     public long? IdRepartidor { get; set; }
-    public DateTime FechaEntrega { get; set; }
     public string Estado { get; set; } = EstadosPedido.Pendiente;
     public decimal Total { get; set; }
     public bool EstadoRegistro { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaActualizacion { get; set; }
 
-    public Local Local { get; set; } = null!;
+    public Local? Local { get; set; }
     public Repartidor? Repartidor { get; set; }
     public ICollection<PedidoCliente> Clientes { get; set; } = new List<PedidoCliente>();
 }

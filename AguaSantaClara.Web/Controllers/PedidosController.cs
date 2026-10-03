@@ -30,10 +30,6 @@ public class PedidosController : Controller
                 .Where(p => p.EstadoRegistro)
                 .OrderByDescending(p => p.Id)
                 .ToListAsync(),
-            Locales = await _context.Locales
-                .Where(l => l.Estado && l.EstadoRegistro)
-                .OrderBy(l => l.Nombre)
-                .ToListAsync(),
             Repartidores = await _context.Repartidores
                 .Where(r => r.Estado && r.EstadoRegistro)
                 .OrderBy(r => r.Nombre)
@@ -55,8 +51,8 @@ public class PedidosController : Controller
 
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
-    public async Task<IActionResult> ProductosPorLocal(long idLocal) =>
-        Json(await _pedidoService.ProductosPorLocalAsync(idLocal));
+    public async Task<IActionResult> ProductosDisponibles() =>
+        Json(await _pedidoService.ProductosDisponiblesAsync());
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -64,6 +60,15 @@ public class PedidosController : Controller
     public async Task<IActionResult> Guardar([FromBody] CrearPedidoViewModel modelo)
     {
         var resultado = await _pedidoService.CrearAsync(modelo ?? new CrearPedidoViewModel(), enviar: false);
+        return resultado.Ok ? Json(resultado) : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> EnviarSeleccionados([FromBody] EnviarPedidosViewModel modelo)
+    {
+        var resultado = await _pedidoService.EnviarVariosAsync(modelo ?? new EnviarPedidosViewModel());
         return resultado.Ok ? Json(resultado) : BadRequest(resultado);
     }
 

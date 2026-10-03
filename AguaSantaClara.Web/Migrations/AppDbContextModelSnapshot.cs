@@ -606,11 +606,7 @@ namespace AguaSantaClara.Web.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha_creacion");
 
-                    b.Property<DateTime>("FechaEntrega")
-                        .HasColumnType("timestamp without time zone")
-                        .HasColumnName("fecha_entrega");
-
-                    b.Property<long>("IdLocal")
+                    b.Property<long?>("IdLocal")
                         .HasColumnType("bigint")
                         .HasColumnName("id_local");
 
@@ -627,9 +623,6 @@ namespace AguaSantaClara.Web.Migrations
 
                     b.HasIndex("Estado")
                         .HasDatabaseName("idx_pedido_estado");
-
-                    b.HasIndex("FechaEntrega")
-                        .HasDatabaseName("idx_pedido_fecha_entrega");
 
                     b.HasIndex("IdLocal");
 
@@ -1324,8 +1317,7 @@ namespace AguaSantaClara.Web.Migrations
                     b.HasOne("AguaSantaClara.Web.Models.Entities.Local", "Local")
                         .WithMany()
                         .HasForeignKey("IdLocal")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("AguaSantaClara.Web.Models.Entities.Repartidor", "Repartidor")
                         .WithMany()

@@ -24,14 +24,6 @@ public class PedidoService : IPedidoService
     {
         var errores = new List<ErrorPedido>();
 
-        var local = await _context.Locales
-            .FirstOrDefaultAsync(l => l.Id == modelo.IdLocal && l.Estado && l.EstadoRegistro);
-        if (local == null)
-            errores.Add(new ErrorPedido("idLocal", "Selecciona el local de despacho."));
-
-        if (modelo.FechaEntrega == null)
-            errores.Add(new ErrorPedido("fechaEntrega", "La fecha y hora de entrega son obligatorias."));
-
         if (modelo.Clientes.Count == 0)
             errores.Add(new ErrorPedido("clientes", "Agrega al menos un cliente."));
 
@@ -56,27 +48,17 @@ public class PedidoService : IPedidoService
             .Where(c => idsClientes.Contains(c.Id) && c.Estado && c.EstadoRegistro)
             .ToDictionaryAsync(c => c.Id);
 
-        var disponibles = local == null
-            ? new Dictionary<long, ProductoLocal>()
-            : await _context.ProductosLocal
-                .Include(p => p.Producto)
-                .Where(p => p.IdLocal == local.Id
-                    && idsProductos.Contains(p.IdProducto)
-                    && p.Estado && p.EstadoRegistro
-                    && p.Producto.Estado && p.Producto.EstadoRegistro)
-                .ToDictionaryAsync(p => p.IdProducto);
+        var disponibles = await _context.Productos
+            .Where(p => idsProductos.Contains(p.Id) && p.Estado && p.EstadoRegistro)
+            .ToDictionaryAsync(p => p.Id);
 
         var pedido = new Pedido
         {
-            IdLocal = modelo.IdLocal,
             IdRepartidor = repartidor?.Id,
-            FechaEntrega = modelo.FechaEntrega ?? default,
-            Estado = enviar ? EstadosPedido.Enviado : EstadosPedido.Pendiente,
-            Local = local!
+            Estado = enviar ? EstadosPedido.Enviado : EstadosPedido.Pendiente
         };
 
         var paresUsados = new HashSet<(long, long)>();
-        var cantidadPorProducto = new Dictionary<long, int>();
 
         for (var i = 0; i < modelo.Clientes.Count; i++)
         {
@@ -111,9 +93,9 @@ public class PedidoService : IPedidoService
                 var detalle = linea.Detalles[j];
                 var campo = $"{prefijo}.detalles[{j}]";
 
-                if (!disponibles.TryGetValue(detalle.IdProducto, out var productoLocal))
+                if (!disponibles.TryGetValue(detalle.IdProducto, out var producto))
                 {
-                    errores.Add(new ErrorPedido($"{campo}.idProducto", "Selecciona un producto disponible en el local."));
+                    errores.Add(new ErrorPedido($"{campo}.idProducto", "Selecciona un producto disponible."));
                     continue;
                 }
 
@@ -123,14 +105,11 @@ public class PedidoService : IPedidoService
                     continue;
                 }
 
-                cantidadPorProducto[detalle.IdProducto] =
-                    cantidadPorProducto.GetValueOrDefault(detalle.IdProducto) + detalle.Cantidad;
-
-                var precio = productoLocal.Producto.PrecioVenta;
+                var precio = producto.PrecioVenta;
                 pedidoCliente.Detalles.Add(new DetallePedido
                 {
                     IdProducto = detalle.IdProducto,
-                    Producto = productoLocal.Producto,
+                    Producto = producto,
                     Cantidad = detalle.Cantidad,
                     PrecioUnitario = precio,
                     Subtotal = detalle.Cantidad * precio
@@ -139,15 +118,6 @@ public class PedidoService : IPedidoService
 
             pedidoCliente.Subtotal = pedidoCliente.Detalles.Sum(d => d.Subtotal);
             pedido.Clientes.Add(pedidoCliente);
-        }
-
-        foreach (var (idProducto, cantidad) in cantidadPorProducto)
-        {
-            var productoLocal = disponibles[idProducto];
-            if (cantidad > productoLocal.Stock)
-                errores.Add(new ErrorPedido(
-                    $"stock:{idProducto}",
-                    $"Stock insuficiente: {productoLocal.Producto.Nombre} (disponible: {productoLocal.Stock})"));
         }
 
         if (errores.Count > 0)
@@ -165,6 +135,55 @@ public class PedidoService : IPedidoService
         }
 
         return resultado;
+    }
+
+    public async Task<PedidoResultado> EnviarVariosAsync(EnviarPedidosViewModel modelo)
+    {
+        var errores = new List<ErrorPedido>();
+        var ids = modelo.IdsPedidos.Distinct().ToList();
+
+        if (ids.Count == 0)
+            errores.Add(new ErrorPedido("pedidos", "Selecciona al menos un pedido."));
+
+        Repartidor? repartidor = null;
+        if (modelo.IdRepartidor != null)
+            repartidor = await _context.Repartidores
+                .FirstOrDefaultAsync(r => r.Id == modelo.IdRepartidor && r.Estado && r.EstadoRegistro);
+
+        if (repartidor == null)
+            errores.Add(new ErrorPedido("idRepartidor", "Selecciona un repartidor."));
+        else if (!CelularValido(repartidor.Celular))
+            errores.Add(new ErrorPedido("idRepartidor", "El celular del repartidor no tiene un formato válido."));
+
+        var pedidos = await _context.Pedidos
+            .Include(p => p.Clientes).ThenInclude(c => c.Cliente)
+            .Include(p => p.Clientes).ThenInclude(c => c.Direccion)
+            .Include(p => p.Clientes).ThenInclude(c => c.Detalles).ThenInclude(d => d.Producto)
+            .Where(p => ids.Contains(p.Id) && p.EstadoRegistro)
+            .ToListAsync();
+
+        if (pedidos.Count != ids.Count)
+            errores.Add(new ErrorPedido("pedidos", "Algún pedido seleccionado no existe."));
+
+        foreach (var pedido in pedidos.Where(p => p.Estado != EstadosPedido.Pendiente))
+            errores.Add(new ErrorPedido("pedidos", $"El pedido N° {pedido.Id} ya no está Pendiente."));
+
+        if (errores.Count > 0)
+            return new PedidoResultado { Errores = errores };
+
+        foreach (var pedido in pedidos)
+        {
+            pedido.IdRepartidor = repartidor!.Id;
+            pedido.Estado = EstadosPedido.Enviado;
+            pedido.FechaActualizacion = DateTime.UtcNow;
+        }
+        await _context.SaveChangesAsync();
+
+        return new PedidoResultado
+        {
+            Total = pedidos.Sum(p => p.Total),
+            WhatsappUrl = PedidoMensajeBuilder.ConstruirUrl(repartidor!.Celular, PedidoMensajeBuilder.ConstruirVarios(pedidos))
+        };
     }
 
     public async Task<ClienteBusquedaViewModel?> BuscarClienteAsync(string termino)
@@ -203,18 +222,15 @@ public class PedidoService : IPedidoService
         };
     }
 
-    public Task<List<ProductoLocalViewModel>> ProductosPorLocalAsync(long idLocal) =>
-        _context.ProductosLocal
-            .Where(p => p.IdLocal == idLocal
-                && p.Estado && p.EstadoRegistro
-                && p.Producto.Estado && p.Producto.EstadoRegistro)
-            .OrderBy(p => p.Producto.Nombre)
-            .Select(p => new ProductoLocalViewModel
+    public Task<List<ProductoPedidoViewModel>> ProductosDisponiblesAsync() =>
+        _context.Productos
+            .Where(p => p.Estado && p.EstadoRegistro)
+            .OrderBy(p => p.Nombre)
+            .Select(p => new ProductoPedidoViewModel
             {
-                IdProducto = p.IdProducto,
-                Nombre = p.Producto.Nombre,
-                Precio = p.Producto.PrecioVenta,
-                Stock = p.Stock
+                IdProducto = p.Id,
+                Nombre = p.Nombre,
+                Precio = p.PrecioVenta
             })
             .ToListAsync();
 }

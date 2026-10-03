@@ -18,12 +18,43 @@
     }
 </div>
 
+@if (esVendedora)
+{
+    <div id="pedidosAcciones" class="card card-body mb-3">
+        @Html.AntiForgeryToken()
+        <div id="pedidosErrores" class="alert alert-danger d-none" role="alert"></div>
+        <div id="pedidosEnviado" class="alert alert-success d-none" role="status">
+            <p class="mb-2">Pedidos asignados y marcados como Enviado.</p>
+            <a id="pedidosWhatsapp" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm">
+                <i class="bi bi-whatsapp me-1"></i> Abrir WhatsApp
+            </a>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="me-auto"><strong id="pedidosSeleccionados">0</strong> seleccionado(s)</span>
+            <select id="pedidosRepartidor" class="form-select w-auto" aria-label="Repartidor">
+                <option value="">Repartidor</option>
+                @foreach (var repartidor in Model.Repartidores)
+                {
+                    <option value="@repartidor.Id">@repartidor.Nombre (@repartidor.Celular)</option>
+                }
+            </select>
+            <button type="button" id="pedidosEnviarBtn" class="btn btn-success" disabled>
+                <i class="bi bi-send me-1"></i> Enviar a
+            </button>
+        </div>
+    </div>
+}
+
 <div class="table-responsive">
     <table class="table table-hover align-middle">
         <thead>
             <tr>
+                @if (esVendedora)
+                {
+                    <th style="width: 40px;"><input type="checkbox" id="pedidosSeleccionarTodos" class="form-check-input" aria-label="Seleccionar todos" /></th>
+                }
                 <th>N°</th>
-                <th>Entrega</th>
+                <th>Fecha de creación</th>
                 <th>Local</th>
                 <th>Clientes</th>
                 <th>Repartidor</th>
@@ -37,9 +68,17 @@
                 @foreach (var pedido in Model.Pedidos)
                 {
                     <tr>
+                        @if (esVendedora)
+                        {
+                            <td>
+                                <input type="checkbox" class="form-check-input pedido-check" value="@pedido.Id"
+                                       aria-label="Seleccionar pedido @pedido.Id"
+                                       @(pedido.Estado == "Pendiente" ? "" : "disabled") />
+                            </td>
+                        }
                         <td>@pedido.Id</td>
-                        <td>@pedido.FechaEntrega.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>@pedido.Local.Nombre</td>
+                        <td>@DateTime.SpecifyKind(pedido.FechaCreacion, DateTimeKind.Utc).ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@(pedido.Local?.Nombre ?? "-")</td>
                         <td>@string.Join(", ", pedido.Clientes.Select(c => c.Cliente.Nombre).Distinct())</td>
                         <td>@(pedido.Repartidor?.Nombre ?? "-")</td>
                         <td class="text-end">S/ @pedido.Total.ToString("0.00")</td>
@@ -52,7 +91,7 @@
             else
             {
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">No hay pedidos registrados.</td>
+                    <td colspan="@(esVendedora ? 8 : 7)" class="text-center text-muted py-4">No hay pedidos registrados.</td>
                 </tr>
             }
         </tbody>
@@ -68,5 +107,6 @@
     @if (esVendedora)
     {
         <script src="~/js/pedidos.js" asp-append-version="true"></script>
+        <script src="~/js/pedidos-lista.js" asp-append-version="true"></script>
     }
 }

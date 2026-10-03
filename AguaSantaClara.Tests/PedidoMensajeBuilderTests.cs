@@ -31,7 +31,7 @@ public class PedidoMensajeBuilderTests
         var pedido = new Pedido
         {
             Id = 42, Local = new Local { Nombre = "Santa Rosa" },
-            FechaEntrega = new DateTime(2026, 10, 5, 14, 30, 0)
+            FechaCreacion = DateTime.SpecifyKind(new DateTime(2026, 10, 5, 14, 30, 0), DateTimeKind.Local).ToUniversalTime()
         };
         foreach (var linea in lineas) pedido.Clientes.Add(linea);
         pedido.Total = lineas.Sum(l => l.Subtotal);
@@ -46,7 +46,7 @@ public class PedidoMensajeBuilderTests
             Linea(ana, Direccion(1, "Av. Lima 123", "https://maps.app.goo.gl/x", "Lima"), ("Galones 11L", 2, 12.5m))));
 
         Assert.Contains("Pedido N° 42", mensaje);
-        Assert.Contains("Entrega: 05/10/2026 14:30", mensaje);
+        Assert.Contains("Fecha de creación: 05/10/2026 14:30", mensaje);
         Assert.Contains("Cliente: Ana Torres", mensaje);
         Assert.Contains("Dirección: Av. Lima 123, Lima", mensaje);
         Assert.Contains("Ubicación: https://maps.app.goo.gl/x", mensaje);
@@ -100,6 +100,22 @@ public class PedidoMensajeBuilderTests
             Linea(Cliente(1, "Ana Torres"), Direccion(1, "Av. Lima 123"), ("Galones 11L", 1, 10m))));
 
         Assert.DoesNotContain("Ubicación:", mensaje);
+    }
+
+    [Fact]
+    public void ConstruirVarios_ConcatenaPedidosOrdenadosConSeparadorYTotalGeneral()
+    {
+        var ana = Cliente(1, "Ana Torres");
+        var p2 = Pedido(Linea(ana, Direccion(1, "Av. Lima 123"), ("Galones 11L", 1, 10m)));
+        p2.Id = 43;
+        var p1 = Pedido(Linea(ana, Direccion(1, "Av. Lima 123"), ("Galones 11L", 2, 10m)));
+
+        var mensaje = PedidoMensajeBuilder.ConstruirVarios(new[] { p2, p1 });
+
+        Assert.StartsWith("Pedidos asignados: 2", mensaje);
+        Assert.True(mensaje.IndexOf("Pedido N° 42", StringComparison.Ordinal) < mensaje.IndexOf("Pedido N° 43", StringComparison.Ordinal));
+        Assert.Equal(3, CuentaOcurrencias(mensaje, "────────────"));
+        Assert.EndsWith("Total general: S/ 30.00", mensaje);
     }
 
     [Fact]

@@ -13,8 +13,10 @@ public static class PedidoMensajeBuilder
         var variosClientes = grupos.Count > 1;
 
         Linea(sb, $"Pedido N° {pedido.Id}");
-        Linea(sb, $"Entrega: {pedido.FechaEntrega.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)}");
-        Linea(sb, $"Local: {pedido.Local.Nombre}");
+        var creacion = DateTime.SpecifyKind(pedido.FechaCreacion, DateTimeKind.Utc).ToLocalTime();
+        Linea(sb, $"Fecha de creación: {creacion.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)}");
+        if (pedido.Local != null)
+            Linea(sb, $"Local: {pedido.Local.Nombre}");
 
         foreach (var grupo in grupos)
         {
@@ -42,6 +44,25 @@ public static class PedidoMensajeBuilder
 
         Linea(sb, string.Empty);
         sb.Append($"Total: {Moneda(pedido.Total)}");
+        return sb.ToString();
+    }
+
+    public static string ConstruirVarios(IEnumerable<Pedido> pedidos)
+    {
+        var lista = pedidos.OrderBy(p => p.Id).ToList();
+        var sb = new StringBuilder();
+
+        Linea(sb, $"Pedidos asignados: {lista.Count}");
+        foreach (var pedido in lista)
+        {
+            Linea(sb, string.Empty);
+            Linea(sb, "────────────");
+            Linea(sb, Construir(pedido));
+        }
+
+        Linea(sb, string.Empty);
+        Linea(sb, "────────────");
+        sb.Append($"Total general: {Moneda(lista.Sum(p => p.Total))}");
         return sb.ToString();
     }
 

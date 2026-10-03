@@ -2,8 +2,6 @@ namespace AguaSantaClara.Web.Models;
 
 public class CrearPedidoViewModel
 {
-    public long IdLocal { get; set; }
-    public DateTime? FechaEntrega { get; set; }
     public long? IdRepartidor { get; set; }
     public List<PedidoClienteViewModel> Clientes { get; set; } = new();
 }

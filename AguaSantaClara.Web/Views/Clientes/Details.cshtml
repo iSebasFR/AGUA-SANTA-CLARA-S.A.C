@@ -214,7 +214,7 @@
                                 <tr>
                                     <td>#@pedido.Id</td>
                                     <td>@pedido.FechaCreacion.ToString("dd/MM/yyyy")</td>
-                                    <td>@pedido.Local.Nombre</td>
+                                    <td>@(pedido.Local?.Nombre ?? "-")</td>
                                     <td>@(pedido.Repartidor?.Nombre ?? "—")</td>
                                     <td class="text-end">S/ @pedido.Total.ToString("0.00")</td>
                                     <td class="text-center">

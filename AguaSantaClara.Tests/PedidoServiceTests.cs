@@ -74,8 +74,6 @@ public class PedidoServiceTests
 
     private static CrearPedidoViewModel Modelo(Escenario e, params PedidoClienteViewModel[] lineas) => new()
     {
-        IdLocal = e.Local.Id,
-        FechaEntrega = new DateTime(2026, 10, 5, 10, 30, 0),
         Clientes = lineas.ToList()
     };
 
@@ -121,30 +119,15 @@ public class PedidoServiceTests
     }
 
     [Fact]
-    public async Task Crear_CantidadMayorAlStockMuestraStockInsuficienteYNoRegistra()
+    public async Task Crear_CantidadMayorAlStockSePermiteComoBackorder()
     {
         var e = await CrearEscenarioAsync(stockGalon: 10);
 
-        var resultado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 11))), enviar: false);
+        var resultado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 11)), Linea(e.Beto, 0, (e.Galon, 6))), enviar: false);
 
-        Assert.False(resultado.Ok);
-        var error = Assert.Single(resultado.Errores);
-        Assert.Equal($"stock:{e.Galon.Id}", error.Campo);
-        Assert.Equal("Stock insuficiente: Galones 11L (disponible: 10)", error.Mensaje);
-        Assert.Equal(0, await e.Db.Pedidos.CountAsync());
-    }
-
-    [Fact]
-    public async Task Crear_SumaLaCantidadDeUnProductoEntreTodosLosClientes()
-    {
-        var e = await CrearEscenarioAsync(stockGalon: 10);
-        var modelo = Modelo(e, Linea(e.Ana, 0, (e.Galon, 6)), Linea(e.Beto, 0, (e.Galon, 6)));
-
-        var resultado = await e.Servicio.CrearAsync(modelo, enviar: false);
-
-        Assert.False(resultado.Ok);
-        Assert.Contains(resultado.Errores, x => x.Mensaje.StartsWith("Stock insuficiente: Galones 11L"));
-        Assert.Equal(0, await e.Db.Pedidos.CountAsync());
+        Assert.True(resultado.Ok);
+        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
+        Assert.Null((await e.Db.Pedidos.SingleAsync()).IdLocal);
     }
 
     [Fact]
@@ -167,8 +150,6 @@ public class PedidoServiceTests
 
         Assert.False(resultado.Ok);
         var campos = resultado.Errores.Select(x => x.Campo).ToList();
-        Assert.Contains("idLocal", campos);
-        Assert.Contains("fechaEntrega", campos);
         Assert.Contains("clientes", campos);
         Assert.Equal(0, await e.Db.Pedidos.CountAsync());
     }
@@ -187,10 +168,10 @@ public class PedidoServiceTests
     }
 
     [Fact]
-    public async Task Crear_ProductoQueNoEstaEnElLocalSeRechaza()
+    public async Task Crear_ProductoInactivoSeRechaza()
     {
         var e = await CrearEscenarioAsync();
-        var otro = new Producto { Nombre = "Papel Higiénico", PrecioVenta = 25m, Costo = 18m };
+        var otro = new Producto { Nombre = "Papel Higiénico", PrecioVenta = 25m, Costo = 18m, Estado = false };
         e.Db.Productos.Add(otro);
         await e.Db.SaveChangesAsync();
 
@@ -307,18 +288,61 @@ public class PedidoServiceTests
     }
 
     [Fact]
-    public async Task ProductosPorLocal_ListaSoloLosProductosDelLocalConSuStock()
+    public async Task ProductosDisponibles_ListaProductosActivosSinDependerDelLocal()
     {
-        var e = await CrearEscenarioAsync(stockGalon: 7);
-        var otroLocal = new Local { Nombre = "Apurímac" };
-        e.Db.Locales.Add(otroLocal);
+        var e = await CrearEscenarioAsync();
+        e.Db.Productos.Add(new Producto { Nombre = "Inactivo", PrecioVenta = 1m, Estado = false });
         await e.Db.SaveChangesAsync();
 
-        var enSantaRosa = await e.Servicio.ProductosPorLocalAsync(e.Local.Id);
-        var enOtro = await e.Servicio.ProductosPorLocalAsync(otroLocal.Id);
+        var productos = await e.Servicio.ProductosDisponiblesAsync();
 
-        Assert.Equal(2, enSantaRosa.Count);
-        Assert.Equal(7, enSantaRosa.Single(p => p.IdProducto == e.Galon.Id).Stock);
-        Assert.Empty(enOtro);
+        Assert.Equal(2, productos.Count);
+        Assert.DoesNotContain(productos, p => p.Nombre == "Inactivo");
+    }
+
+    [Fact]
+    public async Task EnviarVarios_AsignaRepartidorMarcaEnviadosYArmaUrlConTodos()
+    {
+        var e = await CrearEscenarioAsync();
+        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Beto, 0, (e.Galon, 2))), enviar: false);
+        var ids = await e.Db.Pedidos.Select(p => p.Id).ToListAsync();
+
+        var resultado = await e.Servicio.EnviarVariosAsync(new EnviarPedidosViewModel { IdsPedidos = ids, IdRepartidor = e.Repartidor.Id });
+
+        Assert.True(resultado.Ok);
+        Assert.All(await e.Db.Pedidos.ToListAsync(), p =>
+        {
+            Assert.Equal(EstadosPedido.Enviado, p.Estado);
+            Assert.Equal(e.Repartidor.Id, p.IdRepartidor);
+        });
+        Assert.Contains(Uri.EscapeDataString("Pedidos asignados: 2"), resultado.WhatsappUrl);
+    }
+
+    [Fact]
+    public async Task EnviarVarios_SinPedidosORepartidorDevuelveErrores()
+    {
+        var e = await CrearEscenarioAsync();
+
+        var resultado = await e.Servicio.EnviarVariosAsync(new EnviarPedidosViewModel());
+
+        Assert.False(resultado.Ok);
+        var campos = resultado.Errores.Select(x => x.Campo).ToList();
+        Assert.Contains("pedidos", campos);
+        Assert.Contains("idRepartidor", campos);
+    }
+
+    [Fact]
+    public async Task EnviarVarios_RechazaPedidosQueNoEstanPendientes()
+    {
+        var e = await CrearEscenarioAsync();
+        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
+        var id = (await e.Db.Pedidos.SingleAsync()).Id;
+        var modelo = new EnviarPedidosViewModel { IdsPedidos = { id }, IdRepartidor = e.Repartidor.Id };
+        await e.Servicio.EnviarVariosAsync(modelo);
+
+        var resultado = await e.Servicio.EnviarVariosAsync(modelo);
+
+        Assert.False(resultado.Ok);
     }
 }

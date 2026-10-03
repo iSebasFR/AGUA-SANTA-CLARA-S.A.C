@@ -3,8 +3,6 @@
 	if (!modalEl) return;
 
 	const $ = id => document.getElementById(id);
-	const selLocal = $("pedidoLocal");
-	const inpFecha = $("pedidoFechaEntrega");
 	const inpBuscar = $("pedidoBuscar");
 	const msgBuscar = $("pedidoBuscarMensaje");
 	const contenedor = $("pedidoClientes");
@@ -48,12 +46,7 @@
 		alertaErrores.classList.remove("d-none");
 
 		for (const error of errores) {
-			if (error.campo.startsWith("stock:")) {
-				const id = error.campo.slice(6);
-				modalEl.querySelectorAll(`[data-producto-id='${id}']`).forEach(nodo => nodo.classList.add("is-invalid"));
-			} else {
-				modalEl.querySelectorAll(`[data-campo='${CSS.escape(error.campo)}']`).forEach(nodo => nodo.classList.add("is-invalid"));
-			}
+			modalEl.querySelectorAll(`[data-campo='${CSS.escape(error.campo)}']`).forEach(nodo => nodo.classList.add("is-invalid"));
 		}
 	};
 
@@ -85,7 +78,7 @@
 
 	const opcionesProducto = () => [
 		h("option", { value: "" }, "Selecciona un producto"),
-		...productos.map(p => h("option", { value: p.idProducto }, `${p.nombre} - ${moneda(p.precio)} (stock: ${p.stock})`))
+		...productos.map(p => h("option", { value: p.idProducto }, `${p.nombre} - ${moneda(p.precio)}`))
 	];
 
 	const agregarFila = bloque => {
@@ -229,10 +222,8 @@
 
 	const cargarProductos = async () => {
 		productos = [];
-		if (selLocal.value) {
-			const resp = await fetch(`/Pedidos/ProductosPorLocal?idLocal=${encodeURIComponent(selLocal.value)}`);
-			if (resp.ok) productos = await resp.json();
-		}
+		const resp = await fetch("/Pedidos/ProductosDisponibles");
+		if (resp.ok) productos = await resp.json();
 		reiniciarFilas();
 	};
 
@@ -251,12 +242,7 @@
 			};
 		});
 
-		let fecha = inpFecha.value || null;
-		if (fecha && fecha.length === 16) fecha += ":00";
-
 		return {
-			idLocal: Number(selLocal.value) || 0,
-			fechaEntrega: fecha,
 			idRepartidor: Number(selRepartidor.value) || null,
 			clientes
 		};
@@ -301,8 +287,6 @@
 		limpiarErrores();
 		alertaEnviado.classList.add("d-none");
 		formulario.classList.remove("d-none");
-		selLocal.value = "";
-		inpFecha.value = "";
 		inpBuscar.value = "";
 		selRepartidor.value = "";
 		productos = [];
@@ -312,7 +296,7 @@
 		btnGuardar.disabled = btnEnviar.disabled = false;
 	};
 
-	selLocal.addEventListener("change", cargarProductos);
+	modalEl.addEventListener("show.bs.modal", cargarProductos);
 	$("pedidoBuscarBtn").addEventListener("click", buscarCliente);
 	inpBuscar.addEventListener("keydown", evento => {
 		if (evento.key === "Enter") {
