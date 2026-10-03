@@ -15,7 +15,6 @@ public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.Property(c => c.Nombre).HasColumnName("nombre").HasMaxLength(150).IsRequired();
         builder.Property(c => c.Telefono).HasColumnName("telefono").HasMaxLength(20).IsRequired();
         builder.Property(c => c.Dni).HasColumnName("dni").HasMaxLength(8);
-        builder.Property(c => c.Email).HasColumnName("email").HasMaxLength(150);
         builder.Property(c => c.Estado).HasColumnName("estado");
         builder.Property(c => c.EstadoRegistro).HasColumnName("estado_registro");
         builder.Property(c => c.FechaCreacion).HasColumnName("fecha_creacion");

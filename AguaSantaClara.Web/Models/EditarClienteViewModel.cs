@@ -37,7 +37,4 @@ public class EditarClienteViewModel
     [Url(ErrorMessage = "La URL de ubicación no es válida.")]
     [Display(Name = "URL de ubicación")]
     public string? UrlUbicacion { get; set; }
-
-    [Display(Name = "Estado")]
-    public bool Estado { get; set; }
 }
