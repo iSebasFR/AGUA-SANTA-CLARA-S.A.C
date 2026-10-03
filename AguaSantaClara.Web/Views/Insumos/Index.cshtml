@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Catálogo de insumos";
     var puedeAdministrar = User.IsInRole("Administradora") || User.IsInRole("Gerente");
+    var lineaActual = ViewBag.LineaFiltro as string;
 }
 
 <div class="container py-4">
@@ -31,12 +32,33 @@
         <div class="alert alert-danger" role="alert">@errorMessage</div>
     }
 
+    <!-- FILTRO POR LÍNEA DE PRODUCTO -->
+    <form method="get" asp-action="Index" class="row g-2 mb-4">
+        <div class="col-md-4">
+            <select name="linea" class="form-select" onchange="this.form.submit()">
+                <option value="">Todas las líneas de producto</option>
+                <option value="Agua" selected="@(lineaActual == "Agua")">Agua</option>
+                <option value="PH" selected="@(lineaActual == "PH")">PH</option>
+                <option value="Hielo" selected="@(lineaActual == "Hielo")">Hielo</option>
+            </select>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(lineaActual))
+        {
+            <div class="col-auto">
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg me-1"></i> Limpiar filtro
+                </a>
+            </div>
+        }
+    </form>
+
     <!-- TABLA -->
     <div class="table-responsive">
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
                     <th>Insumo</th>
+                    <th>Línea</th>
                     <th>Descripción</th>
                     <th>Costo</th>
                     <th>Estado</th>
@@ -50,13 +72,16 @@
             @if (!Model.Any())
             {
                 <tr>
-                    <td colspan="5" class="text-center text-muted py-4">No hay insumos registrados.</td>
+                    <td colspan="6" class="text-center text-muted py-4">No hay insumos registrados.</td>
                 </tr>
             }
             @foreach (var insumo in Model)
             {
                 <tr>
                     <td><strong>@insumo.Nombre</strong></td>
+                    <td>
+                        <span class="badge text-bg-light border">@insumo.LineaProducto</span>
+                    </td>
                     <td>@(string.IsNullOrWhiteSpace(insumo.Descripcion) ? "—" : insumo.Descripcion)</td>
                     <td>S/ @insumo.Costo.ToString("0.00")</td>
                     <td>
@@ -115,34 +140,26 @@
 {
     <div class="modal fade" id="modalCrearInsumo" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" id="contenidoModalCrear">
-                <!-- Contenido cargado vía AJAX -->
-            </div>
+            <div class="modal-content" id="contenidoModalCrear"></div>
         </div>
     </div>
 
     <div class="modal fade" id="modalEditarInsumo" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" id="contenidoModalEditar">
-                <!-- Contenido cargado vía AJAX -->
-            </div>
+            <div class="modal-content" id="contenidoModalEditar"></div>
         </div>
     </div>
 }
 
 @section Scripts {
     <script>
-        // ==================== ABRIR MODAL CREAR ====================
         document.addEventListener('DOMContentLoaded', function () {
             var btnNuevoInsumo = document.getElementById('btnNuevoInsumo');
 
             if (btnNuevoInsumo) {
                 btnNuevoInsumo.addEventListener('click', function () {
                     fetch('/Insumos/Create')
-                        .then(response => {
-                            if (!response.ok) throw new Error('Error al cargar el formulario');
-                            return response.text();
-                        })
+                        .then(response => response.text())
                         .then(html => {
                             document.getElementById('contenidoModalCrear').innerHTML = html;
                             var modal = new bootstrap.Modal(document.getElementById('modalCrearInsumo'));
@@ -156,13 +173,9 @@
             }
         });
 
-        // ==================== ABRIR MODAL EDITAR ====================
         function abrirModalEditar(id) {
             fetch('/Insumos/Edit/' + id)
-                .then(response => {
-                    if (!response.ok) throw new Error('Error al cargar el formulario');
-                    return response.text();
-                })
+                .then(response => response.text())
                 .then(html => {
                     document.getElementById('contenidoModalEditar').innerHTML = html;
                     var modal = new bootstrap.Modal(document.getElementById('modalEditarInsumo'));
@@ -174,7 +187,6 @@
                 });
         }
 
-        // ==================== CAMBIAR ESTADO ====================
         function cambiarEstado(id, valor) {
             if (confirm('¿Está seguro de cambiar el estado de este insumo?')) {
                 document.getElementById('estadoId').value = id;
@@ -185,7 +197,6 @@
             }
         }
 
-        // ==================== ELIMINAR ====================
         function confirmarEliminar(id, nombre) {
             if (confirm('¿Seguro eliminar el insumo "' + nombre + '"? Esta acción no se puede deshacer.')) {
                 document.getElementById('eliminarId').value = id;

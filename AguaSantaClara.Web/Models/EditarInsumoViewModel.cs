@@ -13,9 +13,10 @@ public class EditarInsumoViewModel
     [StringLength(255, ErrorMessage = "La descripción no puede superar los 255 caracteres.")]
     public string? Descripcion { get; set; }
 
+    [Required(ErrorMessage = "La línea de producto es obligatoria.")]
+    public string LineaProducto { get; set; } = string.Empty;
+
     [Required(ErrorMessage = "El costo es obligatorio.")]
     [Range(0.01, double.MaxValue, ErrorMessage = "El costo debe ser mayor a 0.")]
     public decimal Costo { get; set; }
-
-    public bool Estado { get; set; } = true;
 }
