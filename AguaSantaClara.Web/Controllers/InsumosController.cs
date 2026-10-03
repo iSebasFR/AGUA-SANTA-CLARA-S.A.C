@@ -17,14 +17,25 @@ public class InsumosController : Controller
         _context = context;
     }
 
-    // ==================== INDEX SIN FILTROS ====================
-    public async Task<IActionResult> Index()
+    // ==================== INDEX CON FILTRO POR LÍNEA ====================
+    public async Task<IActionResult> Index(string? linea)
     {
-        var insumos = await _context.Insumos
+        var consulta = _context.Insumos
             .Where(i => i.EstadoRegistro)
-            .OrderBy(i => i.Nombre)
+            .AsQueryable();
+
+        // Filtro por línea de producto
+        if (!string.IsNullOrWhiteSpace(linea))
+        {
+            consulta = consulta.Where(i => i.LineaProducto == linea);
+        }
+
+        var insumos = await consulta
+            .OrderBy(i => i.LineaProducto)
+            .ThenBy(i => i.Nombre)
             .ToListAsync();
 
+        ViewBag.LineaFiltro = linea;
         return View(insumos);
     }
 
@@ -55,6 +66,7 @@ public class InsumosController : Controller
         {
             Nombre = model.Nombre.Trim(),
             Descripcion = string.IsNullOrWhiteSpace(model.Descripcion) ? null : model.Descripcion.Trim(),
+            LineaProducto = model.LineaProducto,
             Costo = model.Costo,
             Estado = model.Estado,
             EstadoRegistro = true
@@ -83,6 +95,7 @@ public class InsumosController : Controller
             Id = insumo.Id,
             Nombre = insumo.Nombre,
             Descripcion = insumo.Descripcion,
+            LineaProducto = insumo.LineaProducto,
             Costo = insumo.Costo
         };
 
@@ -100,7 +113,6 @@ public class InsumosController : Controller
         if (insumo == null)
             return NotFound();
 
-        // Validar nombre duplicado (excepto el mismo insumo)
         var nombreDuplicado = await _context.Insumos
             .AnyAsync(i => i.Nombre == model.Nombre.Trim() && i.Id != model.Id && i.EstadoRegistro);
 
@@ -112,6 +124,7 @@ public class InsumosController : Controller
 
         insumo.Nombre = model.Nombre.Trim();
         insumo.Descripcion = string.IsNullOrWhiteSpace(model.Descripcion) ? null : model.Descripcion.Trim();
+        insumo.LineaProducto = model.LineaProducto;
         insumo.Costo = model.Costo;
 
         await _context.SaveChangesAsync();

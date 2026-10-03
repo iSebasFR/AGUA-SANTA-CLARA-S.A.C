@@ -6,6 +6,7 @@ public class Insumo
     public string Nombre { get; set; } = null!;
     public string? Descripcion { get; set; }
     public decimal Costo { get; set; }
+    public string LineaProducto { get; set; } = null!;
     public bool Estado { get; set; } = true;
     public bool EstadoRegistro { get; set; } = true;
     public int StockActual { get; set; }
