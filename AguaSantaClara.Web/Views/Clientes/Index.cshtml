@@ -899,7 +899,7 @@
                                 <tr>
                                     <th>N°</th>
                                     <th>Fecha</th>
-                                    <th>Local</th>
+                                    <th>Locales</th>
                                     <th>Repartidor</th>
                                     <th style="text-align:right;">Total</th>
                                     <th style="text-align:center;">Estado</th>
@@ -908,10 +908,17 @@
                             <tbody>
                                 @foreach (var pedido in Model.Pedidos)
                                 {
+                                    var locales = pedido.Clientes
+                                        .SelectMany(c => c.Detalles)
+                                        .Select(d => d.Local?.Nombre)
+                                        .Where(n => !string.IsNullOrWhiteSpace(n))
+                                        .Distinct()
+                                        .ToList();
+
                                     <tr>
                                         <td><strong>#@pedido.Id</strong></td>
                                         <td>@pedido.FechaCreacion.ToString("dd/MM/yyyy")</td>
-                                        <td>@(pedido.Local?.Nombre ?? "Sin local")</td>
+                                        <td>@(locales.Any() ? string.Join(", ", locales) : "—")</td>
                                         <td>@(pedido.Repartidor?.Nombre ?? "—")</td>
                                         <td style="text-align:right;">S/ @pedido.Total.ToString("0.00")</td>
                                         <td style="text-align:center;">

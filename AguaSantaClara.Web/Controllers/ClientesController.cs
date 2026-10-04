@@ -50,9 +50,11 @@ public class ClientesController : Controller
         if (seleccionado != null)
         {
             pedidos = await _context.Pedidos
-                .Include(p => p.Local)
                 .Include(p => p.Repartidor)
-                .Include(p => p.Clientes).ThenInclude(pc => pc.Detalles)
+                .Include(p => p.Clientes).ThenInclude(pc => pc.Cliente)
+                .Include(p => p.Clientes).ThenInclude(pc => pc.Direccion)
+                .Include(p => p.Clientes).ThenInclude(pc => pc.Detalles).ThenInclude(d => d.Producto)
+                .Include(p => p.Clientes).ThenInclude(pc => pc.Detalles).ThenInclude(d => d.Local)
                 .AsSplitQuery()
                 .Where(p => p.EstadoRegistro && p.Clientes.Any(pc => pc.IdCliente == seleccionado.Id))
                 .OrderByDescending(p => p.FechaCreacion)

@@ -1,204 +1,240 @@
 (() => {
-	const panel = document.getElementById("pedidosAcciones");
-	if (!panel) return;
+    const panel = document.getElementById("pedidosAcciones");
+    if (!panel) return;
 
-	const $ = id => document.getElementById(id);
-	const checks = () => [...document.querySelectorAll(".pedido-check:not(:disabled)")];
-	const marcados = () => checks().filter(c => c.checked);
-	const todos = $("pedidosSeleccionarTodos");
-	const btnEnviar = $("pedidosEnviarBtn");
-	const selRepartidor = $("pedidosRepartidor");
-	const alertaErrores = $("pedidosErrores");
-	const alertaEstado = $("pedidoEstadoActualizado");
-	const alertaEliminado = $("pedidosEliminado");
-	const alertaEnviado = $("pedidosEnviado");
-	const token = panel.querySelector("input[name='__RequestVerificationToken']")?.value ?? "";
+    // ✅ FIX 1: leer toast pendiente de sessionStorage (sin DOMContentLoaded)
+    const msgPendiente = sessionStorage.getItem("pedidoToast");
+    if (msgPendiente) {
+        sessionStorage.removeItem("pedidoToast");
+        setTimeout(() => {
+            if (typeof window.mostrarToastPedidos === "function") {
+                window.mostrarToastPedidos(msgPendiente, "success");
+            }
+        }, 300);
+    }
 
-	const actualizar = () => {
-		const n = marcados().length;
-		$("pedidosSeleccionados").textContent = n;
-		btnEnviar.disabled = n === 0;
-		todos.checked = n > 0 && n === checks().length;
-	};
+    const $ = id => document.getElementById(id);
+    const checks = () => [...document.querySelectorAll(".pedido-check:not(:disabled)")];
+    const marcados = () => checks().filter(c => c.checked);
+    const todos = $("pedidosSeleccionarTodos");
+    const btnEnviar = $("pedidosEnviarBtn");
+    const btnToggle = $("pedidosEnviarToggle");
+    const menuRepartidores = $("repartidoresMenu");
+    const token = panel.querySelector("input[name='__RequestVerificationToken']")?.value ?? "";
 
-	const mostrarErrores = errores => {
-		const lista = document.createElement("ul");
-		lista.className = "mb-0";
-		for (const e of errores) {
-			const li = document.createElement("li");
-			li.textContent = e.mensaje;
-			lista.append(li);
-		}
-		alertaErrores.replaceChildren(lista);
-		alertaErrores.classList.remove("d-none");
-	};
+    let repartidorSeleccionado = null;
 
-	// ============= SELECCIONAR TODOS =============
-	todos.addEventListener("change", () => {
-		checks().forEach(c => c.checked = todos.checked);
-		actualizar();
-	});
+    const actualizar = () => {
+        const n = marcados().length;
+        $("pedidosSeleccionados").textContent = n;
+        btnEnviar.disabled = n === 0 || !repartidorSeleccionado;
+        btnToggle.disabled = n === 0;
+        todos.checked = n > 0 && n === checks().length;
+    };
 
-	document.addEventListener("change", e => {
-		if (e.target.classList?.contains("pedido-check")) actualizar();
-	});
+    // ============ SPLIT BUTTON ============
+    btnToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuRepartidores.classList.toggle("show");
+    });
 
-	// ============= CAMBIAR ESTADO =============
-	document.querySelectorAll(".pedido-estado").forEach(select => select.addEventListener("change", async () => {
-		const estadoAnterior = select.dataset.estadoOriginal;
-		alertaErrores.classList.add("d-none");
-		alertaEstado.classList.add("d-none");
-		select.disabled = true;
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest("#splitBtnWrapper")) {
+            menuRepartidores.classList.remove("show");
+        }
+    });
 
-		try {
-			const resp = await fetch(`/Pedidos/CambiarEstado?idPedido=${encodeURIComponent(select.dataset.pedidoId)}`, {
-				method: "POST",
-				credentials: "same-origin",
-				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
-				body: JSON.stringify({ estado: select.value })
-			});
-			const datos = await resp.json().catch(() => null);
-			if (!resp.ok) {
-				mostrarErrores(datos?.errores ?? [{ mensaje: "No se pudo actualizar el estado del pedido." }]);
-				select.value = estadoAnterior;
-				return;
-			}
+    menuRepartidores.querySelectorAll(".split-btn-item").forEach(item => {
+        item.addEventListener("click", () => {
+            repartidorSeleccionado = {
+                id: Number(item.dataset.repartidorId),
+                nombre: item.dataset.repartidorNombre
+            };
+            btnEnviar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg> Enviar a ${repartidorSeleccionado.nombre}`;
+            menuRepartidores.classList.remove("show");
+            actualizar();
+        });
+    });
 
-			select.value = datos.estado;
-			select.dataset.estadoOriginal = datos.estado;
-			actualizar();
-			alertaEstado.textContent = `Pedido N° ${select.dataset.pedidoId}: estado actualizado a ${datos.estado}.`;
-			alertaEstado.classList.remove("d-none");
+    // ============ SELECCIONAR TODOS ============
+    todos.addEventListener("change", () => {
+        checks().forEach(c => c.checked = todos.checked);
+        actualizar();
+    });
 
-			setTimeout(() => window.location.reload(), 700);
-		} catch {
-			select.value = estadoAnterior;
-			mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
-		} finally {
-			select.disabled = false;
-		}
-	}));
+    document.addEventListener("change", e => {
+        if (e.target.classList?.contains("pedido-check")) actualizar();
+    });
 
-	// ============= ELIMINAR =============
-	document.querySelectorAll(".pedido-eliminar").forEach(btn => btn.addEventListener("click", async () => {
-		if (!window.confirm("¿Está seguro de borrar este pedido?")) return;
+    // ============ CAMBIAR ESTADO ============
+    document.querySelectorAll(".pedido-estado").forEach(select => {
+        select.addEventListener("change", async () => {
+            const estadoAnterior = select.dataset.estadoOriginal;
+            select.disabled = true;
 
-		alertaErrores.classList.add("d-none");
-		alertaEliminado.classList.add("d-none");
-		btn.disabled = true;
-		try {
-			const resp = await fetch(`/Pedidos/Eliminar?idPedido=${encodeURIComponent(btn.dataset.pedidoId)}`, {
-				method: "POST",
-				credentials: "same-origin",
-				headers: { "RequestVerificationToken": token }
-			});
-			if (!resp.ok) {
-				mostrarErrores([{ mensaje: resp.status === 404 ? "El pedido ya no existe." : "No se pudo borrar el pedido." }]);
-				btn.disabled = false;
-				return;
-			}
-			btn.closest("tr").remove();
-			alertaEliminado.textContent = "Pedido eliminado correctamente.";
-			alertaEliminado.classList.remove("d-none");
-			actualizar();
-			if (!document.querySelector("tbody tr")) {
-				const filaVacia = document.createElement("tr");
-				const celdaVacia = document.createElement("td");
-				celdaVacia.colSpan = 9;
-				celdaVacia.className = "text-center text-muted py-4";
-				celdaVacia.textContent = "No hay pedidos registrados.";
-				filaVacia.append(celdaVacia);
-				document.querySelector("tbody").append(filaVacia);
-			}
-		} catch {
-			mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
-			btn.disabled = false;
-		}
-	}));
+            try {
+                const resp = await fetch(`/Pedidos/CambiarEstado?idPedido=${encodeURIComponent(select.dataset.pedidoId)}`, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+                    body: JSON.stringify({ estado: select.value })
+                });
+                const datos = await resp.json().catch(() => null);
 
-	// ============= ENVIAR / REENVIAR SELECCIONADOS =============
-	btnEnviar.addEventListener("click", async () => {
-		alertaErrores.classList.add("d-none");
-		const seleccionados = marcados();
-		if (!selRepartidor.value) {
-			mostrarErrores([{ mensaje: "Selecciona un repartidor." }]);
-			return;
-		}
+                if (!resp.ok) {
+                    mostrarToast((datos?.errores?.[0]?.mensaje) || "No se pudo actualizar el estado.", "error");
+                    select.value = estadoAnterior;
+                    select.disabled = false;
+                    return;
+                }
 
-		btnEnviar.disabled = true;
-		const cuerpo = {
-			idsPedidos: seleccionados.map(c => Number(c.value)),
-			idRepartidor: Number(selRepartidor.value) || null
-		};
+                mostrarToast(`Pedido: estado actualizado a ${select.value}.`, "success");
 
-		try {
-			const resp = await fetch("/Pedidos/PreviewEnviarSeleccionados", {
-				method: "POST",
-				credentials: "same-origin",
-				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
-				body: JSON.stringify(cuerpo)
-			});
-			const datos = await resp.json().catch(() => null);
+                // ✅ Recargar para reflejar el cambio visual (badge vs dropdown)
+                setTimeout(() => window.location.reload(), 700);
+            } catch {
+                mostrarToast("No se pudo conectar con el servidor.", "error");
+                select.value = estadoAnterior;
+                select.disabled = false;
+            }
+        });
+    });
 
-			if (!resp.ok) {
-				mostrarErrores(datos?.errores ?? [{ mensaje: "No se pudo validar los pedidos." }]);
-				actualizar();
-				return;
-			}
+    // ============ ELIMINAR ============
+    document.querySelectorAll(".pedido-eliminar").forEach(btn => {
+        btn.addEventListener("click", () => {
+            window.abrirModalConfirm(
+                "Eliminar pedido",
+                `¿Seguro que deseas eliminar este pedido?`,
+                "danger",
+                async () => {
+                    try {
+                        const resp = await fetch(`/Pedidos/Eliminar?idPedido=${encodeURIComponent(btn.dataset.pedidoId)}`, {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: { "RequestVerificationToken": token }
+                        });
+                        const datos = await resp.json().catch(() => null);
+                        if (!resp.ok) {
+                            mostrarToast("No se pudo eliminar el pedido.", "error");
+                            return;
+                        }
 
-			const previewModalEl = document.getElementById("previewEnvioModal");
-			document.getElementById("previewEnvioMensaje").textContent = datos.mensaje ?? "";
-			document.getElementById("previewEnvioDestinatario").textContent =
-				selRepartidor.options[selRepartidor.selectedIndex]?.text ?? "Repartidor";
+                        // ✅ FIX 2: guardar mensaje para mostrarlo tras recargar
+                        if (datos?.mensaje) {
+                            sessionStorage.setItem("pedidoToast", datos.mensaje);
+                        }
 
-			const confirmBtn = document.getElementById("previewEnvioConfirmar");
-			const nuevoBtn = confirmBtn.cloneNode(true);
-			confirmBtn.parentNode.replaceChild(nuevoBtn, confirmBtn);
+                        // ✅ FIX 3: recargar la página completa (no remover solo la fila)
+                        window.location.reload();
+                    } catch {
+                        mostrarToast("No se pudo conectar con el servidor.", "error");
+                    }
+                },
+                "Eliminar"
+            );
+        });
+    });
 
-			nuevoBtn.addEventListener("click", async () => {
-				nuevoBtn.disabled = true;
-				try {
-					const resp2 = await fetch("/Pedidos/EnviarSeleccionados", {
-						method: "POST",
-						credentials: "same-origin",
-						headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
-						body: JSON.stringify(cuerpo)
-					});
-					const datos2 = await resp2.json().catch(() => null);
-					if (!resp2.ok) {
-						mostrarErrores(datos2?.errores ?? [{ mensaje: "No se pudo procesar los pedidos." }]);
-						nuevoBtn.disabled = false;
-						return;
-					}
+    // ============ ENVIAR SELECCIONADOS ============
+    btnEnviar.addEventListener("click", async () => {
+        const seleccionados = marcados();
+        if (!seleccionados.length || !repartidorSeleccionado) {
+            mostrarToast("Selecciona al menos un pedido y un repartidor.", "error");
+            return;
+        }
 
-					for (const check of seleccionados) {
-						check.checked = false;
-						const estado = check.closest("tr").querySelector(".pedido-estado");
-						if (estado) {
-							estado.value = "Enviado";
-							estado.dataset.estadoOriginal = "Enviado";
-						}
-					}
-					$("pedidosWhatsapp").href = datos2.whatsappUrl;
-					alertaEnviado.classList.remove("d-none");
-					selRepartidor.value = "";
-					actualizar();
+        btnEnviar.disabled = true;
+        const cuerpo = {
+            idsPedidos: seleccionados.map(c => Number(c.value)),
+            idRepartidor: repartidorSeleccionado.id
+        };
 
-					const previewModal = bootstrap.Modal.getOrCreateInstance(previewModalEl);
-					previewModal.hide();
-					window.open(datos2.whatsappUrl, "_blank");
-					setTimeout(() => window.location.reload(), 800);
-				} catch {
-					mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
-					nuevoBtn.disabled = false;
-				}
-			});
+        try {
+            const resp = await fetch("/Pedidos/PreviewEnviarSeleccionados", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+                body: JSON.stringify(cuerpo)
+            });
+            const datos = await resp.json().catch(() => null);
 
-			bootstrap.Modal.getOrCreateInstance(previewModalEl).show();
-			btnEnviar.disabled = false;
-		} catch {
-			mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
-			actualizar();
-		}
-	});
+            if (!resp.ok) {
+                mostrarToast((datos?.errores?.[0]?.mensaje) || "No se pudo validar los pedidos.", "error");
+                btnEnviar.disabled = false;
+                return;
+            }
+
+            const previewModalEl = document.getElementById("previewEnvioModal");
+            document.getElementById("previewEnvioMensaje").textContent = datos.mensaje ?? "";
+            document.getElementById("previewEnvioDestinatario").textContent = repartidorSeleccionado.nombre;
+
+            const confirmBtn = document.getElementById("previewEnvioConfirmar");
+            const nuevoBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(nuevoBtn, confirmBtn);
+
+            nuevoBtn.addEventListener("click", async () => {
+                nuevoBtn.disabled = true;
+                try {
+                    const resp2 = await fetch("/Pedidos/EnviarSeleccionados", {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+                        body: JSON.stringify(cuerpo)
+                    });
+                    const datos2 = await resp2.json().catch(() => null);
+                    if (!resp2.ok) {
+                        mostrarToast((datos2?.errores?.[0]?.mensaje) || "No se pudo enviar.", "error");
+                        nuevoBtn.disabled = false;
+                        return;
+                    }
+
+                    // ✅ FIX: guardar mensaje para mostrarlo tras recargar
+                    sessionStorage.setItem("pedidoToast", "PEDIDOS ENVIADOS CORRECTAMENTE");
+
+                    bootstrap.Modal.getOrCreateInstance(previewModalEl).hide();
+                    window.open(datos2.whatsappUrl, "_blank");
+                    setTimeout(() => window.location.reload(), 800);
+                } catch {
+                    mostrarToast("No se pudo conectar con el servidor.", "error");
+                    nuevoBtn.disabled = false;
+                }
+            });
+
+            bootstrap.Modal.getOrCreateInstance(previewModalEl).show();
+            btnEnviar.disabled = false;
+        } catch {
+            mostrarToast("No se pudo conectar con el servidor.", "error");
+            btnEnviar.disabled = false;
+        }
+    });
+
+    // ============ TOAST ============
+    function mostrarToast(mensaje, tipo) {
+        const container = document.getElementById("toastContainer");
+        if (!container) return;
+        const toast = document.createElement("div");
+        toast.className = "toast-custom " + (tipo || "success");
+        const icono = tipo === "error" ? "!" : "✓";
+        const titulo = tipo === "error" ? "Error" : "Listo";
+        toast.innerHTML = `
+            <div class="toast-icon">${icono}</div>
+            <div class="toast-content">
+                <div class="toast-title">${titulo}</div>
+                <div class="toast-msg">${mensaje}</div>
+            </div>
+            <div class="toast-progress"></div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateX(24px) scale(0.96)";
+            toast.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    window.mostrarToastPedidos = mostrarToast;
+
+    actualizar();
 })();

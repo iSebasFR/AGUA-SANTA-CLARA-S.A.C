@@ -21,42 +21,28 @@ public class PedidosController : Controller
     }
 
     public async Task<IActionResult> Index(
-        DateOnly? fechaDesde,
-        DateOnly? fechaHasta,
         string? estado,
         long? idCliente,
-        long? idRepartidor,
-        long? idProducto)
+        long? idRepartidor)
     {
-        var filtrosActivos = (fechaDesde.HasValue || fechaHasta.HasValue ? 1 : 0)
-            + (!string.IsNullOrWhiteSpace(estado) ? 1 : 0)
+        var filtrosActivos = (!string.IsNullOrWhiteSpace(estado) ? 1 : 0)
             + (idCliente.HasValue ? 1 : 0)
-            + (idRepartidor.HasValue ? 1 : 0)
-            + (idProducto.HasValue ? 1 : 0);
-        var errorFiltros = filtrosActivos > 3
-            ? "Puedes combinar como máximo 3 filtros."
-            : fechaDesde.HasValue && fechaHasta.HasValue && fechaDesde > fechaHasta
-                ? "La fecha Desde no puede ser posterior a la fecha Hasta."
-                : !string.IsNullOrWhiteSpace(estado) && !EstadosPedido.Todos.Contains(estado, StringComparer.Ordinal)
-                    ? "Selecciona un estado válido."
-                    : null;
+            + (idRepartidor.HasValue ? 1 : 0);
+
+        var errorFiltros = !string.IsNullOrWhiteSpace(estado)
+            && !EstadosPedido.Todos.Contains(estado, StringComparer.OrdinalIgnoreCase)
+                ? "Selecciona un estado válido."
+                : null;
 
         var consultaPedidos = _context.Pedidos.Where(p => p.EstadoRegistro);
         if (errorFiltros == null)
         {
-            if (fechaDesde.HasValue)
-                consultaPedidos = consultaPedidos.Where(p => p.FechaCreacion >= InicioDelDiaUtc(fechaDesde.Value));
-            if (fechaHasta.HasValue && fechaHasta.Value < DateOnly.MaxValue)
-                consultaPedidos = consultaPedidos.Where(p => p.FechaCreacion < InicioDelDiaUtc(fechaHasta.Value.AddDays(1)));
             if (!string.IsNullOrWhiteSpace(estado))
                 consultaPedidos = consultaPedidos.Where(p => p.Estado == estado);
             if (idCliente.HasValue)
                 consultaPedidos = consultaPedidos.Where(p => p.Clientes.Any(pc => pc.EstadoRegistro && pc.IdCliente == idCliente.Value));
             if (idRepartidor.HasValue)
                 consultaPedidos = consultaPedidos.Where(p => p.IdRepartidor == idRepartidor.Value);
-            if (idProducto.HasValue)
-                consultaPedidos = consultaPedidos.Where(p => p.Clientes.Any(pc => pc.EstadoRegistro
-                    && pc.Detalles.Any(d => d.EstadoRegistro && d.IdProducto == idProducto.Value)));
         }
 
         var repartidoresActivos = await _context.Repartidores
@@ -74,9 +60,12 @@ public class PedidosController : Controller
         var modelo = new PedidosIndexViewModel
         {
             Pedidos = await consultaPedidos
-                .Include(p => p.Local)
                 .Include(p => p.Repartidor)
                 .Include(p => p.Clientes).ThenInclude(c => c.Cliente)
+                .Include(p => p.Clientes).ThenInclude(c => c.Direccion)
+                .Include(p => p.Clientes).ThenInclude(c => c.Detalles).ThenInclude(d => d.Producto)
+                .Include(p => p.Clientes).ThenInclude(c => c.Detalles).ThenInclude(d => d.Local)
+                .AsSplitQuery()
                 .OrderByDescending(p => p.Id)
                 .ToListAsync(),
             Locales = await _context.Locales
@@ -92,16 +81,9 @@ public class PedidosController : Controller
                 .Where(c => c.EstadoRegistro)
                 .OrderBy(c => c.Nombre)
                 .ToListAsync(),
-            ProductosFiltro = await _context.Productos
-                .Where(p => p.EstadoRegistro)
-                .OrderBy(p => p.Nombre)
-                .ToListAsync(),
-            FechaDesde = fechaDesde,
-            FechaHasta = fechaHasta,
             EstadoFiltro = estado,
             IdClienteFiltro = idCliente,
             IdRepartidorFiltro = idRepartidor,
-            IdProductoFiltro = idProducto,
             ErrorFiltros = errorFiltros,
             TieneFiltrosAplicados = filtrosActivos > 0 && errorFiltros == null
         };
@@ -112,6 +94,7 @@ public class PedidosController : Controller
     private static DateTime InicioDelDiaUtc(DateOnly fecha) =>
         DateTime.SpecifyKind(fecha.ToDateTime(TimeOnly.MinValue), DateTimeKind.Local).ToUniversalTime();
 
+    // ==================== OBTENER PARA EDITAR ====================
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> ObtenerParaEditar(long idPedido)
@@ -121,7 +104,7 @@ public class PedidosController : Controller
             .Select(p => new
             {
                 idPedido = p.Id,
-                idLocal = p.IdLocal,
+                estado = p.Estado,
                 idRepartidor = p.IdRepartidor,
                 clientes = p.Clientes.Where(pc => pc.EstadoRegistro).Select(pc => new
                 {
@@ -145,8 +128,10 @@ public class PedidosController : Controller
                     idDireccion = pc.IdDireccion,
                     detalles = pc.Detalles.Where(d => d.EstadoRegistro).Select(d => new
                     {
+                        idLocal = d.IdLocal,
                         idProducto = d.IdProducto,
-                        cantidad = d.Cantidad
+                        cantidad = d.Cantidad,
+                        descuentoMonto = d.DescuentoMonto
                     }).ToList()
                 }).ToList()
             })
@@ -155,6 +140,7 @@ public class PedidosController : Controller
         return pedido == null ? NotFound() : Json(pedido);
     }
 
+    // ==================== BUSCAR CLIENTE ====================
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> BuscarCliente(string tipo, string q)
@@ -165,11 +151,74 @@ public class PedidosController : Controller
             : Json(cliente);
     }
 
+    // ==================== AUTOCOMPLETADO ====================
+    [HttpGet]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> BuscarClientes(string q, int limite = 8)
+    {
+        var valor = q?.Trim();
+        if (string.IsNullOrWhiteSpace(valor) || valor.Length < 2)
+            return Json(Array.Empty<object>());
+
+        var clientes = await _context.Clientes
+            .Where(c => c.Estado && c.EstadoRegistro)
+            .Where(c =>
+                EF.Functions.ILike(c.Nombre, $"%{valor}%") ||
+                EF.Functions.ILike(c.Telefono, $"%{valor}%") ||
+                (c.Dni != null && EF.Functions.ILike(c.Dni, $"%{valor}%")))
+            .OrderBy(c => c.Nombre)
+            .Take(Math.Clamp(limite, 1, 20))
+            .Select(c => new
+            {
+                id = c.Id,
+                nombre = c.Nombre,
+                telefono = c.Telefono,
+                dni = c.Dni
+            })
+            .ToListAsync();
+
+        return Json(clientes);
+    }
+
+    // ==================== CLIENTE POR ID ====================
+    [HttpGet]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> ClientePorId(long id)
+    {
+        var cliente = await _context.Clientes
+            .Include(c => c.Direcciones.Where(d => d.EstadoRegistro))
+            .FirstOrDefaultAsync(c => c.Id == id && c.Estado && c.EstadoRegistro);
+
+        if (cliente == null) return NotFound();
+
+        return Json(new
+        {
+            id = cliente.Id,
+            nombre = cliente.Nombre,
+            telefono = cliente.Telefono,
+            dni = cliente.Dni,
+            direcciones = cliente.Direcciones
+                .OrderByDescending(d => d.Principal)
+                .ThenBy(d => d.Id)
+                .Select(d => new
+                {
+                    id = d.Id,
+                    direccion = d.Direccion,
+                    ciudad = d.Ciudad,
+                    urlUbicacion = d.UrlUbicacion,
+                    principal = d.Principal
+                })
+                .ToList()
+        });
+    }
+
+    // ==================== PRODUCTOS POR LOCAL ====================
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> ProductosPorLocal(long idLocal) =>
         Json(await _pedidoService.ProductosPorLocalAsync(idLocal));
 
+    // ==================== GUARDAR (borrador) ====================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]
@@ -185,7 +234,15 @@ public class PedidosController : Controller
     public async Task<IActionResult> Actualizar(long idPedido, [FromBody] CrearPedidoViewModel modelo)
     {
         var resultado = await _pedidoService.ActualizarAsync(idPedido, modelo ?? new CrearPedidoViewModel());
-        return resultado.Ok ? Json(resultado) : BadRequest(resultado);
+
+        if (!resultado.Ok)
+            return BadRequest(resultado);
+
+        return Json(new
+        {
+            ok = true,
+            mensaje = "PEDIDO ACTUALIZADO CORRECTAMENTE"
+        });
     }
 
     [HttpPost]
@@ -194,18 +251,24 @@ public class PedidosController : Controller
     public async Task<IActionResult> Eliminar(long idPedido)
     {
         var eliminado = await _pedidoService.EliminarAsync(idPedido);
-        return eliminado ? Ok() : NotFound();
+        return eliminado
+            ? Json(new { ok = true, mensaje = "PEDIDO ELIMINADO CORRECTAMENTE" })
+            : NotFound();
     }
 
+    // ==================== CAMBIAR ESTADO ====================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]
     public async Task<IActionResult> CambiarEstado(long idPedido, [FromBody] ActualizarEstadoPedidoViewModel? modelo)
     {
         var resultado = await _pedidoService.CambiarEstadoAsync(idPedido, modelo?.Estado);
-        return resultado.Ok ? Json(new { estado = modelo!.Estado }) : BadRequest(resultado);
+        return resultado.Ok
+            ? Json(new { estado = resultado.Mensaje })
+            : BadRequest(resultado);
     }
 
+    // ==================== ENVIAR SELECCIONADOS ====================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]
@@ -224,6 +287,7 @@ public class PedidosController : Controller
         return resultado.Ok ? Json(resultado) : BadRequest(resultado);
     }
 
+    // ==================== ENVIAR (crear + enviar) ====================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora")]

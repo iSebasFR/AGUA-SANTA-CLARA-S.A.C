@@ -1,540 +1,729 @@
 (() => {
-	const modalEl = document.getElementById("pedidoModal");
-	if (!modalEl) return;
+    const modalEl = document.getElementById("pedidoModal");
+    if (!modalEl) return;
 
-	const $ = id => document.getElementById(id);
-	const selLocal = $("pedidoLocal");
-	const selBuscarTipo = $("pedidoBuscarTipo");
-	const inpBuscar = $("pedidoBuscar");
-	const msgBuscar = $("pedidoBuscarMensaje");
-	const contenedor = $("pedidoClientes");
-	const selRepartidor = $("pedidoRepartidor");
-	const lblTotal = $("pedidoTotal");
-	const alertaErrores = $("pedidoErrores");
-	const alertaEnviado = $("pedidoEnviado");
-	const formulario = $("pedidoFormulario");
-	const btnGuardar = $("pedidoGuardarBtn");
-	const btnEnviar = $("pedidoEnviarBtn");
-	const token = modalEl.querySelector("input[name='__RequestVerificationToken']")?.value ?? "";
+    // ✅ FIX 1: DOMContentLoaded ya se disparó cuando se carga este script,
+    // así que leemos directo sin esperar el evento.
+    const msgPendiente = sessionStorage.getItem("pedidoToast");
+    if (msgPendiente) {
+        sessionStorage.removeItem("pedidoToast");
+        setTimeout(() => {
+            if (typeof window.mostrarToastPedidos === "function") {
+                window.mostrarToastPedidos(msgPendiente, "success");
+            }
+        }, 300);
+    }
 
-	let productos = [];
-	let bloques = [];
-	let pedidoRegistrado = false;
-	let pedidoAEditar = null;
-	let detallesPendientes = null;
+    const $ = id => document.getElementById(id);
+    const inpBuscar = $("pedidoBuscar");
+    const msgBuscar = $("pedidoBuscarMensaje");
+    const buscadorCliente = $("buscadorCliente");
+    const clienteSeleccionado = $("clienteSeleccionado");
+    const clienteNombre = $("clienteNombre");
+    const clienteMeta = $("clienteMeta");
+    const btnCambiarCliente = $("btnCambiarCliente");
+    const contenedor = $("pedidoDirecciones");
+    const wrapperAgregarDireccion = $("wrapperAgregarDireccion");
+    const btnAgregarDireccion = $("btnAgregarDireccion");
+    const contenedorVacio = $("pedidoVacio");
+    const lblTotal = $("pedidoTotal");
+    const alertaErrores = $("pedidoErrores");
+    const alertaEnviado = $("pedidoEnviado");
+    const formulario = $("pedidoFormulario");
+    const btnGuardar = $("pedidoGuardarBtn");
+    const btnEnviar = $("pedidoEnviarBtn");
+    const dropdown = $("autocompleteDropdown");
+    const token = modalEl.querySelector("input[name='__RequestVerificationToken']")?.value ?? "";
 
-	const moneda = valor => "S/ " + valor.toFixed(2);
+    const localesDisponibles = window.__pedidosData?.locales ?? [];
+    const repartidoresDisponibles = window.__pedidosData?.repartidores ?? [];
 
-	const h = (tag, atributos = {}, ...hijos) => {
-		const nodo = document.createElement(tag);
-		for (const [clave, valor] of Object.entries(atributos)) {
-			if (clave === "class") nodo.className = valor;
-			else if (clave.startsWith("on")) nodo.addEventListener(clave.slice(2), valor);
-			else nodo.setAttribute(clave, valor);
-		}
-		for (const hijo of hijos) nodo.append(hijo);
-		return nodo;
-	};
+    let clienteActual = null;
+    let bloques = [];
+    let pedidoRegistrado = false;
+    let pedidoAEditar = null;
+    let productosPorLocal = {};
 
-	const textoDireccion = d => d.ciudad ? `${d.direccion}, ${d.ciudad}` : d.direccion;
+    const moneda = v => "S/ " + Number(v || 0).toFixed(2);
 
-	const limpiarErrores = () => {
-		alertaErrores.classList.add("d-none");
-		alertaErrores.replaceChildren();
-		modalEl.querySelectorAll(".is-invalid").forEach(nodo => nodo.classList.remove("is-invalid"));
-		msgBuscar.textContent = "";
-	};
+    // ============ UTILIDADES DOM ============
+    const h = (tag, attrs = {}, ...hijos) => {
+        const nodo = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) {
+            if (k === "class") nodo.className = v;
+            else if (k === "style") nodo.style.cssText = v;
+            else if (k.startsWith("on")) nodo.addEventListener(k.slice(2), v);
+            else if (v === true) nodo.setAttribute(k, "");
+            else if (v !== false && v != null) nodo.setAttribute(k, v);
+        }
+        for (const hijo of hijos) {
+            if (hijo == null) continue;
+            if (typeof hijo === "string") nodo.append(document.createTextNode(hijo));
+            else nodo.append(hijo);
+        }
+        return nodo;
+    };
 
-	const mostrarErrores = errores => {
-		alertaErrores.replaceChildren(h("ul", { class: "mb-0" }, ...errores.map(e => h("li", {}, e.mensaje))));
-		alertaErrores.classList.remove("d-none");
+    const textoDireccion = d => d.ciudad ? `${d.direccion}, ${d.ciudad}` : d.direccion;
 
-		for (const error of errores) {
-			if (error.campo.startsWith("stock:")) {
-				const id = error.campo.slice(6);
-				modalEl.querySelectorAll(`[data-producto-id='${id}']`).forEach(nodo => nodo.classList.add("is-invalid"));
-			} else {
-				modalEl.querySelectorAll(`[data-campo='${CSS.escape(error.campo)}']`).forEach(nodo => nodo.classList.add("is-invalid"));
-			}
-		}
-	};
+    // ============ CACHE DE PRODUCTOS ============
+    const cargarProductosDeLocal = async (idLocal) => {
+        if (!idLocal) return [];
+        if (productosPorLocal[idLocal]) return productosPorLocal[idLocal];
+        try {
+            const resp = await fetch(`/Pedidos/ProductosPorLocal?idLocal=${encodeURIComponent(idLocal)}`, {
+                credentials: "same-origin"
+            });
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            productosPorLocal[idLocal] = data;
+            return data;
+        } catch {
+            return [];
+        }
+    };
 
-	const actualizarTotales = () => {
-		let total = 0;
-		for (const bloque of bloques) {
-			let subtotal = 0;
-			for (const fila of bloque.filas) {
-				const producto = productos.find(p => p.idProducto === Number(fila.select.value));
-				const cantidad = Number(fila.cantidad.value);
-				if (producto && cantidad > 0) subtotal += producto.precio * cantidad;
-			}
-			bloque.lblSubtotal.textContent = moneda(subtotal);
-			total += subtotal;
-		}
-		lblTotal.textContent = moneda(total);
-	};
+    // ============ ERRORES ============
+    const limpiarErrores = () => {
+        alertaErrores.classList.add("d-none");
+        alertaErrores.replaceChildren();
+        modalEl.querySelectorAll(".is-invalid").forEach(n => n.classList.remove("is-invalid"));
+        msgBuscar.textContent = "";
+    };
 
-	const direccionesUsadas = cliente => bloques
-		.filter(b => b.cliente.id === cliente.id)
-		.map(b => Number(b.selectDireccion.value));
+    const mostrarErrores = errores => {
+        alertaErrores.replaceChildren(
+            h("ul", { class: "mb-0" }, ...errores.map(e => h("li", {}, e.mensaje || e)))
+        );
+        alertaErrores.classList.remove("d-none");
+    };
 
-	const actualizarBotonesDireccion = () => {
-		for (const bloque of bloques) {
-			if (!bloque.btnOtraDireccion) continue;
-			bloque.btnOtraDireccion.disabled = direccionesUsadas(bloque.cliente).length >= bloque.cliente.direcciones.length;
-		}
-	};
+    // ============ TOTALES ============
+    const actualizarTotales = () => {
+        let total = 0;
+        for (const b of bloques) {
+            let subtotal = 0;
+            for (const f of b.filas) {
+                const prod = f.productoActual;
+                const cant = Number(f.inputCantidad.value) || 0;
+                const desc = Number(f.inputDescuento.value) || 0;
+                if (prod && cant > 0) {
+                    const bruto = prod.precio * cant;
+                    const neto = Math.max(0, bruto - desc);
+                    f.lblSubtotal.textContent = moneda(neto);
+                    subtotal += neto;
+                } else {
+                    f.lblSubtotal.textContent = moneda(0);
+                }
+            }
+            if (b.lblSubtotal) b.lblSubtotal.textContent = moneda(subtotal);
+            total += subtotal;
+        }
+        lblTotal.textContent = moneda(total);
+    };
 
-	const opcionesProducto = () => [
-		h("option", { value: "" }, "Selecciona un producto"),
-		...productos.map(p => h("option", { value: p.idProducto }, `${p.nombre} - ${moneda(p.precio)} (stock: ${p.stock})`))
-	];
+    // ============ FILA DE PRODUCTO ============
+    const crearFila = (bloque, detalleInicial = null) => {
+        const fila = { productoActual: null };
 
-	const agregarFila = bloque => {
-		const select = h("select", { class: "form-select" }, ...opcionesProducto());
-		const cantidad = h("input", { type: "number", min: "1", step: "1", class: "form-control", value: "1", "aria-label": "Cantidad" });
-		const lblSubtotal = h("span", { class: "text-nowrap" }, moneda(0));
-		const fila = { select, cantidad };
-		const marcarProducto = () => {
-			const id = select.value;
-			[select, cantidad].forEach(nodo => {
-				if (id) nodo.setAttribute("data-producto-id", id); else nodo.removeAttribute("data-producto-id");
-			});
-		};
-		const refrescar = () => {
-			marcarProducto();
-			const producto = productos.find(p => p.idProducto === Number(select.value));
-			const cant = Number(cantidad.value);
-			lblSubtotal.textContent = moneda(producto && cant > 0 ? producto.precio * cant : 0);
-			actualizarTotales();
-		};
-		select.addEventListener("change", refrescar);
-		cantidad.addEventListener("input", refrescar);
+        const selLocal = h("select", { class: "form-select", style: "font-size:12.5px;" },
+            h("option", { value: "" }, "Local..."),
+            ...localesDisponibles.map(l => h("option", { value: l.id }, l.nombre))
+        );
 
-		const nodo = h("div", { class: "row g-2 align-items-center mb-2" },
-			h("div", { class: "col-md-6" }, select),
-			h("div", { class: "col-4 col-md-2" }, cantidad),
-			h("div", { class: "col-4 col-md-2 text-md-end" }, lblSubtotal),
-			h("div", { class: "col-4 col-md-2 text-end" },
-				h("button", {
-					type: "button", class: "btn btn-sm btn-outline-danger", "aria-label": "Quitar producto",
-					onclick: () => {
-						bloque.filas = bloque.filas.filter(f => f !== fila);
-						nodo.remove();
-						actualizarTotales();
-					}
-				}, h("i", { class: "bi bi-trash" }))));
+        const selProducto = h("select", { class: "form-select", style: "font-size:12.5px;" },
+            h("option", { value: "" }, "Producto...")
+        );
 
-		fila.nodo = nodo;
-		bloque.filas.push(fila);
-		bloque.contenedorFilas.append(nodo);
-		actualizarTotales();
-	};
+        const inputCantidad = h("input", { type: "number", min: "1", step: "1", value: "1", class: "form-control", style: "font-size:12.5px;text-align:center;" });
+        const inputDescuento = h("input", { type: "number", min: "0", step: "0.01", value: "0.00", class: "form-control", style: "font-size:12.5px;text-align:right;" });
+        const lblSubtotal = h("span", { style: "font-size:12.5px;font-weight:600;color:#1d1d1f;display:block;text-align:right;" }, moneda(0));
 
-	const reiniciarFilas = () => {
-		for (const bloque of bloques) {
-			bloque.filas = [];
-			bloque.contenedorFilas.replaceChildren();
-			agregarFila(bloque);
-		}
-		actualizarTotales();
-	};
+        const btnEliminar = h("button", {
+            type: "button",
+            style: "width:30px;height:30px;border:none;background:transparent;color:#6e6e73;border-radius:8px;cursor:pointer;",
+            onmouseover: function() { this.style.background = "#ffebea"; this.style.color = "#ff3b30"; },
+            onmouseout: function() { this.style.background = "transparent"; this.style.color = "#6e6e73"; },
+            onclick: () => {
+                bloque.filas = bloque.filas.filter(x => x !== fila);
+                fila.nodo.remove();
+                actualizarTotales();
+            }
+        });
+        btnEliminar.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
-	const actualizarOpcionesProductos = () => {
-		for (const bloque of bloques) {
-			for (const fila of bloque.filas) {
-				const valorActual = fila.select.value;
-				fila.select.replaceChildren(...opcionesProducto());
-				if (valorActual && fila.select.querySelector(`option[value='${valorActual}']`))
-					fila.select.value = valorActual;
-			}
-		}
-	};
+        const actualizarProductosDelLocal = async () => {
+            const idLocal = Number(selLocal.value);
+            selProducto.replaceChildren(h("option", { value: "" }, "Cargando..."));
+            selProducto.disabled = true;
 
-	const agregarBloque = (cliente, idDireccion, detalles = null) => {
-		const bloque = { cliente, filas: [] };
-		const varias = cliente.direcciones.length > 1;
+            const productos = await cargarProductosDeLocal(idLocal);
+            selProducto.replaceChildren(
+                h("option", { value: "" }, "Producto..."),
+                ...productos.map(p => h("option", { value: p.idProducto }, `${p.nombre} - ${moneda(p.precio)}`))
+            );
+            selProducto.disabled = !idLocal;
+            fila.productoActual = null;
+            actualizarTotales();
+        };
 
-		bloque.selectDireccion = h("select", { class: "form-select", "aria-label": "Dirección de entrega" },
-			...cliente.direcciones.map(d => h("option", { value: d.id }, textoDireccion(d))));
-		bloque.selectDireccion.value = String(idDireccion);
-		bloque.selectDireccion.addEventListener("change", actualizarBotonesDireccion);
-		if (!varias) bloque.selectDireccion.disabled = true;
+        selLocal.addEventListener("change", () => {
+            fila.productoActual = null;
+            selProducto.value = "";
+            actualizarProductosDelLocal();
+        });
 
-		bloque.contenedorFilas = h("div");
-		bloque.lblSubtotal = h("strong", {}, moneda(0));
+        selProducto.addEventListener("change", () => {
+            const idProd = Number(selProducto.value);
+            const productos = productosPorLocal[Number(selLocal.value)] || [];
+            fila.productoActual = productos.find(p => p.idProducto === idProd) || null;
+            actualizarTotales();
+        });
 
-		if (varias) {
-			bloque.btnOtraDireccion = h("button", {
-				type: "button", class: "btn btn-sm btn-outline-primary",
-				onclick: () => {
-					const usadas = direccionesUsadas(cliente);
-					const libre = cliente.direcciones.find(d => !usadas.includes(d.id));
-					if (libre) agregarBloque(cliente, libre.id);
-				}
-			}, "Agregar otra dirección");
-		}
+        inputCantidad.addEventListener("input", actualizarTotales);
+        inputDescuento.addEventListener("input", actualizarTotales);
 
-		bloque.root = h("div", { class: "card" },
-			h("div", { class: "card-header d-flex justify-content-between align-items-center gap-2" },
-				h("div", {},
-					h("strong", {}, cliente.nombre),
-					h("span", { class: "text-muted small ms-2" }, [cliente.telefono, cliente.dni ? `DNI ${cliente.dni}` : null].filter(Boolean).join(" · "))),
-				h("button", {
-					type: "button", class: "btn btn-sm btn-outline-danger",
-					onclick: () => {
-						bloques = bloques.filter(b => b !== bloque);
-						bloque.root.remove();
-						actualizarBotonesDireccion();
-						actualizarTotales();
-					}
-				}, "Quitar")),
-			h("div", { class: "card-body" },
-				h("div", { class: "row g-2 mb-3 align-items-center" },
-					h("div", { class: "col-md-9" }, bloque.selectDireccion),
-					h("div", { class: "col-md-3 text-md-end" }, bloque.btnOtraDireccion ?? "")),
-				bloque.contenedorFilas,
-				h("div", { class: "d-flex justify-content-between align-items-center mt-2" },
-					h("button", { type: "button", class: "btn btn-sm btn-outline-secondary", onclick: () => agregarFila(bloque) }, "Agregar producto"),
-					h("span", {}, "Subtotal: ", bloque.lblSubtotal))));
+        const nodo = h("div", { style: "display:grid;grid-template-columns:1fr 1.5fr 0.8fr 1fr 1fr auto;gap:8px;align-items:center;" },
+            selLocal,
+            selProducto,
+            inputCantidad,
+            inputDescuento,
+            lblSubtotal,
+            btnEliminar
+        );
 
-		bloques.push(bloque);
-		contenedor.append(bloque.root);
-		agregarFila(bloque);
-		if (detalles?.length) {
-			for (let i = 1; i < detalles.length; i++) agregarFila(bloque);
-			detalles.forEach((detalle, i) => {
-				const fila = bloque.filas[i];
-				fila.select.value = String(detalle.idProducto);
-				fila.cantidad.value = String(detalle.cantidad);
-				fila.select.dispatchEvent(new Event("change"));
-				fila.cantidad.dispatchEvent(new Event("input"));
-			});
-		}
-		actualizarBotonesDireccion();
-	};
+        fila.selLocal = selLocal;
+        fila.selProducto = selProducto;
+        fila.inputCantidad = inputCantidad;
+        fila.inputDescuento = inputDescuento;
+        fila.lblSubtotal = lblSubtotal;
+        fila.nodo = nodo;
 
-	const configurarInputBusqueda = () => {
-		const tipo = selBuscarTipo.value;
-		if (tipo === "telefono") {
-			inpBuscar.placeholder = "987654321";
-			inpBuscar.setAttribute("inputmode", "numeric");
-			inpBuscar.setAttribute("maxlength", "9");
-			inpBuscar.value = inpBuscar.value.replace(/\D/g, "").slice(0, 9);
-		} else if (tipo === "dni") {
-			inpBuscar.placeholder = "12345678";
-			inpBuscar.setAttribute("inputmode", "numeric");
-			inpBuscar.setAttribute("maxlength", "8");
-			inpBuscar.value = inpBuscar.value.replace(/\D/g, "").slice(0, 8);
-		} else {
-			inpBuscar.placeholder = "Ana Torres";
-			inpBuscar.removeAttribute("inputmode");
-			inpBuscar.setAttribute("maxlength", "100");
-		}
-		msgBuscar.textContent = "";
-		inpBuscar.classList.remove("is-invalid");
-	};
+        if (detalleInicial) {
+            selLocal.value = String(detalleInicial.idLocal || "");
+            actualizarProductosDelLocal().then(() => {
+                selProducto.value = String(detalleInicial.idProducto || "");
+                inputCantidad.value = String(detalleInicial.cantidad || 1);
+                inputDescuento.value = Number(detalleInicial.descuentoMonto || 0).toFixed(2);
+                const productos = productosPorLocal[Number(selLocal.value)] || [];
+                fila.productoActual = productos.find(p => p.idProducto === Number(detalleInicial.idProducto)) || null;
+                actualizarTotales();
+            });
+        }
 
-	const buscarCliente = async () => {
-		msgBuscar.textContent = "";
-		inpBuscar.classList.remove("is-invalid");
-		const tipo = selBuscarTipo.value;
-		const termino = inpBuscar.value.trim();
+        bloque.filas.push(fila);
+        bloque.contenedorFilas.append(nodo);
+        actualizarTotales();
+    };
 
-		if (!termino) {
-			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "Ingresa un valor para buscar.";
-			return;
-		}
+    // ============ BLOQUE DE DIRECCIÓN ============
+    const crearBloqueDireccion = (direccion, detallesIniciales = null) => {
+        const bloque = { direccion, filas: [] };
 
-		if (tipo === "telefono" && termino.length < 6) {
-			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "Ingresa al menos 6 dígitos del teléfono.";
-			return;
-		}
-		if (tipo === "dni" && termino.length < 4) {
-			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "Ingresa al menos 4 dígitos del DNI.";
-			return;
-		}
-		if (tipo === "nombre" && termino.length < 2) {
-			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "Ingresa al menos 2 letras del nombre.";
-			return;
-		}
+        const contenedorFilas = h("div", { style: "display:grid;gap:8px;" });
+        const lblSubtotal = h("strong", { style: "font-size:13.5px;color:#1d1d1f;" }, moneda(0));
 
-		const resp = await fetch(`/Pedidos/BuscarCliente?tipo=${encodeURIComponent(tipo)}&q=${encodeURIComponent(termino)}`);
-		if (!resp.ok) {
-			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "No se encontró un cliente con esos criterios.";
-			return;
-		}
+        const btnAgregarFila = h("button", {
+            type: "button",
+            class: "btn-apple",
+            style: "background:#f2f2f4;color:#1d1d1f;height:30px;font-size:12px;padding:0 12px;",
+            onclick: () => crearFila(bloque)
+        }, "+ Agregar producto");
 
-		const cliente = await resp.json();
-		if (!cliente.direcciones.length) {
-			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "El cliente no tiene direcciones registradas.";
-			return;
-		}
+        let btnQuitar = null;
+        if (clienteActual && clienteActual.direcciones.length > 1) {
+            btnQuitar = h("button", {
+                type: "button",
+                style: "background:transparent;border:none;color:#ff3b30;font-size:12px;font-weight:500;cursor:pointer;padding:4px 8px;border-radius:6px;",
+                onmouseover: function() { this.style.background = "#ffebea"; },
+                onmouseout: function() { this.style.background = "transparent"; },
+                onclick: () => {
+                    if (bloques.length <= 1) return;
+                    bloques = bloques.filter(b => b !== bloque);
+                    bloque.root.remove();
+                    actualizarBotonAgregarDireccion();
+                    actualizarTotales();
+                }
+            }, "Quitar dirección");
+        }
 
-		const usadas = direccionesUsadas(cliente);
-		const libre = cliente.direcciones.find(d => !usadas.includes(d.id));
-		if (!libre) {
-			inpBuscar.classList.add("is-invalid");
-			msgBuscar.textContent = "El cliente ya está en el pedido con todas sus direcciones.";
-			return;
-		}
+        bloque.root = h("div", { style: "background:#ffffff;border:1px solid #e5e5ea;border-radius:14px;padding:16px;" },
+            h("div", { style: "display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;flex-wrap:wrap;" },
+                h("div", {},
+                    h("div", { style: "font-size:11.5px;font-weight:600;color:#6e6e73;text-transform:uppercase;letter-spacing:0.05em;" }, "Dirección de entrega"),
+                    h("div", { style: "font-size:14px;color:#1d1d1f;font-weight:600;margin-top:2px;" }, textoDireccion(direccion))
+                ),
+                btnQuitar
+            ),
+            h("div", { style: "display:grid;grid-template-columns:1fr 1.5fr 0.8fr 1fr 1fr auto;gap:8px;margin-bottom:6px;padding:0 2px;font-size:10.5px;font-weight:600;color:#6e6e73;text-transform:uppercase;letter-spacing:0.05em;" },
+                h("div", {}, "Local"),
+                h("div", {}, "Producto"),
+                h("div", { style: "text-align:center;" }, "Cant."),
+                h("div", { style: "text-align:right;" }, "Desc."),
+                h("div", { style: "text-align:right;" }, "Subtotal"),
+                h("div", {})
+            ),
+            contenedorFilas,
+            h("div", { style: "display:flex;justify-content:space-between;align-items:center;margin-top:12px;" },
+                btnAgregarFila,
+                h("span", { style: "font-size:13px;color:#6e6e73;" }, "Subtotal: ", lblSubtotal)
+            )
+        );
 
-		agregarBloque(cliente, libre.id);
-		inpBuscar.value = "";
-	};
+        bloque.contenedorFilas = contenedorFilas;
+        bloque.lblSubtotal = lblSubtotal;
 
-	const cargarProductos = async (reiniciar = false) => {
-		productos = [];
-		if (selLocal.value) {
-			const resp = await fetch(`/Pedidos/ProductosPorLocal?idLocal=${encodeURIComponent(selLocal.value)}`);
-			if (resp.ok) productos = await resp.json();
-		}
-		if (reiniciar) {
-			reiniciarFilas();
-		} else {
-			actualizarOpcionesProductos();
-			actualizarTotales();
-		}
-	};
+        bloques.push(bloque);
+        contenedor.append(bloque.root);
 
-	const cargarPedidoParaEditar = async () => {
-		try {
-			const respuesta = await fetch(`/Pedidos/ObtenerParaEditar?idPedido=${pedidoAEditar}`);
-			if (!respuesta.ok) throw new Error();
-			const pedido = await respuesta.json();
+        if (detallesIniciales && detallesIniciales.length > 0) {
+            detallesIniciales.forEach(d => crearFila(bloque, d));
+        } else {
+            crearFila(bloque);
+        }
+    };
 
-			$("pedidoModalLabel").textContent = `Editar pedido N° ${pedido.idPedido}`;
-			btnEnviar.classList.add("d-none");
-			selRepartidor.value = pedido.idRepartidor == null ? "" : String(pedido.idRepartidor);
+    // ============ ACTUALIZAR BOTÓN AGREGAR DIRECCIÓN ============
+    const actualizarBotonAgregarDireccion = () => {
+        if (!clienteActual) {
+            wrapperAgregarDireccion.style.display = "none";
+            return;
+        }
 
-			if (pedido.idLocal == null) {
-				detallesPendientes = pedido.clientes;
-				selLocal.value = "";
-				productos = [];
-				bloques = [];
-				contenedor.replaceChildren();
-				lblTotal.textContent = moneda(0);
-				mostrarErrores([{
-					campo: "idLocal",
-					mensaje: "Este pedido no tiene Local asignado. Selecciona uno para editar los productos."
-				}]);
-				return;
-			}
+        const totalDirecciones = clienteActual.direcciones.length;
+        const direccionesUsadas = bloques.map(b => b.direccion.id);
+        const quedanDisponibles = clienteActual.direcciones.some(d => !direccionesUsadas.includes(d.id));
 
-			detallesPendientes = null;
-			selLocal.value = String(pedido.idLocal);
-			await cargarProductos(true);
-			for (const linea of pedido.clientes)
-				agregarBloque(linea.cliente, linea.idDireccion, linea.detalles);
-			actualizarTotales();
-		} catch {
-			mostrarErrores([{ campo: "", mensaje: "No se pudo cargar el pedido para editar." }]);
-		}
-	};
+        if (totalDirecciones > 1 && quedanDisponibles) {
+            wrapperAgregarDireccion.style.display = "block";
+        } else {
+            wrapperAgregarDireccion.style.display = "none";
+        }
+    };
 
-	const serializar = () => {
-		const clientes = bloques.map((bloque, i) => {
-			bloque.selectDireccion.setAttribute("data-campo", `clientes[${i}].idDireccion`);
-			bloque.contenedorFilas.setAttribute("data-campo", `clientes[${i}].detalles`);
-			return {
-				idCliente: bloque.cliente.id,
-				idDireccion: Number(bloque.selectDireccion.value),
-				detalles: bloque.filas.map((fila, j) => {
-					fila.select.setAttribute("data-campo", `clientes[${i}].detalles[${j}].idProducto`);
-					fila.cantidad.setAttribute("data-campo", `clientes[${i}].detalles[${j}].cantidad`);
-					return { idProducto: Number(fila.select.value) || 0, cantidad: Number(fila.cantidad.value) || 0 };
-				})
-			};
-		});
+    // ============ SELECCIONAR CLIENTE ============
+    const seleccionarCliente = async (id) => {
+        dropdown.style.display = "none";
+        inpBuscar.value = "";
+        msgBuscar.textContent = "";
 
-		return {
-			idLocal: Number(selLocal.value) || null,
-			idRepartidor: Number(selRepartidor.value) || null,
-			clientes
-		};
-	};
+        try {
+            const resp = await fetch(`/Pedidos/ClientePorId?id=${id}`, { credentials: "same-origin" });
+            if (!resp.ok) { msgBuscar.textContent = "No se pudo cargar el cliente."; return; }
 
-	const registrar = async (url, esEnvio) => {
-		limpiarErrores();
-		const cuerpo = serializar();
-		btnGuardar.disabled = btnEnviar.disabled = true;
+            const cliente = await resp.json();
+            if (!cliente.direcciones || cliente.direcciones.length === 0) {
+                msgBuscar.textContent = "El cliente no tiene direcciones registradas.";
+                return;
+            }
 
-		try {
-			const resp = await fetch(url, {
-				method: "POST",
-				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
-				body: JSON.stringify(cuerpo)
-			});
-			const datos = await resp.json().catch(() => null);
+            clienteActual = cliente;
+            cliente.direcciones.sort((a, b) => (b.principal ? 1 : 0) - (a.principal ? 1 : 0));
 
-			if (!resp.ok) {
-				mostrarErrores(datos?.errores ?? [{ campo: "", mensaje: "No se pudo registrar el pedido." }]);
-				btnGuardar.disabled = btnEnviar.disabled = false;
-				return;
-			}
+            clienteNombre.textContent = cliente.nombre;
+            clienteMeta.textContent = [cliente.telefono, cliente.dni ? `DNI ${cliente.dni}` : null]
+                .filter(Boolean).join(" · ");
 
-			pedidoRegistrado = true;
-			if (!esEnvio) {
-				bootstrap.Modal.getInstance(modalEl).hide();
-				return;
-			}
+            buscadorCliente.style.display = "none";
+            clienteSeleccionado.style.display = "block";
+            contenedorVacio.style.display = "none";
 
-			$("pedidoEnviadoNumero").textContent = `N° ${datos.idPedido}`;
-			$("pedidoWhatsapp").href = datos.whatsappUrl;
-			alertaEnviado.classList.remove("d-none");
-			formulario.classList.add("d-none");
-		} catch {
-			mostrarErrores([{ campo: "", mensaje: "No se pudo conectar con el servidor." }]);
-			btnGuardar.disabled = btnEnviar.disabled = false;
-		}
-	};
+            crearBloqueDireccion(cliente.direcciones[0]);
+            actualizarBotonAgregarDireccion();
+        } catch {
+            msgBuscar.textContent = "No se pudo cargar el cliente.";
+        }
+    };
 
-	const previewYEnviar = async () => {
-		limpiarErrores();
-		const cuerpo = serializar();
-		btnEnviar.disabled = true;
+    // ============ CAMBIAR CLIENTE ============
+    btnCambiarCliente.addEventListener("click", () => {
+        clienteActual = null;
+        bloques = [];
+        contenedor.replaceChildren();
+        clienteSeleccionado.style.display = "none";
+        buscadorCliente.style.display = "block";
+        wrapperAgregarDireccion.style.display = "none";
+        contenedorVacio.style.display = "block";
+        inpBuscar.value = "";
+        msgBuscar.textContent = "";
+        inpBuscar.focus();
+        actualizarTotales();
+    });
 
-		try {
-			const resp = await fetch("/Pedidos/PreviewEnviar", {
-				method: "POST",
-				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
-				body: JSON.stringify(cuerpo)
-			});
-			const datos = await resp.json().catch(() => null);
+    // ============ AGREGAR OTRA DIRECCIÓN ============
+    btnAgregarDireccion.addEventListener("click", () => {
+        if (!clienteActual) return;
 
-			if (!resp.ok) {
-				mostrarErrores(datos?.errores ?? [{ campo: "", mensaje: "No se pudo validar el pedido." }]);
-				btnEnviar.disabled = false;
-				return;
-			}
+        const direccionesUsadas = bloques.map(b => b.direccion.id);
+        const siguiente = clienteActual.direcciones.find(d => !direccionesUsadas.includes(d.id));
 
-			const previewModalEl = document.getElementById("previewEnvioModal");
-			document.getElementById("previewEnvioMensaje").textContent = datos.mensaje ?? "";
-			document.getElementById("previewEnvioDestinatario").textContent =
-				selRepartidor.options[selRepartidor.selectedIndex]?.text ?? "Repartidor";
+        if (!siguiente) return;
 
-			const confirmBtn = document.getElementById("previewEnvioConfirmar");
-			const nuevoBtn = confirmBtn.cloneNode(true);
-			confirmBtn.parentNode.replaceChild(nuevoBtn, confirmBtn);
+        crearBloqueDireccion(siguiente);
+        actualizarBotonAgregarDireccion();
+    });
 
-			nuevoBtn.addEventListener("click", async () => {
-				nuevoBtn.disabled = true;
-				try {
-					const resp2 = await fetch("/Pedidos/Enviar", {
-						method: "POST",
-						headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
-						body: JSON.stringify(cuerpo)
-					});
-					const datos2 = await resp2.json().catch(() => null);
-					if (!resp2.ok) {
-						mostrarErrores(datos2?.errores ?? [{ campo: "", mensaje: "No se pudo guardar el pedido." }]);
-						nuevoBtn.disabled = false;
-						return;
-					}
+    // ============ AUTOCOMPLETADO ============
+    let debounceTimer = null;
 
-					pedidoRegistrado = true;
-					const previewModal = bootstrap.Modal.getInstance(previewModalEl);
-					if (previewModal) previewModal.hide();
-					bootstrap.Modal.getInstance(modalEl).hide();
-					window.open(datos2.whatsappUrl, "_blank");
-				} catch {
-					mostrarErrores([{ campo: "", mensaje: "No se pudo conectar con el servidor." }]);
-					nuevoBtn.disabled = false;
-				}
-			});
+    const buscarClientes = async (query) => {
+        if (query.length < 2) {
+            dropdown.style.display = "none";
+            return;
+        }
 
-			new bootstrap.Modal(previewModalEl).show();
-			btnEnviar.disabled = false;
-		} catch {
-			mostrarErrores([{ campo: "", mensaje: "No se pudo conectar con el servidor." }]);
-			btnEnviar.disabled = false;
-		}
-	};
+        try {
+            const resp = await fetch(`/Pedidos/BuscarClientes?q=${encodeURIComponent(query)}&limite=8`, {
+                credentials: "same-origin"
+            });
+            if (!resp.ok) { dropdown.style.display = "none"; return; }
 
-	const reiniciar = () => {
-		limpiarErrores();
-		alertaEnviado.classList.add("d-none");
-		formulario.classList.remove("d-none");
-		selLocal.value = "";
-		selBuscarTipo.value = "telefono";
-		inpBuscar.value = "";
-		selRepartidor.value = "";
-		productos = [];
-		bloques = [];
-		contenedor.replaceChildren();
-		lblTotal.textContent = moneda(0);
-		btnGuardar.disabled = btnEnviar.disabled = false;
-		$("pedidoModalLabel").textContent = "Crear pedido";
-		btnEnviar.classList.remove("d-none");
-		pedidoAEditar = null;
-		detallesPendientes = null;
-		configurarInputBusqueda();
-	};
+            const clientes = await resp.json();
+            if (!clientes.length) {
+                dropdown.innerHTML = '<div style="padding:14px;font-size:12.5px;color:#6e6e73;text-align:center;">Sin resultados</div>';
+                dropdown.style.display = "block";
+                return;
+            }
 
-	selLocal.addEventListener("change", async () => {
-		if (pedidoAEditar === null) {
-			await cargarProductos(true);
-		} else {
-			await cargarProductos(bloques.length === 0);
-			if (detallesPendientes && productos.length > 0) {
-				for (const linea of detallesPendientes)
-					agregarBloque(linea.cliente, linea.idDireccion, linea.detalles);
-				detallesPendientes = null;
-				limpiarErrores();
-			}
-			actualizarTotales();
-		}
-	});
+            dropdown.replaceChildren(
+                ...clientes.map(c => h("button", {
+                    type: "button",
+                    style: "display:block;width:100%;padding:10px 14px;background:transparent;border:none;text-align:left;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f2;",
+                    onmouseover: function() { this.style.background = "#fbfcfd"; },
+                    onmouseout: function() { this.style.background = "transparent"; },
+                    onclick: () => seleccionarCliente(c.id)
+                },
+                    h("div", { style: "font-weight:600;color:#1d1d1f;" }, c.nombre),
+                    h("div", { style: "font-size:11.5px;color:#6e6e73;margin-top:2px;" },
+                        [c.telefono, c.dni ? `DNI ${c.dni}` : null].filter(Boolean).join(" · "))
+                ))
+            );
+            dropdown.style.display = "block";
+        } catch {
+            dropdown.style.display = "none";
+        }
+    };
 
-	selBuscarTipo.addEventListener("change", configurarInputBusqueda);
+    inpBuscar.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        const q = inpBuscar.value.trim();
+        debounceTimer = setTimeout(() => buscarClientes(q), 300);
+    });
 
-	inpBuscar.addEventListener("input", () => {
-		if (selBuscarTipo.value === "telefono") inpBuscar.value = inpBuscar.value.replace(/\D/g, "").slice(0, 9);
-		else if (selBuscarTipo.value === "dni") inpBuscar.value = inpBuscar.value.replace(/\D/g, "").slice(0, 8);
-	});
+    inpBuscar.addEventListener("keydown", e => {
+        if (e.key === "Escape") dropdown.style.display = "none";
+    });
 
-	// ✅ Cambio clave: leer el botón que disparó el modal
-	modalEl.addEventListener("show.bs.modal", async (evento) => {
-		const trigger = evento.relatedTarget;
-		if (trigger && trigger.classList?.contains("pedido-editar")) {
-			pedidoAEditar = trigger.dataset.pedidoId;
-		} else {
-			pedidoAEditar = null;
-		}
+    document.addEventListener("click", e => {
+        if (!e.target.closest("#autocompleteDropdown") && e.target !== inpBuscar) {
+            dropdown.style.display = "none";
+        }
+    });
 
-		configurarInputBusqueda();
-		if (pedidoAEditar === null) {
-			productos = [];
-			reiniciarFilas();
-		} else {
-			await cargarPedidoParaEditar();
-		}
-	});
+    // ============ SERIALIZACIÓN ============
+    // ✅ FIX 3: eliminada la función `serializar` que no se usaba.
+    const serializarCompleto = () => ({
+        idRepartidor: null,
+        clientes: bloques.map(b => ({
+            idCliente: clienteActual.id,
+            idDireccion: b.direccion.id,
+            detalles: b.filas.map(f => ({
+                idLocal: Number(f.selLocal.value),
+                idProducto: Number(f.selProducto.value),
+                cantidad: Number(f.inputCantidad.value) || 0,
+                descuentoMonto: Number(f.inputDescuento.value) || 0
+            }))
+        }))
+    });
 
-	$("pedidoBuscarBtn").addEventListener("click", buscarCliente);
-	inpBuscar.addEventListener("keydown", evento => {
-		if (evento.key === "Enter") {
-			evento.preventDefault();
-			buscarCliente();
-		}
-	});
+    // ============ GUARDAR ============
+    // ✅ FIX 2: no hacemos reload aquí. Solo marcamos pedidoRegistrado
+    // y cerramos el modal. El reload lo hace hidden.bs.modal.
+    const registrar = async (url) => {
+        limpiarErrores();
 
-	btnGuardar.addEventListener("click", () => registrar(
-		pedidoAEditar === null ? "/Pedidos/Guardar" : `/Pedidos/Actualizar?idPedido=${pedidoAEditar}`,
-		false));
-	btnEnviar.addEventListener("click", previewYEnviar);
+        if (!clienteActual) {
+            mostrarErrores([{ mensaje: "Selecciona un cliente." }]);
+            return;
+        }
 
-	modalEl.addEventListener("hidden.bs.modal", () => {
-		if (pedidoRegistrado) {
-			window.location.reload();
-			return;
-		}
-		reiniciar();
-	});
+        const cuerpo = serializarCompleto();
+
+        btnGuardar.disabled = true;
+        if (btnEnviar) btnEnviar.disabled = true;
+
+        try {
+            const resp = await fetch(url, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+                body: JSON.stringify(cuerpo)
+            });
+            const datos = await resp.json().catch(() => null);
+
+            if (!resp.ok) {
+                mostrarErrores(datos?.errores ?? [{ mensaje: "No se pudo guardar el pedido." }]);
+                btnGuardar.disabled = false;
+                if (btnEnviar) btnEnviar.disabled = false;
+                return;
+            }
+
+            if (datos?.mensaje) {
+                sessionStorage.setItem("pedidoToast", datos.mensaje);
+            }
+
+            pedidoRegistrado = true;
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } catch {
+            mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
+            btnGuardar.disabled = false;
+            if (btnEnviar) btnEnviar.disabled = false;
+        }
+    };
+
+    // ============ ENVIAR ============
+    const enviar = async () => {
+        limpiarErrores();
+
+        if (!clienteActual) {
+            mostrarErrores([{ mensaje: "Selecciona un cliente." }]);
+            return;
+        }
+
+        abrirModalSeleccionRepartidor(async (idRepartidor, nombreRepartidor) => {
+            const cuerpo = serializarCompleto();
+            cuerpo.idRepartidor = idRepartidor;
+
+            btnEnviar.disabled = true;
+
+            try {
+                const respPreview = await fetch("/Pedidos/PreviewEnviar", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+                    body: JSON.stringify(cuerpo)
+                });
+                const datosPreview = await respPreview.json().catch(() => null);
+
+                if (!respPreview.ok) {
+                    mostrarErrores(datosPreview?.errores ?? [{ mensaje: "No se pudo validar el pedido." }]);
+                    btnEnviar.disabled = false;
+                    return;
+                }
+
+                const previewModalEl = document.getElementById("previewEnvioModal");
+                document.getElementById("previewEnvioMensaje").textContent = datosPreview.mensaje ?? "";
+                document.getElementById("previewEnvioDestinatario").textContent = nombreRepartidor;
+
+                const confirmBtn = document.getElementById("previewEnvioConfirmar");
+                const nuevoBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(nuevoBtn, confirmBtn);
+
+                nuevoBtn.addEventListener("click", async () => {
+                    nuevoBtn.disabled = true;
+                    try {
+                        const resp2 = await fetch("/Pedidos/Enviar", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
+                            body: JSON.stringify(cuerpo)
+                        });
+                        const datos2 = await resp2.json().catch(() => null);
+                        if (!resp2.ok) {
+                            mostrarErrores(datos2?.errores ?? [{ mensaje: "No se pudo enviar el pedido." }]);
+                            nuevoBtn.disabled = false;
+                            return;
+                        }
+
+                        sessionStorage.setItem("pedidoToast", "PEDIDO ENVIADO CORRECTAMENTE");
+                        pedidoRegistrado = true;
+                        bootstrap.Modal.getOrCreateInstance(previewModalEl).hide();
+                        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                        window.open(datos2.whatsappUrl, "_blank");
+                    } catch {
+                        mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
+                        nuevoBtn.disabled = false;
+                    }
+                });
+
+                bootstrap.Modal.getOrCreateInstance(previewModalEl).show();
+                btnEnviar.disabled = false;
+            } catch {
+                mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
+                btnEnviar.disabled = false;
+            }
+        });
+    };
+
+    // ============ MODAL SELECCIÓN REPARTIDOR ============
+    const abrirModalSeleccionRepartidor = (callback) => {
+        if (!repartidoresDisponibles.length) {
+            mostrarErrores([{ mensaje: "No hay repartidores activos." }]);
+            return;
+        }
+
+        const modal = document.getElementById("modalConfirm");
+        document.getElementById("modalConfirmIcon").className = "modal-custom-icon info";
+        document.getElementById("modalConfirmTitle").textContent = "Selecciona un repartidor";
+
+        const textContainer = document.getElementById("modalConfirmText");
+        textContainer.innerHTML = "";
+
+        const lista = h("div", { style: "display:grid;gap:6px;margin-top:8px;" },
+            ...repartidoresDisponibles.map(r => h("button", {
+                type: "button",
+                style: "padding:10px 14px;background:#fbfcfd;border:1px solid #e5e5ea;border-radius:9px;font-size:13px;color:#1d1d1f;cursor:pointer;text-align:left;font-weight:500;transition:all 0.15s;",
+                onmouseover: function() { this.style.background = "#1d1d1f"; this.style.color = "#ffffff"; },
+                onmouseout: function() { this.style.background = "#fbfcfd"; this.style.color = "#1d1d1f"; },
+                onclick: () => {
+                    cerrarModalConfirm();
+                    callback(r.id, r.nombre);
+                }
+            }, r.nombre))
+        );
+
+        textContainer.appendChild(lista);
+
+        const btnConfirm = document.getElementById("modalConfirmBtn");
+        btnConfirm.style.display = "none";
+
+        modal.classList.add("show");
+    };
+
+    // ============ MODAL CONFIRMACIÓN ============
+    let accionPendiente = null;
+
+    window.abrirModalConfirm = (titulo, texto, tipo, callback, textoBoton) => {
+        const modal = document.getElementById("modalConfirm");
+        const icon = document.getElementById("modalConfirmIcon");
+        const title = document.getElementById("modalConfirmTitle");
+        const text = document.getElementById("modalConfirmText");
+        const btn = document.getElementById("modalConfirmBtn");
+
+        icon.className = "modal-custom-icon " + (tipo === "success" ? "success" : tipo === "info" ? "info" : "danger");
+        title.textContent = titulo;
+        text.innerHTML = texto;
+        btn.style.display = "";
+        btn.textContent = textoBoton || "Confirmar";
+        btn.className = "modal-custom-btn " + (tipo === "danger" ? "danger" : "primary");
+
+        accionPendiente = callback;
+        modal.classList.add("show");
+    };
+
+    window.cerrarModalConfirm = () => {
+        document.getElementById("modalConfirm").classList.remove("show");
+        accionPendiente = null;
+    };
+
+    document.getElementById("modalConfirmBtn")?.addEventListener("click", () => {
+        if (accionPendiente) { accionPendiente(); accionPendiente = null; }
+        cerrarModalConfirm();
+    });
+
+    document.getElementById("modalConfirm")?.addEventListener("click", function (e) {
+        if (e.target === this) cerrarModalConfirm();
+    });
+
+    // ============ CARGAR PEDIDO PARA EDITAR ============
+    const cargarPedidoParaEditar = async (idPedido) => {
+        clienteActual = null;
+        bloques = [];
+        contenedor.replaceChildren();
+        contenedorVacio.style.display = "block";
+        clienteSeleccionado.style.display = "none";
+        buscadorCliente.style.display = "block";
+        wrapperAgregarDireccion.style.display = "none";
+        productosPorLocal = {};
+        actualizarTotales();
+
+        try {
+            const resp = await fetch(`/Pedidos/ObtenerParaEditar?idPedido=${idPedido}`, {
+                credentials: "same-origin"
+            });
+            if (!resp.ok) throw new Error();
+            const pedido = await resp.json();
+
+            $("pedidoModalLabel").textContent = `Editar pedido N° ${pedido.idPedido}`;
+
+            if (pedido.clientes && pedido.clientes.length > 0) {
+                const primerCliente = pedido.clientes[0].cliente;
+                clienteActual = primerCliente;
+                primerCliente.direcciones.sort((a, b) => (b.principal ? 1 : 0) - (a.principal ? 1 : 0));
+
+                clienteNombre.textContent = primerCliente.nombre;
+                clienteMeta.textContent = [primerCliente.telefono, primerCliente.dni ? `DNI ${primerCliente.dni}` : null]
+                    .filter(Boolean).join(" · ");
+
+                buscadorCliente.style.display = "none";
+                clienteSeleccionado.style.display = "block";
+                contenedorVacio.style.display = "none";
+
+                for (const linea of pedido.clientes) {
+                    const dir = primerCliente.direcciones.find(d => d.id === linea.idDireccion)
+                        || { id: linea.idDireccion, direccion: "(sin dirección)", ciudad: null };
+                    crearBloqueDireccion(dir, linea.detalles);
+                }
+
+                actualizarBotonAgregarDireccion();
+            }
+
+            actualizarTotales();
+        } catch {
+            mostrarErrores([{ mensaje: "No se pudo cargar el pedido para editar." }]);
+        }
+    };
+
+    // ============ REINICIAR ============
+    const reiniciar = () => {
+        limpiarErrores();
+        alertaEnviado.classList.add("d-none");
+        formulario.classList.remove("d-none");
+        inpBuscar.value = "";
+        dropdown.style.display = "none";
+        clienteActual = null;
+        bloques = [];
+        contenedor.replaceChildren();
+        contenedorVacio.style.display = "block";
+        clienteSeleccionado.style.display = "none";
+        buscadorCliente.style.display = "block";
+        wrapperAgregarDireccion.style.display = "none";
+        productosPorLocal = {};
+        actualizarTotales();
+        btnGuardar.disabled = false;
+        if (btnEnviar) btnEnviar.disabled = false;
+        $("pedidoModalLabel").textContent = "Crear pedido";
+        pedidoAEditar = null;
+    };
+
+    // ============ EVENTOS DEL MODAL ============
+    modalEl.addEventListener("show.bs.modal", async (evento) => {
+        const trigger = evento.relatedTarget;
+        const esEdicion = trigger && trigger.classList?.contains("pedido-editar");
+
+        reiniciar();
+
+        if (esEdicion) {
+            pedidoAEditar = trigger.dataset.pedidoId;
+            await cargarPedidoParaEditar(pedidoAEditar);
+        }
+    });
+
+    modalEl.addEventListener("hidden.bs.modal", () => {
+        if (pedidoRegistrado) {
+            window.location.reload();
+            return;
+        }
+        reiniciar();
+    });
+
+    // ============ BOTONES ============
+    $("pedidoGuardarBtn").addEventListener("click", () => registrar(
+        pedidoAEditar === null ? "/Pedidos/Guardar" : `/Pedidos/Actualizar?idPedido=${pedidoAEditar}`
+    ));
+    $("pedidoEnviarBtn").addEventListener("click", enviar);
+
+    document.getElementById("btnNuevoPedido")?.addEventListener("click", () => {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    });
 })();
