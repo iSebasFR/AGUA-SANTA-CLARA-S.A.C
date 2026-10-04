@@ -53,6 +53,7 @@
 		try {
 			const resp = await fetch(`/Pedidos/CambiarEstado?idPedido=${encodeURIComponent(select.dataset.pedidoId)}`, {
 				method: "POST",
+				credentials: "same-origin",
 				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
 				body: JSON.stringify({ estado: select.value })
 			});
@@ -88,6 +89,7 @@
 		try {
 			const resp = await fetch(`/Pedidos/Eliminar?idPedido=${encodeURIComponent(btn.dataset.pedidoId)}`, {
 				method: "POST",
+				credentials: "same-origin",
 				headers: { "RequestVerificationToken": token }
 			});
 			if (!resp.ok) {
@@ -132,6 +134,7 @@
 		try {
 			const resp = await fetch("/Pedidos/PreviewEnviarSeleccionados", {
 				method: "POST",
+				credentials: "same-origin",
 				headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
 				body: JSON.stringify(cuerpo)
 			});
@@ -157,6 +160,7 @@
 				try {
 					const resp2 = await fetch("/Pedidos/EnviarSeleccionados", {
 						method: "POST",
+						credentials: "same-origin",
 						headers: { "Content-Type": "application/json", "RequestVerificationToken": token },
 						body: JSON.stringify(cuerpo)
 					});
@@ -180,8 +184,8 @@
 					selRepartidor.value = "";
 					actualizar();
 
-					const previewModal = bootstrap.Modal.getInstance(previewModalEl);
-					if (previewModal) previewModal.hide();
+					const previewModal = bootstrap.Modal.getOrCreateInstance(previewModalEl);
+					previewModal.hide();
 					window.open(datos2.whatsappUrl, "_blank");
 					setTimeout(() => window.location.reload(), 800);
 				} catch {
@@ -190,7 +194,7 @@
 				}
 			});
 
-			new bootstrap.Modal(previewModalEl).show();
+			bootstrap.Modal.getOrCreateInstance(previewModalEl).show();
 			btnEnviar.disabled = false;
 		} catch {
 			mostrarErrores([{ mensaje: "No se pudo conectar con el servidor." }]);
