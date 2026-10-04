@@ -728,7 +728,7 @@
 
             if (btnNuevoProducto) {
                 btnNuevoProducto.addEventListener('click', function () {
-                    fetch('/Productos/Create')
+                    fetch('/Productos/Create', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                         .then(r => r.text())
                         .then(html => {
                             document.getElementById('contenidoModalCrear').innerHTML = html;
@@ -740,13 +740,54 @@
 
         // ==================== ABRIR MODAL EDITAR ====================
         function abrirModalEditar(id) {
-            fetch('/Productos/Edit/' + id)
+            fetch('/Productos/Edit/' + id, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(r => r.text())
                 .then(html => {
                     document.getElementById('contenidoModalEditar').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('modalEditarProducto')).show();
                 });
         }
+
+        document.addEventListener('submit', async function (event) {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+
+            const ruta = new URL(form.action, window.location.origin).pathname.toLowerCase();
+            const contenidoId = ruta.endsWith('/productos/create')
+                ? 'contenidoModalCrear'
+                : ruta.endsWith('/productos/edit')
+                    ? 'contenidoModalEditar'
+                    : null;
+
+            if (!contenidoId) return;
+
+            event.preventDefault();
+            const botonGuardar = form.querySelector('[type="submit"]');
+            if (botonGuardar) botonGuardar.disabled = true;
+
+            try {
+                const respuesta = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                if (respuesta.redirected) {
+                    window.location.assign(respuesta.url);
+                    return;
+                }
+
+                if (!respuesta.ok) throw new Error('Error al guardar el producto.');
+
+                document.getElementById(contenidoId).innerHTML = await respuesta.text();
+                if (window.jQuery?.validator?.unobtrusive) {
+                    window.jQuery.validator.unobtrusive.parse(document.getElementById(contenidoId));
+                }
+            } catch {
+                if (botonGuardar) botonGuardar.disabled = false;
+                mostrarToast('No se pudo guardar el producto. Intenta nuevamente.', 'error');
+            }
+        });
 
         // ==================== MODAL DE CONFIRMACIÓN ====================
         let accionPendiente = null;

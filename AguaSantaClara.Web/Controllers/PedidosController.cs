@@ -59,6 +59,18 @@ public class PedidosController : Controller
                     && pc.Detalles.Any(d => d.EstadoRegistro && d.IdProducto == idProducto.Value)));
         }
 
+        var repartidoresActivos = await _context.Repartidores
+            .Where(r => r.Estado && r.EstadoRegistro)
+            .OrderBy(r => r.Nombre)
+            .ThenByDescending(r => r.Id)
+            .ToListAsync();
+
+        var repartidoresDisponibles = repartidoresActivos
+            .GroupBy(r => r.Nombre.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(grupo => grupo.First())
+            .OrderBy(r => r.Nombre)
+            .ToList();
+
         var modelo = new PedidosIndexViewModel
         {
             Pedidos = await consultaPedidos
@@ -71,10 +83,7 @@ public class PedidosController : Controller
                 .Where(l => l.Estado && l.EstadoRegistro)
                 .OrderBy(l => l.Nombre)
                 .ToListAsync(),
-            Repartidores = await _context.Repartidores
-                .Where(r => r.Estado && r.EstadoRegistro)
-                .OrderBy(r => r.Nombre)
-                .ToListAsync(),
+            Repartidores = repartidoresDisponibles,
             RepartidoresFiltro = await _context.Repartidores
                 .Where(r => r.EstadoRegistro)
                 .OrderBy(r => r.Nombre)

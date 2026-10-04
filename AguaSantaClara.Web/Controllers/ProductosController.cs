@@ -3,6 +3,7 @@ using AguaSantaClara.Web.Models;
 using AguaSantaClara.Web.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Web.Controllers;
@@ -62,9 +63,25 @@ public class ProductosController : Controller
     // ==================== CREATE ====================
     [HttpGet]
     [Authorize(Roles = "Administradora,Gerente")]
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
-        return PartialView("_Create", new CrearProductoViewModel());
+        if (!EsSolicitudAjax)
+            return RedirectToAction(nameof(Index));
+
+        var model = new CrearProductoViewModel
+        {
+            Locales = await _context.Locales
+                .Where(l => l.EstadoRegistro && l.Estado)
+                .OrderBy(l => l.Nombre)
+                .Select(l => new SelectListItem
+                {
+                    Value = l.Id.ToString(),
+                    Text = l.Nombre
+                })
+                .ToListAsync()
+        };
+
+        return PartialView("_Create", model);
     }
 
     [HttpPost]
@@ -72,15 +89,84 @@ public class ProductosController : Controller
     [Authorize(Roles = "Administradora,Gerente")]
     public async Task<IActionResult> Create(CrearProductoViewModel model)
     {
-        // Validar nombre duplicado
-        var nombreDuplicado = await _context.Productos
-            .AnyAsync(p => p.Nombre == model.Nombre.Trim() && p.EstadoRegistro);
+        model.Locales = await _context.Locales
+            .Where(l => l.EstadoRegistro && l.Estado)
+            .OrderBy(l => l.Nombre)
+            .Select(l => new SelectListItem
+            {
+                Value = l.Id.ToString(),
+                Text = l.Nombre
+            })
+            .ToListAsync();
 
-        if (nombreDuplicado)
-            ModelState.AddModelError(nameof(model.Nombre), "Ya existe un producto con ese nombre.");
+        model.IdLocales = (model.IdLocales ?? new List<long>()).Distinct().ToList();
+        if (model.IdLocales.Count == 0)
+            ModelState.AddModelError(nameof(model.IdLocales), "Seleccione al menos un local.");
+
+        var localesValidos = await _context.Locales
+            .Where(l => model.IdLocales.Contains(l.Id) && l.EstadoRegistro && l.Estado)
+            .Select(l => l.Id)
+            .ToListAsync();
+
+        if (localesValidos.Count != model.IdLocales.Count)
+            ModelState.AddModelError(nameof(model.IdLocales), "Seleccione únicamente locales activos válidos.");
+
+        var productoExistente = await _context.Productos
+            .FirstOrDefaultAsync(p => p.Nombre == model.Nombre.Trim() && p.EstadoRegistro);
+        var relacionesExistentes = new List<ProductoLocal>();
+
+        if (productoExistente != null)
+        {
+            if (!productoExistente.Estado)
+                ModelState.AddModelError(nameof(model.Nombre), "El producto existe, pero está inactivo. Actívalo desde Editar antes de agregarlo a otro local.");
+
+            relacionesExistentes = await _context.ProductosLocal
+                .Where(pl => pl.IdProducto == productoExistente.Id && model.IdLocales.Contains(pl.IdLocal))
+                .ToListAsync();
+
+            var todosYaAsignados = model.IdLocales.Count > 0 && model.IdLocales.All(idLocal =>
+                relacionesExistentes.Any(pl => pl.IdLocal == idLocal && pl.Estado && pl.EstadoRegistro));
+
+            if (todosYaAsignados)
+                ModelState.AddModelError(nameof(model.IdLocales), "Este producto ya está registrado en todos los locales seleccionados.");
+        }
 
         if (!ModelState.IsValid)
-            return PartialView("_Create", model);
+        {
+            if (EsSolicitudAjax)
+                return PartialView("_Create", model);
+
+            TempData["ErrorMessage"] = ObtenerErroresModelState();
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (productoExistente != null)
+        {
+            foreach (var idLocal in model.IdLocales)
+            {
+                var relacion = relacionesExistentes.FirstOrDefault(pl => pl.IdLocal == idLocal);
+                if (relacion == null)
+                {
+                    _context.ProductosLocal.Add(new ProductoLocal
+                    {
+                        IdLocal = idLocal,
+                        Producto = productoExistente,
+                        Stock = 0,
+                        Estado = true,
+                        EstadoRegistro = true
+                    });
+                }
+                else
+                {
+                    relacion.Estado = true;
+                    relacion.EstadoRegistro = true;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "PRODUCTO AGREGADO A LOS LOCALES SELECCIONADOS";
+            return RedirectToAction(nameof(Index));
+        }
 
         var producto = new Producto
         {
@@ -94,6 +180,17 @@ public class ProductosController : Controller
         };
 
         _context.Productos.Add(producto);
+        foreach (var idLocal in model.IdLocales)
+        {
+            _context.ProductosLocal.Add(new ProductoLocal
+            {
+                IdLocal = idLocal,
+                Producto = producto,
+                Stock = 0,
+                Estado = true,
+                EstadoRegistro = true
+            });
+        }
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "PRODUCTO CREADO CORRECTAMENTE";
@@ -105,20 +202,38 @@ public class ProductosController : Controller
     [Authorize(Roles = "Administradora,Gerente")]
     public async Task<IActionResult> Edit(long id)
     {
+        if (!EsSolicitudAjax)
+            return RedirectToAction(nameof(Index));
+
         var producto = await _context.Productos
             .FirstOrDefaultAsync(p => p.Id == id && p.EstadoRegistro);
 
         if (producto == null)
             return NotFound();
 
+        var localesActuales = await _context.ProductosLocal
+            .Where(pl => pl.IdProducto == producto.Id && pl.Estado && pl.EstadoRegistro)
+            .Select(pl => pl.IdLocal)
+            .ToListAsync();
+
         var model = new EditarProductoViewModel
         {
             Id = producto.Id,
             Nombre = producto.Nombre,
             Descripcion = producto.Descripcion,
-            Categoria = producto.Categoria ?? string.Empty,
+            Categoria = producto.Categoria == "Papel Higiénico" ? "Papel" : producto.Categoria ?? string.Empty,
             PrecioVenta = producto.PrecioVenta,
-            Costo = producto.Costo
+            Costo = producto.Costo,
+            IdLocales = localesActuales,
+            Locales = await _context.Locales
+                .Where(l => l.Estado && l.EstadoRegistro)
+                .OrderBy(l => l.Nombre)
+                .Select(l => new SelectListItem
+                {
+                    Value = l.Id.ToString(),
+                    Text = l.Nombre
+                })
+                .ToListAsync()
         };
 
         return PartialView("_Edit", model);
@@ -129,6 +244,28 @@ public class ProductosController : Controller
     [Authorize(Roles = "Administradora,Gerente")]
     public async Task<IActionResult> Edit(EditarProductoViewModel model)
     {
+        model.Locales = await _context.Locales
+            .Where(l => l.Estado && l.EstadoRegistro)
+            .OrderBy(l => l.Nombre)
+            .Select(l => new SelectListItem
+            {
+                Value = l.Id.ToString(),
+                Text = l.Nombre
+            })
+            .ToListAsync();
+
+        model.IdLocales = (model.IdLocales ?? new List<long>()).Distinct().ToList();
+        if (model.IdLocales.Count == 0)
+            ModelState.AddModelError(nameof(model.IdLocales), "Seleccione al menos un local.");
+
+        var localesValidos = await _context.Locales
+            .Where(l => model.IdLocales.Contains(l.Id) && l.Estado && l.EstadoRegistro)
+            .Select(l => l.Id)
+            .ToListAsync();
+
+        if (localesValidos.Count != model.IdLocales.Count)
+            ModelState.AddModelError(nameof(model.IdLocales), "Seleccione únicamente locales activos válidos.");
+
         var producto = await _context.Productos
             .FirstOrDefaultAsync(p => p.Id == model.Id && p.EstadoRegistro);
 
@@ -143,7 +280,44 @@ public class ProductosController : Controller
             ModelState.AddModelError(nameof(model.Nombre), "Ya existe un producto con ese nombre.");
 
         if (!ModelState.IsValid)
-            return PartialView("_Edit", model);
+        {
+            if (EsSolicitudAjax)
+                return PartialView("_Edit", model);
+
+            TempData["ErrorMessage"] = ObtenerErroresModelState();
+            return RedirectToAction(nameof(Index));
+        }
+
+        var relacionesProducto = await _context.ProductosLocal
+            .Where(pl => pl.IdProducto == producto.Id)
+            .ToListAsync();
+
+        foreach (var relacion in relacionesProducto.Where(pl => !model.IdLocales.Contains(pl.IdLocal)))
+        {
+            relacion.Estado = false;
+            relacion.EstadoRegistro = false;
+        }
+
+        foreach (var idLocal in model.IdLocales)
+        {
+            var relacion = relacionesProducto.FirstOrDefault(pl => pl.IdLocal == idLocal);
+            if (relacion == null)
+            {
+                _context.ProductosLocal.Add(new ProductoLocal
+                {
+                    IdLocal = idLocal,
+                    Producto = producto,
+                    Stock = 0,
+                    Estado = true,
+                    EstadoRegistro = true
+                });
+            }
+            else
+            {
+                relacion.Estado = true;
+                relacion.EstadoRegistro = true;
+            }
+        }
 
         producto.Nombre = model.Nombre.Trim();
         producto.Descripcion = string.IsNullOrWhiteSpace(model.Descripcion) ? null : model.Descripcion.Trim();
@@ -156,6 +330,17 @@ public class ProductosController : Controller
         TempData["SuccessMessage"] = "PRODUCTO ACTUALIZADO CORRECTAMENTE";
         return RedirectToAction(nameof(Index));
     }
+
+    private bool EsSolicitudAjax => string.Equals(
+        Request.Headers["X-Requested-With"].ToString(),
+        "XMLHttpRequest",
+        StringComparison.OrdinalIgnoreCase);
+
+    private string ObtenerErroresModelState() => string.Join(" ", ModelState.Values
+        .SelectMany(value => value.Errors)
+        .Select(error => error.ErrorMessage)
+        .Where(mensaje => !string.IsNullOrWhiteSpace(mensaje))
+        .Distinct());
 
     // ==================== CAMBIAR ESTADO ====================
     [HttpPost]

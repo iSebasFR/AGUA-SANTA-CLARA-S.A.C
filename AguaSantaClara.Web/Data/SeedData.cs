@@ -113,14 +113,41 @@ public static class SeedData
         var repartidores = new[]
         {
             new { Nombre = "Carlos Ramos", Celular = "51991093927" },
-            new { Nombre = "Luis Paredes", Celular = "51987654321" },
-            new { Nombre = "Jorge Salas", Celular = "51987654323" }
+            new { Nombre = "Luis Paredes", Celular = "51963854929" },
+            new { Nombre = "Jorge Salas", Celular = "51991654945" }
         };
 
+        var repartidoresExistentes = await db.Repartidores.ToListAsync();
         foreach (var item in repartidores)
         {
-            if (!await db.Repartidores.AnyAsync(r => r.Celular == item.Celular))
-                db.Repartidores.Add(new Repartidor { Nombre = item.Nombre, Celular = item.Celular });
+            var coincidencias = repartidoresExistentes
+                .Where(r => string.Equals(r.Nombre.Trim(), item.Nombre, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(r => r.Id)
+                .ToList();
+
+            var repartidor = coincidencias.FirstOrDefault(r => r.Celular == item.Celular)
+                ?? coincidencias.FirstOrDefault(r => r.EstadoRegistro)
+                ?? coincidencias.FirstOrDefault();
+
+            if (repartidor == null)
+            {
+                repartidor = new Repartidor { Nombre = item.Nombre, Celular = item.Celular };
+                db.Repartidores.Add(repartidor);
+                repartidoresExistentes.Add(repartidor);
+            }
+            else
+            {
+                repartidor.Nombre = item.Nombre;
+                repartidor.Celular = item.Celular;
+                repartidor.Estado = true;
+                repartidor.EstadoRegistro = true;
+            }
+
+            foreach (var duplicado in coincidencias.Where(r => r.Id != repartidor.Id))
+            {
+                duplicado.Estado = false;
+                duplicado.EstadoRegistro = false;
+            }
         }
 
         await db.SaveChangesAsync();

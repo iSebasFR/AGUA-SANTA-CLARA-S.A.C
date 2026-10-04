@@ -67,6 +67,37 @@ public class PedidoServiceTests
         };
     }
 
+    [Fact]
+    public async Task Create_AsignaLocalYRelacionaProductoConElLocalSeleccionado()
+    {
+        var db = CrearContexto();
+        var local = new Local { Nombre = "Santa Rosa" };
+        db.Locales.Add(local);
+        await db.SaveChangesAsync();
+
+        var controller = new ProductosController(db);
+        var modelo = new CrearProductoViewModel
+        {
+            Nombre = "Bidón de 20L",
+            Categoria = "Bidón",
+            PrecioVenta = 18.50m,
+            Costo = 12.00m,
+            Estado = true,
+            IdLocal = local.Id
+        };
+
+        var resultado = await controller.Create(modelo);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(resultado);
+        Assert.Equal(nameof(ProductosController.Index), redirect.ActionName);
+
+        var producto = await db.Productos.SingleAsync();
+        var productoLocal = await db.ProductosLocal.SingleAsync();
+
+        Assert.Equal(producto.Id, productoLocal.IdProducto);
+        Assert.Equal(local.Id, productoLocal.IdLocal);
+    }
+
     private static PedidoClienteViewModel Linea(Cliente cliente, int indiceDireccion, params (Producto producto, int cantidad)[] items) => new()
     {
         IdCliente = cliente.Id,
