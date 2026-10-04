@@ -9,13 +9,9 @@ public class PedidosIndexViewModel
     public List<Repartidor> Repartidores { get; set; } = new();
     public List<Repartidor> RepartidoresFiltro { get; set; } = new();
     public List<Cliente> ClientesFiltro { get; set; } = new();
-    public List<Producto> ProductosFiltro { get; set; } = new();
-    public DateOnly? FechaDesde { get; set; }
-    public DateOnly? FechaHasta { get; set; }
     public string? EstadoFiltro { get; set; }
     public long? IdClienteFiltro { get; set; }
     public long? IdRepartidorFiltro { get; set; }
-    public long? IdProductoFiltro { get; set; }
     public string? ErrorFiltros { get; set; }
     public bool TieneFiltrosAplicados { get; set; }
 }

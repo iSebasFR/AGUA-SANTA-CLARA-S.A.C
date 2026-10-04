@@ -32,51 +32,85 @@ public class PedidoService : IPedidoService
         if (pedido == null) return false;
 
         pedido.EstadoRegistro = false;
-        pedido.FechaActualizacion = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return true;
     }
 
     public async Task<PedidoResultado> CambiarEstadoAsync(long idPedido, string? estado)
     {
-        if (string.IsNullOrWhiteSpace(estado) || !EstadosPedido.Todos.Contains(estado, StringComparer.Ordinal))
-            return new PedidoResultado { Errores = { new ErrorPedido("estado", "Selecciona un estado válido.") } };
+        if (string.IsNullOrWhiteSpace(estado) ||
+            !EstadosPedido.Todos.Contains(estado, StringComparer.OrdinalIgnoreCase))
+        {
+            return new PedidoResultado
+            {
+                Errores = { new ErrorPedido("estado", "Selecciona un estado válido.") }
+            };
+        }
+
+        var estadoCanonico = EstadosPedido.Todos
+            .First(e => string.Equals(e, estado, StringComparison.OrdinalIgnoreCase));
 
         var pedido = await _context.Pedidos
             .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
-        if (pedido == null)
-            return new PedidoResultado { Errores = { new ErrorPedido("pedido", "El pedido no existe.") } };
 
-        pedido.Estado = estado;
-        pedido.FechaActualizacion = DateTime.UtcNow;
+        if (pedido == null)
+            return new PedidoResultado
+            {
+                Errores = { new ErrorPedido("pedido", "El pedido no existe.") }
+            };
+
+        var permitidos = EstadosPedido.SiguientesPermitidos(pedido.Estado).ToList();
+        if (!permitidos.Contains(estadoCanonico, StringComparer.OrdinalIgnoreCase))
+        {
+            return new PedidoResultado
+            {
+                Errores =
+                {
+                    new ErrorPedido("estado",
+                        permitidos.Count == 0
+                            ? $"El pedido ya está en estado {pedido.Estado} y no admite más cambios."
+                            : $"Solo puedes pasar de {pedido.Estado} a: {string.Join(", ", permitidos)}.")
+                }
+            };
+        }
+
+        pedido.Estado = estadoCanonico;
         await _context.SaveChangesAsync();
-        return new PedidoResultado();
+        return new PedidoResultado { Mensaje = estadoCanonico };
     }
 
-    private async Task<PedidoResultado> GuardarAsync(CrearPedidoViewModel modelo, bool enviar, long? idPedido, bool persistir)
+    private async Task<PedidoResultado> GuardarAsync(
+        CrearPedidoViewModel modelo, bool enviar, long? idPedido, bool persistir)
     {
         var errores = new List<ErrorPedido>();
         Pedido? pedidoExistente = null;
-
-        Local? local = null;
-        if (modelo.IdLocal != null)
-            local = await _context.Locales
-                .FirstOrDefaultAsync(l => l.Id == modelo.IdLocal && l.Estado && l.EstadoRegistro);
-
-        if (local == null)
-            errores.Add(new ErrorPedido("idLocal", "Selecciona el local de despacho."));
 
         if (idPedido.HasValue)
         {
             pedidoExistente = await _context.Pedidos
                 .Include(p => p.Clientes).ThenInclude(c => c.Detalles)
                 .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
+
             if (pedidoExistente == null)
-                return new PedidoResultado { Errores = { new ErrorPedido("pedido", "El pedido no existe.") } };
+                return new PedidoResultado
+                {
+                    Errores = { new ErrorPedido("pedido", "El pedido no existe.") }
+                };
+
+            if (pedidoExistente.Estado != EstadosPedido.Pendiente)
+                return new PedidoResultado
+                {
+                    Errores = { new ErrorPedido("pedido", "Solo se pueden editar pedidos en estado Pendiente.") }
+                };
         }
 
         if (modelo.Clientes.Count == 0)
             errores.Add(new ErrorPedido("clientes", "Agrega al menos un cliente."));
+
+        // ✅ Regla: 1 cliente por pedido
+        var idsClientesDistintos = modelo.Clientes.Select(c => c.IdCliente).Distinct().ToList();
+        if (idsClientesDistintos.Count > 1)
+            errores.Add(new ErrorPedido("clientes", "Solo se permite un cliente por pedido."));
 
         Repartidor? repartidor = null;
         if (enviar)
@@ -92,32 +126,41 @@ public class PedidoService : IPedidoService
         }
 
         var idsClientes = modelo.Clientes.Select(c => c.IdCliente).Distinct().ToList();
-        var idsProductos = modelo.Clientes.SelectMany(c => c.Detalles).Select(d => d.IdProducto).Distinct().ToList();
+        var idsLocales = modelo.Clientes
+            .SelectMany(c => c.Detalles)
+            .Select(d => d.IdLocal)
+            .Distinct()
+            .ToList();
+        var idsProductos = modelo.Clientes
+            .SelectMany(c => c.Detalles)
+            .Select(d => d.IdProducto)
+            .Distinct()
+            .ToList();
 
         var clientes = await _context.Clientes
             .Include(c => c.Direcciones)
             .Where(c => idsClientes.Contains(c.Id) && c.Estado && c.EstadoRegistro)
             .ToDictionaryAsync(c => c.Id);
 
-        var disponibles = local == null
-            ? new Dictionary<long, ProductoLocal>()
-            : await _context.ProductosLocal
-                .Include(pl => pl.Producto)
-                .Where(pl => pl.IdLocal == local.Id
-                    && idsProductos.Contains(pl.IdProducto)
-                    && pl.Estado && pl.EstadoRegistro
-                    && pl.Producto.Estado && pl.Producto.EstadoRegistro)
-                .ToDictionaryAsync(pl => pl.IdProducto);
+        var productosLocal = await _context.ProductosLocal
+            .Include(pl => pl.Producto)
+            .Include(pl => pl.Local)
+            .Where(pl => idsLocales.Contains(pl.IdLocal)
+                && idsProductos.Contains(pl.IdProducto)
+                && pl.Estado && pl.EstadoRegistro
+                && pl.Producto.Estado && pl.Producto.EstadoRegistro)
+            .ToListAsync();
+
+        var disponibles = productosLocal
+            .ToDictionary(pl => (pl.IdLocal, pl.IdProducto));
 
         var pedido = new Pedido
         {
-            IdLocal = local?.Id,
             IdRepartidor = repartidor?.Id,
-            Estado = enviar ? EstadosPedido.Enviado : EstadosPedido.Pendiente
+            Estado = EstadosPedido.Pendiente
         };
 
         var paresUsados = new HashSet<(long, long)>();
-        var cantidadPorProducto = new Dictionary<long, int>();
 
         for (var i = 0; i < modelo.Clientes.Count; i++)
         {
@@ -130,7 +173,9 @@ public class PedidoService : IPedidoService
                 continue;
             }
 
-            var direccion = cliente.Direcciones.FirstOrDefault(d => d.Id == linea.IdDireccion && d.EstadoRegistro);
+            var direccion = cliente.Direcciones
+                .FirstOrDefault(d => d.Id == linea.IdDireccion && d.EstadoRegistro);
+
             if (direccion == null)
                 errores.Add(new ErrorPedido($"{prefijo}.idDireccion", "Selecciona una dirección de entrega del cliente."));
             else if (!paresUsados.Add((cliente.Id, direccion.Id)))
@@ -152,9 +197,11 @@ public class PedidoService : IPedidoService
                 var detalle = linea.Detalles[j];
                 var campo = $"{prefijo}.detalles[{j}]";
 
-                if (!disponibles.TryGetValue(detalle.IdProducto, out var productoLocal))
+                if (!disponibles.TryGetValue((detalle.IdLocal, detalle.IdProducto), out var productoLocal))
                 {
-                    errores.Add(new ErrorPedido($"{campo}.idProducto", "El producto no está disponible en este local."));
+                    errores.Add(new ErrorPedido(
+                        $"{campo}.idProducto",
+                        "El producto no está disponible en el local seleccionado."));
                     continue;
                 }
 
@@ -164,17 +211,35 @@ public class PedidoService : IPedidoService
                     continue;
                 }
 
-                cantidadPorProducto[detalle.IdProducto] =
-                    cantidadPorProducto.GetValueOrDefault(detalle.IdProducto) + detalle.Cantidad;
+                if (detalle.DescuentoMonto < 0)
+                {
+                    errores.Add(new ErrorPedido($"{campo}.descuentoMonto", "El descuento no puede ser negativo."));
+                    continue;
+                }
 
                 var precio = productoLocal.Producto.PrecioVenta;
+                var bruto = detalle.Cantidad * precio;
+
+                if (detalle.DescuentoMonto > bruto)
+                {
+                    errores.Add(new ErrorPedido(
+                        $"{campo}.descuentoMonto",
+                        $"El descuento no puede superar el monto del producto ({bruto:0.00})."));
+                    continue;
+                }
+
+                var subtotal = bruto - detalle.DescuentoMonto;
+
                 pedidoCliente.Detalles.Add(new DetallePedido
                 {
+                    IdLocal = detalle.IdLocal,
+                    Local = productoLocal.Local,
                     IdProducto = detalle.IdProducto,
                     Producto = productoLocal.Producto,
                     Cantidad = detalle.Cantidad,
                     PrecioUnitario = precio,
-                    Subtotal = detalle.Cantidad * precio
+                    DescuentoMonto = detalle.DescuentoMonto,
+                    Subtotal = subtotal
                 });
             }
 
@@ -182,17 +247,7 @@ public class PedidoService : IPedidoService
             pedido.Clientes.Add(pedidoCliente);
         }
 
-        if (local != null)
-        {
-            foreach (var (idProducto, cantidad) in cantidadPorProducto)
-            {
-                var productoLocal = disponibles[idProducto];
-                if (cantidad > productoLocal.Stock)
-                    errores.Add(new ErrorPedido(
-                        $"stock:{idProducto}",
-                        $"Stock insuficiente en {local.Nombre}: {productoLocal.Producto.Nombre} (disponible: {productoLocal.Stock})"));
-            }
-        }
+        // ❌ Validación de stock eliminada (el módulo de inventario aún no está implementado).
 
         if (errores.Count > 0)
             return new PedidoResultado { Errores = errores };
@@ -210,10 +265,8 @@ public class PedidoService : IPedidoService
                 _context.RemoveRange(pedidoExistente.Clientes.SelectMany(c => c.Detalles));
                 _context.RemoveRange(pedidoExistente.Clientes);
                 pedidoExistente.Clientes.Clear();
-                pedidoExistente.IdLocal = local?.Id;
-                pedidoExistente.IdRepartidor = modelo.IdRepartidor;
+                pedidoExistente.IdRepartidor = pedido.IdRepartidor;
                 pedidoExistente.Total = pedido.Total;
-                pedidoExistente.FechaActualizacion = DateTime.UtcNow;
                 foreach (var cliente in pedido.Clientes)
                     pedidoExistente.Clientes.Add(cliente);
             }
@@ -224,10 +277,33 @@ public class PedidoService : IPedidoService
             await _context.SaveChangesAsync();
 
         var resultado = new PedidoResultado { IdPedido = pedido.Id, Total = pedido.Total };
+
         if (enviar)
         {
-            if (pedido.Local == null && local != null)
-                pedido.Local = local;
+            if (persistir && pedidoExistente == null)
+            {
+                pedido.Estado = EstadosPedido.Enviado;
+                await _context.SaveChangesAsync();
+            }
+            else if (persistir && pedidoExistente != null)
+            {
+                pedidoExistente.Estado = EstadosPedido.Enviado;
+                await _context.SaveChangesAsync();
+                pedido = pedidoExistente;
+            }
+
+            await _context.Entry(pedido).Collection(p => p.Clientes).LoadAsync();
+            foreach (var pc in pedido.Clientes)
+            {
+                await _context.Entry(pc).Reference(c => c.Cliente).LoadAsync();
+                await _context.Entry(pc).Reference(c => c.Direccion).LoadAsync();
+                await _context.Entry(pc).Collection(c => c.Detalles).LoadAsync();
+                foreach (var d in pc.Detalles)
+                {
+                    await _context.Entry(d).Reference(x => x.Producto).LoadAsync();
+                    await _context.Entry(d).Reference(x => x.Local).LoadAsync();
+                }
+            }
 
             var mensaje = PedidoMensajeBuilder.Construir(pedido);
             resultado.Mensaje = mensaje;
@@ -248,7 +324,6 @@ public class PedidoService : IPedidoService
             pedido.IdRepartidor = repartidor!.Id;
             if (pedido.Estado == EstadosPedido.Pendiente)
                 pedido.Estado = EstadosPedido.Enviado;
-            pedido.FechaActualizacion = DateTime.UtcNow;
         }
         await _context.SaveChangesAsync();
 
@@ -276,7 +351,8 @@ public class PedidoService : IPedidoService
         };
     }
 
-    private async Task<(List<ErrorPedido>, List<Pedido>?, Repartidor?)> ValidarEnvioVariosAsync(EnviarPedidosViewModel modelo)
+    private async Task<(List<ErrorPedido>, List<Pedido>?, Repartidor?)> ValidarEnvioVariosAsync(
+        EnviarPedidosViewModel modelo)
     {
         var errores = new List<ErrorPedido>();
         var ids = modelo.IdsPedidos.Distinct().ToList();
@@ -295,15 +371,19 @@ public class PedidoService : IPedidoService
             errores.Add(new ErrorPedido("idRepartidor", "El celular del repartidor no tiene un formato válido."));
 
         var pedidos = await _context.Pedidos
-            .Include(p => p.Local)
             .Include(p => p.Clientes).ThenInclude(c => c.Cliente)
             .Include(p => p.Clientes).ThenInclude(c => c.Direccion)
             .Include(p => p.Clientes).ThenInclude(c => c.Detalles).ThenInclude(d => d.Producto)
+            .Include(p => p.Clientes).ThenInclude(c => c.Detalles).ThenInclude(d => d.Local)
             .Where(p => ids.Contains(p.Id) && p.EstadoRegistro)
             .ToListAsync();
 
         if (pedidos.Count != ids.Count)
             errores.Add(new ErrorPedido("pedidos", "Algún pedido seleccionado no existe."));
+
+        var noPendientes = pedidos.Where(p => p.Estado != EstadosPedido.Pendiente).ToList();
+        if (noPendientes.Any())
+            errores.Add(new ErrorPedido("pedidos", "Solo se pueden enviar pedidos en estado Pendiente."));
 
         return (errores, pedidos, repartidor);
     }

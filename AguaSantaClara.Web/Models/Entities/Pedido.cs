@@ -5,20 +5,24 @@ public static class EstadosPedido
     public const string Pendiente = "Pendiente";
     public const string Enviado = "Enviado";
     public const string Entregado = "Entregado";
-    public const string ConIncidencia = "Con Incidencia";
-    public const string Pagado = "Pagado";
-    public const string PagoParcial = "Pago Parcial";
 
-    public static readonly string[] Todos =
+    public static readonly string[] Todos = { Pendiente, Enviado, Entregado };
+
+    /// <summary>
+    /// Estados a los que se puede transicionar desde <paramref name="estadoActual"/>.
+    /// </summary>
+    public static IEnumerable<string> SiguientesPermitidos(string estadoActual) => estadoActual switch
     {
-        Pendiente, Enviado, Entregado, ConIncidencia, Pagado, PagoParcial
+        Pendiente => new[] { Enviado },
+        Enviado => new[] { Entregado },
+        Entregado => Array.Empty<string>(),
+        _ => Array.Empty<string>()
     };
 }
 
 public class Pedido
 {
     public long Id { get; set; }
-    public long? IdLocal { get; set; }
     public long? IdRepartidor { get; set; }
     public string Estado { get; set; } = EstadosPedido.Pendiente;
     public decimal Total { get; set; }
@@ -26,7 +30,6 @@ public class Pedido
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaActualizacion { get; set; }
 
-    public Local? Local { get; set; }
     public Repartidor? Repartidor { get; set; }
     public ICollection<PedidoCliente> Clientes { get; set; } = new List<PedidoCliente>();
 }
