@@ -8,7 +8,7 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 </div>
 
-<form asp-action="Create" method="post">
+<form asp-action="Create" method="post" id="formCrearCliente">
     <div class="modal-body pt-3">
 
         <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
@@ -63,5 +63,3 @@
         <button type="submit" class="btn btn-dark">Guardar</button>
     </div>
 </form>
-
-<partial name="_ValidationScriptsPartial" />

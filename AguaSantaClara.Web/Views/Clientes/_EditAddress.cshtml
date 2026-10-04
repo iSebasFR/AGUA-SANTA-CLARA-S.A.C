@@ -1,6 +1,6 @@
 @model AguaSantaClara.Web.Models.DireccionClienteViewModel
 
-<form asp-action="EditAddress" method="post">
+<form asp-action="EditAddress" method="post" id="formEditarDireccion">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
     <input type="hidden" asp-for="IdCliente" />

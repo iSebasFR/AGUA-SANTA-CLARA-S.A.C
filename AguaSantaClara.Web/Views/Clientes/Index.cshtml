@@ -16,9 +16,6 @@
         background-attachment: fixed !important;
     }
 
-    /* ============================================================
-       LAYOUT MASTER-DETAIL
-       ============================================================ */
     .clientes-layout {
         display: grid;
         grid-template-columns: minmax(400px, 1fr) 1.3fr;
@@ -26,9 +23,6 @@
         min-height: calc(100vh - 220px);
     }
 
-    /* ============================================================
-       PANEL IZQUIERDO
-       ============================================================ */
     .clientes-list-panel {
         background: #ffffff;
         border: 1px solid #e5e5ea;
@@ -62,9 +56,6 @@
         margin: 4px 0 0;
     }
 
-    /* ============================================================
-       BOTÓN NEGRO APPLE
-       ============================================================ */
     .btn-apple {
         height: 36px;
         padding: 0 16px;
@@ -92,13 +83,8 @@
         box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
     }
 
-    .btn-apple:active {
-        transform: translateY(0);
-    }
+    .btn-apple:active { transform: translateY(0); }
 
-    /* ============================================================
-       TOOLBAR (BÚSQUEDA + FILTROS)
-       ============================================================ */
     .toolbar-row {
         display: flex;
         gap: 8px;
@@ -126,9 +112,7 @@
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .search-box input::placeholder {
-        color: #a1a1a6;
-    }
+    .search-box input::placeholder { color: #a1a1a6; }
 
     .search-box input:focus {
         outline: none;
@@ -146,9 +130,6 @@
         pointer-events: none;
     }
 
-    /* ============================================================
-       FILTROS PILLS
-       ============================================================ */
     .filter-pills {
         display: flex;
         gap: 2px;
@@ -178,18 +159,13 @@
         white-space: nowrap;
     }
 
-    .filter-pill:hover {
-        color: #1d1d1f;
-    }
+    .filter-pill:hover { color: #1d1d1f; }
 
     .filter-pill.active {
         background: #1d1d1f;
         color: #ffffff;
     }
 
-    /* ============================================================
-       TABLA DE CLIENTES
-       ============================================================ */
     .clientes-list-scroll {
         overflow-y: auto;
         flex: 1;
@@ -220,17 +196,9 @@
         border-bottom: 1px solid #f0f0f2;
     }
 
-    .clientes-table tbody tr:last-child {
-        border-bottom: none;
-    }
-
-    .clientes-table tbody tr:hover {
-        background: #fbfcfd;
-    }
-
-    .clientes-table tbody tr.selected {
-        background: #eaf4fb;
-    }
+    .clientes-table tbody tr:last-child { border-bottom: none; }
+    .clientes-table tbody tr:hover { background: #fbfcfd; }
+    .clientes-table tbody tr.selected { background: #eaf4fb; }
 
     .clientes-table tbody td {
         padding: 12px;
@@ -242,12 +210,8 @@
     .client-name {
         font-weight: 600;
         color: #1d1d1f;
-        font-size: 13px;
     }
 
-    /* ============================================================
-       ESTADO DESPLEGABLE EN TABLA
-       ============================================================ */
     .status-select {
         height: 30px;
         padding: 0 26px 0 10px;
@@ -263,7 +227,7 @@
         background-image: url("data:image/svg+xml,%3Csvg width='9' height='9' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%236e6e73' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 8px center;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 110px;
     }
 
     .status-select:focus {
@@ -272,20 +236,9 @@
         box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
     }
 
-    .status-select.activo {
-        background-color: #e8f9ee;
-        border-color: #b8e6c6;
-        color: #1a8a3a;
-    }
+    .status-select.activo { background-color: #e8f9ee; border-color: #b8e6c6; color: #1a8a3a; }
+    .status-select.inactivo { background-color: #f2f2f4; color: #6e6e73; }
 
-    .status-select.inactivo {
-        background-color: #f2f2f4;
-        color: #6e6e73;
-    }
-
-    /* ============================================================
-       PANEL DERECHO - FICHA
-       ============================================================ */
     .clientes-detail-panel {
         background: #ffffff;
         border: 1px solid #e5e5ea;
@@ -347,26 +300,10 @@
         text-decoration: none;
     }
 
-    .btn-outline:hover {
-        background: #fbfcfd;
-        border-color: #1d1d1f;
-        color: #1d1d1f;
-    }
+    .btn-outline:hover { background: #fbfcfd; border-color: #1d1d1f; }
+    .btn-outline.danger { color: #ff3b30; border-color: #ffd0cc; }
+    .btn-outline.danger:hover { background: #ffebea; border-color: #ff3b30; }
 
-    .btn-outline.danger {
-        color: #ff3b30;
-        border-color: #ffd0cc;
-    }
-
-    .btn-outline.danger:hover {
-        background: #ffebea;
-        border-color: #ff3b30;
-        color: #ff3b30;
-    }
-
-    /* ============================================================
-       TABS
-       ============================================================ */
     .detail-tabs {
         display: flex;
         gap: 4px;
@@ -390,9 +327,7 @@
         gap: 6px;
     }
 
-    .detail-tab:hover {
-        color: #1d1d1f;
-    }
+    .detail-tab:hover { color: #1d1d1f; }
 
     .detail-tab.active {
         color: #1d1d1f;
@@ -414,37 +349,22 @@
         color: #ffffff;
     }
 
-    /* ============================================================
-       CONTENIDO DE TABS
-       ============================================================ */
     .tab-content {
         flex: 1;
         overflow-y: auto;
         padding-top: 20px;
     }
 
-    .tab-pane {
-        display: none;
-    }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
 
-    .tab-pane.active {
-        display: block;
-    }
-
-    /* ============================================================
-       INFO GENERAL
-       ============================================================ */
     .info-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 16px;
     }
 
-    .info-item {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-    }
+    .info-item { display: flex; flex-direction: column; gap: 3px; }
 
     .info-label {
         font-size: 10.5px;
@@ -455,15 +375,22 @@
         font-family: 'JetBrains Mono', monospace;
     }
 
-    .info-value {
-        font-size: 13.5px;
-        font-weight: 500;
-        color: #1d1d1f;
+    .info-value { font-size: 13.5px; font-weight: 500; color: #1d1d1f; }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 300px;
+        text-align: center;
+        padding: 40px 20px;
+        color: #6e6e73;
     }
 
-    /* ============================================================
-       DIRECCIONES
-       ============================================================ */
+    .empty-state p { font-size: 13px; margin: 0; }
+
     .section-header {
         display: flex;
         justify-content: space-between;
@@ -494,15 +421,9 @@
         align-items: flex-start;
     }
 
-    .direccion-card:hover {
-        border-color: #d2d2d7;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    }
+    .direccion-card:hover { border-color: #d2d2d7; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
 
-    .direccion-info {
-        flex: 1;
-        min-width: 0;
-    }
+    .direccion-info { flex: 1; min-width: 0; }
 
     .direccion-titulo {
         display: flex;
@@ -512,11 +433,7 @@
         margin-bottom: 4px;
     }
 
-    .direccion-titulo strong {
-        font-size: 14px;
-        color: #1d1d1f;
-        font-weight: 600;
-    }
+    .direccion-titulo strong { font-size: 14px; color: #1d1d1f; font-weight: 600; }
 
     .badge-principal {
         background: #1d1d1f;
@@ -527,12 +444,7 @@
         font-weight: 600;
     }
 
-    .direccion-text {
-        font-size: 12.5px;
-        color: #6e6e73;
-        margin: 0;
-        line-height: 1.5;
-    }
+    .direccion-text { font-size: 12.5px; color: #6e6e73; margin: 0; line-height: 1.5; }
 
     .direccion-link {
         font-size: 12px;
@@ -544,15 +456,9 @@
         margin-top: 6px;
     }
 
-    .direccion-link:hover {
-        text-decoration: underline;
-    }
+    .direccion-link:hover { text-decoration: underline; }
 
-    .direccion-actions {
-        display: flex;
-        gap: 4px;
-        flex-shrink: 0;
-    }
+    .direccion-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
     .btn-icon-small {
         width: 30px;
@@ -570,98 +476,13 @@
         padding: 0;
     }
 
-    .btn-icon-small:hover {
-        background: #f2f2f4;
-        color: #1d1d1f;
-    }
-
-    .btn-icon-small.danger:hover {
-        background: #ffebea;
-        color: #ff3b30;
-    }
-
-    .btn-icon-small.primary-star {
-        color: #d4a017;
-    }
-
-    .btn-icon-small.primary-star:hover {
-        background: #fff7e6;
-        color: #b8860b;
-    }
+    .btn-icon-small:hover { background: #f2f2f4; color: #1d1d1f; }
+    .btn-icon-small.danger:hover { background: #ffebea; color: #ff3b30; }
+    .btn-icon-small.primary-star { color: #d4a017; }
+    .btn-icon-small.primary-star:hover { background: #fff7e6; color: #b8860b; }
 
     /* ============================================================
-       ALERT INFO
-       ============================================================ */
-    .alert-info {
-        background: #eaf4fb;
-        border: 1px solid #d0e8f5;
-        border-radius: 10px;
-        padding: 12px 14px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 12.5px;
-        color: #3a8ab8;
-        margin-top: 14px;
-    }
-
-    /* ============================================================
-       EMPTY STATE
-       ============================================================ */
-    .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        min-height: 300px;
-        text-align: center;
-        padding: 40px 20px;
-        color: #6e6e73;
-    }
-
-    .empty-state p {
-        font-size: 13px;
-        margin: 0;
-    }
-
-    /* ============================================================
-       HISTORIAL
-       ============================================================ */
-    .historial-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .historial-table thead th {
-        text-align: left;
-        padding: 10px 12px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 10px;
-        font-weight: 600;
-        color: #6e6e73;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        border-bottom: 1px solid #e5e5ea;
-    }
-
-    .historial-table tbody td {
-        padding: 12px;
-        font-size: 12.5px;
-        color: #1d1d1f;
-        border-bottom: 1px solid #f0f0f2;
-    }
-
-    .badge-estado {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    /* ============================================================
-       TOASTS BONITOS
+       TOASTS
        ============================================================ */
     .toast-container {
         position: fixed;
@@ -692,15 +513,8 @@
         pointer-events: auto;
     }
 
-    .toast-custom.success .toast-icon {
-        background: #e8f9ee;
-        color: #34c759;
-    }
-
-    .toast-custom.error .toast-icon {
-        background: #ffebea;
-        color: #ff3b30;
-    }
+    .toast-custom.success .toast-icon { background: #e8f9ee; color: #34c759; }
+    .toast-custom.error .toast-icon { background: #ffebea; color: #ff3b30; }
 
     .toast-icon {
         width: 32px;
@@ -715,18 +529,8 @@
     }
 
     .toast-content { flex: 1; }
-
-    .toast-title {
-        font-size: 13.5px;
-        font-weight: 600;
-        color: #1d1d1f;
-    }
-
-    .toast-msg {
-        font-size: 12.5px;
-        color: #6e6e73;
-        margin-top: 1px;
-    }
+    .toast-title { font-size: 13.5px; font-weight: 600; color: #1d1d1f; }
+    .toast-msg { font-size: 12.5px; color: #6e6e73; margin-top: 1px; }
 
     .toast-progress {
         position: absolute;
@@ -737,9 +541,7 @@
         animation: progress 3s linear forwards;
     }
 
-    .toast-custom.error .toast-progress {
-        background: #ff3b30;
-    }
+    .toast-custom.error .toast-progress { background: #ff3b30; }
 
     @@keyframes toastIn {
         from { opacity: 0; transform: translateX(24px) scale(0.96); }
@@ -752,20 +554,8 @@
     }
 
     /* ============================================================
-       RESPONSIVE
+       MODAL CONFIRMACIÓN CUSTOM
        ============================================================ */
-    @@media (max-width: 992px) {
-        .clientes-layout {
-            grid-template-columns: 1fr;
-        }
-        .clientes-list-scroll {
-            max-height: 400px;
-        }
-    }
-
-    /* ============================================================
-   MODAL DE CONFIRMACIÓN CUSTOM
-   ============================================================ */
     .modal-backdrop-custom {
         position: fixed;
         inset: 0;
@@ -782,10 +572,7 @@
 
     .modal-backdrop-custom.show { display: flex; }
 
-    @@keyframes fadeInCustom {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
+    @@keyframes fadeInCustom { from { opacity: 0; } to { opacity: 1; } }
 
     .modal-custom {
         background: #ffffff;
@@ -802,10 +589,7 @@
         to { opacity: 1; transform: scale(1) translateY(0); }
     }
 
-    .modal-custom-body {
-        padding: 32px 28px 8px;
-        text-align: center;
-    }
+    .modal-custom-body { padding: 32px 28px 8px; text-align: center; }
 
     .modal-custom-icon {
         width: 56px;
@@ -819,15 +603,8 @@
         justify-content: center;
     }
 
-    .modal-custom-icon.info {
-        background: #eaf4fb;
-        color: #3a8ab8;
-    }
-
-    .modal-custom-icon.success {
-        background: #e8f9ee;
-        color: #34c759;
-    }
+    .modal-custom-icon.info { background: #eaf4fb; color: #3a8ab8; }
+    .modal-custom-icon.success { background: #e8f9ee; color: #34c759; }
 
     .modal-custom-title {
         font-family: 'Inter', sans-serif;
@@ -838,24 +615,10 @@
         margin: 0 0 8px;
     }
 
-    .modal-custom-text {
-        font-size: 13.5px;
-        color: #6e6e73;
-        line-height: 1.5;
-        margin: 0;
-        letter-spacing: -0.005em;
-    }
+    .modal-custom-text { font-size: 13.5px; color: #6e6e73; line-height: 1.5; margin: 0; }
+    .modal-custom-text strong { color: #1d1d1f; font-weight: 600; }
 
-    .modal-custom-text strong {
-        color: #1d1d1f;
-        font-weight: 600;
-    }
-
-    .modal-custom-footer {
-        padding: 24px 24px 24px;
-        display: flex;
-        gap: 10px;
-    }
+    .modal-custom-footer { padding: 24px; display: flex; gap: 10px; }
 
     .modal-custom-btn {
         flex: 1;
@@ -867,34 +630,18 @@
         font-weight: 500;
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        letter-spacing: -0.01em;
     }
 
-    .modal-custom-btn.secondary {
-        background: #f2f2f4;
-        color: #1d1d1f;
-    }
+    .modal-custom-btn.secondary { background: #f2f2f4; color: #1d1d1f; }
+    .modal-custom-btn.secondary:hover { background: #e8e8ea; }
+    .modal-custom-btn.danger { background: #ff3b30; color: #ffffff; }
+    .modal-custom-btn.danger:hover { background: #e02e25; }
+    .modal-custom-btn.primary { background: #1d1d1f; color: #ffffff; }
+    .modal-custom-btn.primary:hover { background: #000000; }
 
-    .modal-custom-btn.secondary:hover {
-        background: #e8e8ea;
-    }
-
-    .modal-custom-btn.danger {
-        background: #ff3b30;
-        color: #ffffff;
-    }
-
-    .modal-custom-btn.danger:hover {
-        background: #e02e25;
-    }
-
-    .modal-custom-btn.primary {
-        background: #1d1d1f;
-        color: #ffffff;
-    }
-
-    .modal-custom-btn.primary:hover {
-        background: #000000;
+    @@media (max-width: 992px) {
+        .clientes-layout { grid-template-columns: 1fr; }
+        .clientes-list-scroll { max-height: 400px; }
     }
 </style>
 
@@ -918,7 +665,6 @@
             }
         </div>
 
-        <!-- ===== TOOLBAR: BUSCADOR + FILTROS ===== -->
         <div class="toolbar-row">
             <form method="get" asp-action="Index" class="search-box" id="formBusqueda">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -926,10 +672,6 @@
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
                 <input name="search" value="@Model.Search" placeholder="Buscar por nombre, DNI o teléfono..." />
-                @if (estadoActual.HasValue)
-                {
-                    <input type="hidden" name="estado" value="@estadoActual.Value.ToString().ToLower()" />
-                }
             </form>
 
             <div class="filter-pills">
@@ -942,7 +684,6 @@
             </div>
         </div>
 
-        <!-- ===== TABLA ===== -->
         <div class="clientes-list-scroll">
             <table class="clientes-table">
                 <thead>
@@ -1001,7 +742,6 @@
         {
             var sel = Model.Seleccionado;
 
-            <!-- HEADER -->
             <div class="detail-header">
                 <div>
                     <h2 class="detail-name">@sel.Nombre</h2>
@@ -1021,7 +761,6 @@
                 </div>
             </div>
 
-            <!-- TABS -->
             <div class="detail-tabs">
                 <button type="button" class="detail-tab active" data-tab="info">Información general</button>
                 <button type="button" class="detail-tab" data-tab="direcciones">
@@ -1030,10 +769,8 @@
                 <button type="button" class="detail-tab" data-tab="historial">Historial de pedidos</button>
             </div>
 
-            <!-- CONTENIDO -->
             <div class="tab-content">
 
-                <!-- TAB: INFO -->
                 <div class="tab-pane active" data-pane="info">
                     <div class="info-grid">
                         <div class="info-item">
@@ -1067,7 +804,6 @@
                     </div>
                 </div>
 
-                <!-- TAB: DIRECCIONES -->
                 <div class="tab-pane" data-pane="direcciones">
                     <div class="section-header">
                         <h3 class="section-title">Direcciones de entrega</h3>
@@ -1145,13 +881,12 @@
                             </div>
                         }
 
-                        <div class="alert-info">
+                        <div style="background:#eaf4fb; border:1px solid #d0e8f5; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:12.5px; color:#3a8ab8; margin-top:14px;">
                             La dirección principal se utiliza para la entrega de pedidos por defecto.
                         </div>
                     }
                 </div>
 
-                <!-- TAB: HISTORIAL -->
                 <div class="tab-pane" data-pane="historial">
                     @if (!Model.Pedidos.Any())
                     {
@@ -1159,7 +894,7 @@
                     }
                     else
                     {
-                        <table class="historial-table">
+                        <table class="clientes-table">
                             <thead>
                                 <tr>
                                     <th>N°</th>
@@ -1180,7 +915,7 @@
                                         <td>@(pedido.Repartidor?.Nombre ?? "—")</td>
                                         <td style="text-align:right;">S/ @pedido.Total.ToString("0.00")</td>
                                         <td style="text-align:center;">
-                                            <span class="badge-estado" style="background:#eaf4fb; color:#3a8ab8;">@pedido.Estado</span>
+                                            <span style="background:#eaf4fb; color:#3a8ab8; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:600;">@pedido.Estado</span>
                                         </td>
                                     </tr>
                                 }
@@ -1193,20 +928,20 @@
     </section>
 </div>
 
-<!-- ==================== FORM OCULTO CAMBIAR ESTADO ==================== -->
+<!-- FORM OCULTO CAMBIAR ESTADO -->
 <form id="formCambiarEstado" asp-action="CambiarEstado" method="post" style="display:none;">
     @Html.AntiForgeryToken()
     <input type="hidden" name="id" id="estadoId" />
     <input type="hidden" name="estado" id="estadoValor" />
 </form>
 
-<!-- ==================== MODALES CONTENEDORES ==================== -->
+<!-- MODALES CONTENEDORES -->
 <div id="modalWrapper"></div>
 
-<!-- ==================== CONTENEDOR DE TOASTS ==================== -->
+<!-- TOASTS -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- ==================== MODAL DE CONFIRMACIÓN CUSTOM ==================== -->
+<!-- MODAL CONFIRMACIÓN -->
 <div class="modal-backdrop-custom" id="modalConfirm">
     <div class="modal-custom">
         <div class="modal-custom-body">
@@ -1239,35 +974,23 @@
             });
         });
 
-        // ==================== MODAL DE CONFIRMACIÓN CUSTOM ====================
+        // ==================== MODAL CONFIRMACIÓN ====================
         let accionPendiente = null;
 
-        function abrirModalConfirm(titulo, texto, tipo, callback, textoBoton = 'Confirmar') {
+        function abrirModalConfirm(titulo, texto, tipo, callback, textoBoton) {
             const modal = document.getElementById('modalConfirm');
             const icon = document.getElementById('modalConfirmIcon');
             const title = document.getElementById('modalConfirmTitle');
             const text = document.getElementById('modalConfirmText');
             const btn = document.getElementById('modalConfirmBtn');
 
-            // Configurar icono según tipo
-            icon.className = 'modal-custom-icon';
-            if (tipo === 'danger') icon.classList.add('danger');
-            else if (tipo === 'info') icon.classList.add('info');
-            else if (tipo === 'success') icon.classList.add('success');
-
-            // Cambiar contenido
+            icon.className = 'modal-custom-icon ' + (tipo === 'success' ? 'success' : tipo === 'info' ? 'info' : 'danger');
             title.textContent = titulo;
             text.innerHTML = texto;
-            btn.textContent = textoBoton;
+            btn.textContent = textoBoton || 'Confirmar';
+            btn.className = 'modal-custom-btn ' + (tipo === 'danger' ? 'danger' : 'primary');
 
-            // Configurar botón según tipo
-            btn.className = 'modal-custom-btn';
-            btn.className += tipo === 'danger' ? ' danger' : ' primary';
-
-            // Guardar callback
             accionPendiente = callback;
-
-            // Mostrar modal
             modal.classList.add('show');
         }
 
@@ -1277,10 +1000,7 @@
         }
 
         document.getElementById('modalConfirmBtn')?.addEventListener('click', function () {
-            if (accionPendiente) {
-                accionPendiente();
-                accionPendiente = null;
-            }
+            if (accionPendiente) { accionPendiente(); accionPendiente = null; }
             cerrarModalConfirm();
         });
 
@@ -1288,54 +1008,140 @@
             if (e.target === this) cerrarModalConfirm();
         });
 
-        // ==================== CAMBIAR ESTADO (con modal custom) ====================
-        function cambiarEstado(id, nuevoEstado, selectElement) {
-            const estadoBool = nuevoEstado === 'true';
-            const accion = estadoBool ? 'activar' : 'desactivar';
-
+        // ==================== CAMBIAR ESTADO ====================
+        function cambiarEstado(id, valor, selectElement) {
+            const estadoBool = valor === 'true';
             abrirModalConfirm(
-                `${estadoBool ? 'Activar' : 'Desactivar'} cliente`,
-                `¿Estás seguro de ${accion} este cliente?`,
+                (estadoBool ? 'Activar' : 'Desactivar') + ' cliente',
+                '¿Estás seguro de ' + (estadoBool ? 'activar' : 'desactivar') + ' este cliente?',
                 estadoBool ? 'success' : 'danger',
                 function () {
                     document.getElementById('estadoId').value = id;
-                    document.getElementById('estadoValor').value = nuevoEstado;
+                    document.getElementById('estadoValor').value = valor;
                     document.getElementById('formCambiarEstado').submit();
                 },
                 estadoBool ? 'Activar' : 'Desactivar'
             );
-
-            // Si cancela, revertir el select (manejado por el modal)
-            // Guardamos una función por si el usuario cierra el modal
-            const revertir = function () {
-                selectElement.value = (!estadoBool).toString();
-            };
-            window.__revertirEstado = revertir;
         }
 
-        // ==================== ELIMINAR CLIENTE (con modal custom) ====================
+        // ==================== ELIMINAR CLIENTE ====================
         function confirmarEliminarCliente(nombre, formElement) {
             abrirModalConfirm(
                 'Eliminar cliente',
-                `¿Seguro que deseas eliminar a <strong>${nombre}</strong>? Esta acción no se puede deshacer.`,
+                '¿Seguro que deseas eliminar a <strong>' + nombre + '</strong>?',
                 'danger',
-                function () {
-                    formElement.submit();
-                },
+                function () { formElement.submit(); },
                 'Eliminar'
             );
             return false;
         }
 
-        // ==================== MOSTRAR TOAST ====================
-        function mostrarToast(mensaje, tipo = 'success') {
+        // ==================== HELPER: INYECTAR MODAL ====================
+        function inyectarModal(html, modalId) {
+            document.getElementById('modalWrapper').innerHTML = `
+                <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content">${html}</div>
+                    </div>
+                </div>`;
+
+            const modalEl = document.getElementById(modalId);
+            const modal = new bootstrap.Modal(modalEl);
+
+            // Re-parsear validación SOLO dentro del modal recién inyectado
+            if (window.jQuery && window.jQuery.validator && window.jQuery.validator.unobtrusive) {
+                window.jQuery.validator.unobtrusive.parse(modalEl);
+            }
+
+            modal.show();
+            return modalEl;
+        }
+
+        // ==================== MODAL CREAR CLIENTE ====================
+        document.getElementById('btnCrearCliente')?.addEventListener('click', function () {
+            fetch('/Clientes/Create')
+                .then(r => r.text())
+                .then(html => inyectarModal(html, 'modalCrear'))
+                .catch(err => {
+                    console.error(err);
+                    if (typeof mostrarToast === 'function') mostrarToast('No se pudo abrir el formulario.', 'error');
+                });
+        });
+
+        // ==================== MODAL EDITAR CLIENTE ====================
+        document.getElementById('btnEditarCliente')?.addEventListener('click', function () {
+            const id = this.dataset.clienteId;
+            fetch('/Clientes/Edit/' + id)
+                .then(r => r.text())
+                .then(html => inyectarModal(html, 'modalEditar'))
+                .catch(err => {
+                    console.error(err);
+                    if (typeof mostrarToast === 'function') mostrarToast('No se pudo abrir el formulario.', 'error');
+                });
+        });
+
+        // ==================== MODAL AGREGAR DIRECCIÓN ====================
+        document.getElementById('btnAgregarDireccion')?.addEventListener('click', function () {
+            const id = this.dataset.clienteId;
+            fetch('/Clientes/AddAddress/' + id)
+                .then(r => r.text())
+                .then(html => inyectarModal(html, 'modalAgregarDir'))
+                .catch(err => {
+                    console.error(err);
+                    if (typeof mostrarToast === 'function') mostrarToast('No se pudo abrir el formulario.', 'error');
+                });
+        });
+
+        // ==================== MODAL EDITAR DIRECCIÓN (delegado) ====================
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-editar-direccion');
+            if (!btn) return;
+            const id = btn.dataset.direccionId;
+            fetch('/Clientes/EditAddress/' + id)
+                .then(r => r.text())
+                .then(html => inyectarModal(html, 'modalEditarDir'))
+                .catch(err => {
+                    console.error(err);
+                    if (typeof mostrarToast === 'function') mostrarToast('No se pudo abrir el formulario.', 'error');
+                });
+        });
+
+        // ==================== ELIMINAR DIRECCIÓN (delegado) ====================
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-eliminar-direccion');
+            if (!btn) return;
+            const dirId = btn.dataset.direccionId;
+            const dirNombre = btn.dataset.direccionNombre;
+            const clienteId = btn.dataset.clienteId;
+
+            abrirModalConfirm(
+                'Eliminar dirección',
+                '¿Seguro que deseas eliminar la dirección "<strong>' + dirNombre + '</strong>"?',
+                'danger',
+                function () {
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.action = '/Clientes/DeleteAddress';
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+                    form.innerHTML = `
+                        <input type="hidden" name="__RequestVerificationToken" value="${token}" />
+                        <input type="hidden" name="id" value="${dirId}" />
+                        <input type="hidden" name="clienteId" value="${clienteId}" />
+                    `;
+                    document.body.appendChild(form);
+                    form.submit();
+                },
+                'Eliminar'
+            );
+        });
+
+        // ==================== TOAST ====================
+        function mostrarToast(mensaje, tipo) {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            toast.className = `toast-custom ${tipo}`;
-
-            const icono = tipo === 'success' ? '✓' : '!';
-            const titulo = tipo === 'success' ? 'Listo' : 'Error';
-
+            toast.className = 'toast-custom ' + (tipo || 'success');
+            const icono = tipo === 'error' ? '!' : '✓';
+            const titulo = tipo === 'error' ? 'Error' : 'Listo';
             toast.innerHTML = `
                 <div class="toast-icon">${icono}</div>
                 <div class="toast-content">
@@ -1345,7 +1151,6 @@
                 <div class="toast-progress"></div>
             `;
             container.appendChild(toast);
-
             setTimeout(() => {
                 toast.style.opacity = '0';
                 toast.style.transform = 'translateX(24px) scale(0.96)';
@@ -1354,103 +1159,76 @@
             }, 3000);
         }
 
-        // ==================== MODAL CREAR CLIENTE ====================
-        document.getElementById('btnCrearCliente')?.addEventListener('click', function () {
-            fetch('/Clientes/Create')
-                .then(r => r.text())
-                .then(html => {
-                    document.getElementById('modalWrapper').innerHTML = `
-                        <div class="modal fade" id="modalCrear" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-lg modal-dialog-centered">
-                                <div class="modal-content">${html}</div>
-                            </div>
-                        </div>`;
-                    new bootstrap.Modal(document.getElementById('modalCrear')).show();
-                });
-        });
+        // ============================================================
+        // DELEGACIÓN GLOBAL DE SUBMIT PARA FORMULARIOS DE MODALES
+        // ============================================================
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            const formulariosModales = [
+                'formCrearCliente',
+                'formEditarCliente',
+                'formAgregarDireccion',
+                'formEditarDireccion'
+            ];
 
-        // ==================== MODAL EDITAR CLIENTE ====================
-        document.getElementById('btnEditarCliente')?.addEventListener('click', function () {
-            const id = this.dataset.clienteId;
-            fetch('/Clientes/Edit/' + id)
-                .then(r => r.text())
-                .then(html => {
-                    document.getElementById('modalWrapper').innerHTML = `
-                        <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-lg modal-dialog-centered">
-                                <div class="modal-content">${html}</div>
-                            </div>
-                        </div>`;
-                    new bootstrap.Modal(document.getElementById('modalEditar')).show();
-                });
-        });
+            if (!formulariosModales.includes(form.id)) return;
 
-        // ==================== MODAL AGREGAR DIRECCIÓN ====================
-        document.getElementById('btnAgregarDireccion')?.addEventListener('click', function () {
-            const id = this.dataset.clienteId;
-            fetch('/Clientes/AddAddress/' + id)
-                .then(r => r.text())
-                .then(html => {
-                    document.getElementById('modalWrapper').innerHTML = `
-                        <div class="modal fade" id="modalAgregarDir" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content">${html}</div>
-                            </div>
-                        </div>`;
-                    new bootstrap.Modal(document.getElementById('modalAgregarDir')).show();
-                });
-        });
+            e.preventDefault();
+            e.stopImmediatePropagation();
 
-        // ==================== MODAL EDITAR DIRECCIÓN ====================
-        document.querySelectorAll('.btn-editar-direccion').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const id = this.dataset.direccionId;
-                fetch('/Clientes/EditAddress/' + id)
-                    .then(r => r.text())
-                    .then(html => {
-                        document.getElementById('modalWrapper').innerHTML = `
-                            <div class="modal fade" id="modalEditarDir" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content">${html}</div>
-                                </div>
-                            </div>`;
-                        new bootstrap.Modal(document.getElementById('modalEditarDir')).show();
-                    });
+            // Validación cliente con jQuery Unobtrusive
+            if (window.jQuery && window.jQuery.validator && window.jQuery.validator.unobtrusive) {
+                const $form = window.jQuery(form);
+                if (!$form.valid()) return;
+            }
+
+            const formData = new FormData(form);
+            const action = form.getAttribute('action') || window.location.pathname;
+
+            fetch(action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            })
+            .then(async (response) => {
+                const contentType = response.headers.get('content-type') || '';
+
+                // ✅ El controller respondió JSON con la URL de redirección.
+                // El TempData sigue intacto en el server → la navegación lo consumirá.
+                if (contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.ok && data.redirectUrl) {
+                        window.location.href = data.redirectUrl;
+                        return null;
+                    }
+                }
+
+                // ✅ Errores de validación → HTML del partial → re-renderizar modal
+                if (response.ok) return response.text();
+
+                throw new Error('Error ' + response.status);
+            })
+            .then(html => {
+                if (html) {
+                    const modalContent = form.closest('.modal-content');
+                    if (modalContent) {
+                        modalContent.innerHTML = html;
+                        if (window.jQuery && window.jQuery.validator && window.jQuery.validator.unobtrusive) {
+                            window.jQuery.validator.unobtrusive.parse(modalContent);
+                        }
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error al enviar el formulario:', err);
+                if (typeof mostrarToast === 'function') {
+                    mostrarToast('No se pudo guardar. Intenta de nuevo.', 'error');
+                }
             });
         });
 
-        // ==================== ELIMINAR DIRECCIÓN (con modal custom) ====================
-        document.querySelectorAll('.btn-eliminar-direccion').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const dirId = this.dataset.direccionId;
-                const dirNombre = this.dataset.direccionNombre;
-                const clienteId = this.dataset.clienteId;
-
-                abrirModalConfirm(
-                    'Eliminar dirección',
-                    `¿Seguro que deseas eliminar la dirección "<strong>${dirNombre}</strong>"?`,
-                    'danger',
-                    function () {
-                        const form = document.createElement('form');
-                        form.method = 'post';
-                        form.action = '/Clientes/DeleteAddress';
-
-                        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
-
-                        form.innerHTML = `
-                            <input type="hidden" name="__RequestVerificationToken" value="${token}" />
-                            <input type="hidden" name="id" value="${dirId}" />
-                            <input type="hidden" name="clienteId" value="${clienteId}" />
-                        `;
-                        document.body.appendChild(form);
-                        form.submit();
-                    },
-                    'Eliminar'
-                );
-            });
-        });
-
-        // ==================== MOSTRAR TOAST AL CARGAR (TEMPDATA) ====================
+        // ==================== TOASTS TEMPDATA ====================
         @if (TempData["SuccessMessage"] is string ok)
         {
             <text>

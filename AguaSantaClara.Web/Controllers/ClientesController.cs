@@ -114,10 +114,10 @@ public class ClientesController : Controller
         _context.Clientes.Add(cliente);
         await _context.SaveChangesAsync();
 
+        // ✅ Mensaje para el toast
         TempData["SuccessMessage"] = "CLIENTE CREADO CORRECTAMENTE";
 
-        // 🔴 CAMBIO: redirigir a Index con el id del nuevo cliente
-        return RedirectToAction(nameof(Index), new { id = cliente.Id });
+        return RedirectOrJson(nameof(Index), new { id = cliente.Id });
     }
 
     // ==================== EDIT (MODAL) ====================
@@ -202,8 +202,10 @@ public class ClientesController : Controller
 
         await _context.SaveChangesAsync();
 
+        // ✅ Mensaje para el toast
         TempData["SuccessMessage"] = "CLIENTE ACTUALIZADO CORRECTAMENTE";
-        return RedirectToAction(nameof(Index), new { id = cliente.Id });
+
+        return RedirectOrJson(nameof(Index), new { id = cliente.Id });
     }
 
     // ==================== CAMBIAR ESTADO ====================
@@ -225,10 +227,10 @@ public class ClientesController : Controller
             ? "CLIENTE ACTIVADO CORRECTAMENTE"
             : "CLIENTE DESACTIVADO CORRECTAMENTE";
 
-        return RedirectToAction(nameof(Index), new { id = cliente.Id });
+        return RedirectOrJson(nameof(Index), new { id = cliente.Id });
     }
 
-    // ==================== ELIMINAR ====================
+    // ==================== ELIMINAR CLIENTE ====================
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Vendedora,Gerente,Administradora")]
@@ -244,7 +246,7 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "CLIENTE ELIMINADO CORRECTAMENTE";
-        return RedirectToAction(nameof(Index));
+        return RedirectOrJson(nameof(Index));
     }
 
     // ==================== AGREGAR DIRECCIÓN ====================
@@ -308,8 +310,7 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "DIRECCIÓN AGREGADA CORRECTAMENTE";
 
-        // 🔴 CAMBIO: redirigir a Index (no Details)
-        return RedirectToAction(nameof(Index), new { id = model.IdCliente });
+        return RedirectOrJson(nameof(Index), new { id = model.IdCliente });
     }
 
     // ==================== EDITAR DIRECCIÓN ====================
@@ -360,8 +361,7 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "DIRECCIÓN ACTUALIZADA CORRECTAMENTE";
 
-        // 🔴 CAMBIO: redirigir a Index (no Details)
-        return RedirectToAction(nameof(Index), new { id = model.IdCliente });
+        return RedirectOrJson(nameof(Index), new { id = model.IdCliente });
     }
 
     // ==================== MARCAR COMO PRINCIPAL ====================
@@ -384,8 +384,7 @@ public class ClientesController : Controller
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = "DIRECCIÓN PRINCIPAL ACTUALIZADA CORRECTAMENTE";
 
-        // 🔴 CAMBIO: redirigir a Index (no Details)
-        return RedirectToAction(nameof(Index), new { id = clienteId });
+        return RedirectOrJson(nameof(Index), new { id = clienteId });
     }
 
     // ==================== ELIMINAR DIRECCIÓN ====================
@@ -406,16 +405,35 @@ public class ClientesController : Controller
         if (total <= 1)
         {
             TempData["ErrorMessage"] = "No se puede eliminar la única dirección del cliente.";
-            return RedirectToAction(nameof(Index), new { id = clienteId });
+            return RedirectOrJson(nameof(Index), new { id = clienteId });
         }
 
         _context.DireccionesCliente.Remove(direccion);
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "DIRECCIÓN ELIMINADA CORRECTAMENTE";
-        return RedirectToAction(nameof(Index), new { id = clienteId });
+        return RedirectOrJson(nameof(Index), new { id = clienteId });
     }
 
+    // ==================== HELPERS ====================
     private Task<bool> DniDuplicadoAsync(string dni, long? excluirId) =>
         _context.Clientes.AnyAsync(c => c.Dni == dni && c.Id != excluirId);
+
+    /// <summary>
+    /// Si la petición es AJAX (fetch con header X-Requested-With),
+    /// devuelve JSON con la URL de redirección SIN consumir el TempData.
+    /// Si es una petición normal, hace RedirectToAction normal.
+    /// </summary>
+    private IActionResult RedirectOrJson(string action, object? routeValues = null)
+    {
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            var url = Url.Action(action, routeValues) ?? "/";
+            return Json(new { ok = true, redirectUrl = url });
+        }
+
+        return routeValues == null
+            ? RedirectToAction(action)
+            : RedirectToAction(action, routeValues);
+    }
 }

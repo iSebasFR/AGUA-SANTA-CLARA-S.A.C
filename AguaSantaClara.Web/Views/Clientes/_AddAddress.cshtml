@@ -8,7 +8,7 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 </div>
 
-<form asp-action="AddAddress" method="post">
+<form asp-action="AddAddress" method="post" id="formAgregarDireccion">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="IdCliente" />
 
@@ -51,5 +51,3 @@
         <button type="submit" class="btn btn-dark">Guardar dirección</button>
     </div>
 </form>
-
-<partial name="_ValidationScriptsPartial" />
