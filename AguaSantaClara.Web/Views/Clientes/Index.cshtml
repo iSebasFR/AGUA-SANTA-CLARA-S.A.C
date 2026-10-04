@@ -911,7 +911,7 @@
                                     <tr>
                                         <td><strong>#@pedido.Id</strong></td>
                                         <td>@pedido.FechaCreacion.ToString("dd/MM/yyyy")</td>
-                                        <td>@pedido.Local.Nombre</td>
+                                        <td>@(pedido.Local?.Nombre ?? "Sin local")</td>
                                         <td>@(pedido.Repartidor?.Nombre ?? "—")</td>
                                         <td style="text-align:right;">S/ @pedido.Total.ToString("0.00")</td>
                                         <td style="text-align:center;">
