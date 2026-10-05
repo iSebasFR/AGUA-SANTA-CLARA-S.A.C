@@ -679,8 +679,18 @@
                                                         data-bs-toggle="modal" data-bs-target="#pedidoModal">
                                                     Editar
                                                 </button>
-                                                <button type="button" class="btn-tabla danger pedido-eliminar" data-pedido-id="@pedido.Id">
+
+                                                <button type="button" class="btn-tabla danger pedido-eliminar"
+                                                        data-pedido-id="@pedido.Id">
                                                     Eliminar
+                                                </button>
+                                            }
+                                            else if (pedido.Estado == "Enviado")
+                                            {
+                                                <button type="button"
+                                                        class="btn-tabla pedido-incidencia"
+                                                        data-pedido-id="@pedido.Id">
+                                                    Registrar Incidencia
                                                 </button>
                                             }
                                             else
