@@ -79,6 +79,84 @@ public class PedidoService : IPedidoService
         return new PedidoResultado { Mensaje = estadoCanonico };
     }
 
+    public async Task<PedidoResultado> RegistrarIncidenciaAsync(
+    long idPedido,
+    RegistrarIncidenciaViewModel modelo)
+    {
+        var resultado = new PedidoResultado
+        {
+            IdPedido = idPedido
+        };
+
+        var motivo = modelo.Motivo?.Trim();
+        var detalle = modelo.Detalle?.Trim();
+
+        if (string.IsNullOrWhiteSpace(motivo) ||
+            !MotivosIncidencia.Todos.Contains(
+                motivo,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            resultado.Errores.Add(
+                new ErrorPedido("motivo", "Selecciona un motivo de incidencia válido."));
+            return resultado;
+        }
+
+        var motivoCanonico = MotivosIncidencia.Todos
+            .First(m => string.Equals(
+                m,
+                motivo,
+                StringComparison.OrdinalIgnoreCase));
+
+        if (motivoCanonico == MotivosIncidencia.Otros &&
+            string.IsNullOrWhiteSpace(detalle))
+        {
+            resultado.Errores.Add(
+                new ErrorPedido("detalle", "Ingresa el motivo de la incidencia."));
+            return resultado;
+        }
+
+        var pedido = await _context.Pedidos
+            .FirstOrDefaultAsync(p =>
+                p.Id == idPedido &&
+                p.EstadoRegistro);
+
+        if (pedido == null)
+        {
+            resultado.Errores.Add(
+                new ErrorPedido("pedido", "El pedido no existe."));
+            return resultado;
+        }
+
+        if (pedido.Estado != EstadosPedido.Enviado)
+        {
+            resultado.Errores.Add(
+                new ErrorPedido(
+                    "pedido",
+                    "Solo se puede registrar una incidencia en un pedido enviado."));
+            return resultado;
+        }
+
+        var incidencia = new Incidencia
+        {
+            IdPedido = pedido.Id,
+            Motivo = motivoCanonico,
+            Detalle = motivoCanonico == MotivosIncidencia.Otros
+                ? detalle
+                : null
+        };
+
+        _context.Incidencias.Add(incidencia);
+
+        pedido.Estado = EstadosPedido.ConIncidencia;
+        pedido.FechaActualizacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        resultado.Mensaje = "INCIDENCIA REGISTRADA CORRECTAMENTE";
+
+        return resultado;
+    }
+
     private async Task<PedidoResultado> GuardarAsync(
         CrearPedidoViewModel modelo, bool enviar, long? idPedido, bool persistir)
     {

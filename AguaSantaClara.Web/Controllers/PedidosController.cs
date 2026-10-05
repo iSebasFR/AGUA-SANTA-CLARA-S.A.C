@@ -268,6 +268,23 @@ public class PedidosController : Controller
             : BadRequest(resultado);
     }
 
+    // ==================== REGISTRAR INCIDENCIA ====================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> RegistrarIncidencia(
+        long idPedido,
+        [FromBody] RegistrarIncidenciaViewModel? modelo)
+    {
+        var resultado = await _pedidoService.RegistrarIncidenciaAsync(
+            idPedido,
+            modelo ?? new RegistrarIncidenciaViewModel());
+
+        return resultado.Ok
+            ? Json(resultado)
+            : BadRequest(resultado);
+    }
+
     // ==================== ENVIAR SELECCIONADOS ====================
     [HttpPost]
     [ValidateAntiForgeryToken]
