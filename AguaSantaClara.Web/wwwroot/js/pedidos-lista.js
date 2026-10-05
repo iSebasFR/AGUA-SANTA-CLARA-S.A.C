@@ -101,17 +101,62 @@
     });
 
     // ============ REGISTRAR INCIDENCIA ============
+    const incidenciaMotivo = document.getElementById("incidenciaMotivo");
+    const incidenciaOtrosContainer = document.getElementById("incidenciaOtrosContainer");
+    const incidenciaOtros = document.getElementById("incidenciaOtros");
+    const incidenciaValidarBtn = document.getElementById("incidenciaValidarBtn");
+
     document.querySelectorAll(".pedido-incidencia").forEach(btn => {
         btn.addEventListener("click", () => {
             const modalEl = document.getElementById("incidenciaModal");
             const pedidoIdInput = document.getElementById("incidenciaPedidoId");
-            const motivoSelect = document.getElementById("incidenciaMotivo");
 
             pedidoIdInput.value = btn.dataset.pedidoId;
-            motivoSelect.value = "";
+
+            incidenciaMotivo.value = "";
+            incidenciaOtros.value = "";
+            incidenciaOtrosContainer.classList.add("d-none");
+
+            incidenciaMotivo.classList.remove("is-invalid");
+            incidenciaOtros.classList.remove("is-invalid");
 
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
         });
+    });
+
+    incidenciaMotivo?.addEventListener("change", () => {
+        const esOtros = incidenciaMotivo.value === "Otros";
+
+        incidenciaOtrosContainer.classList.toggle("d-none", !esOtros);
+
+        incidenciaMotivo.classList.remove("is-invalid");
+        incidenciaOtros.classList.remove("is-invalid");
+
+        if (!esOtros) {
+            incidenciaOtros.value = "";
+        }
+    });
+
+    incidenciaValidarBtn?.addEventListener("click", () => {
+        let valido = true;
+
+        incidenciaMotivo.classList.remove("is-invalid");
+        incidenciaOtros.classList.remove("is-invalid");
+
+        if (!incidenciaMotivo.value) {
+            incidenciaMotivo.classList.add("is-invalid");
+            valido = false;
+        }
+
+        if (incidenciaMotivo.value === "Otros" &&
+            !incidenciaOtros.value.trim()) {
+            incidenciaOtros.classList.add("is-invalid");
+            valido = false;
+        }
+
+        if (!valido) return;
+
+        // El guardado se implementará en ASC-142.
     });
 
     // ============ ELIMINAR ============
