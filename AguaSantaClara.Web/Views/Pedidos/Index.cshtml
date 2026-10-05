@@ -714,6 +714,43 @@
     <partial name="_CrearPedido" model="Model" />
 }
 
+<!-- MODAL REGISTRAR INCIDENCIA -->
+<div class="modal fade" id="incidenciaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px; border:none;">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar incidencia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="incidenciaPedidoId" />
+
+                <label for="incidenciaMotivo" class="form-label">
+                    Motivo de la incidencia
+                </label>
+
+                <select id="incidenciaMotivo" class="form-select">
+                    <option value="">Seleccione un motivo</option>
+                    <option value="Cliente ausente">Cliente ausente</option>
+                    <option value="Dirección incorrecta">Dirección incorrecta</option>
+                    <option value="Producto dañado">Producto dañado</option>
+                    <option value="Vehículo descompuesto">Vehículo descompuesto</option>
+                    <option value="Otros">Otros</option>
+                </select>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL PREVIEW MENSAJE -->
 <div class="modal fade" id="previewEnvioModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">

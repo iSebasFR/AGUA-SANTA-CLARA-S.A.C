@@ -100,6 +100,20 @@
         });
     });
 
+    // ============ REGISTRAR INCIDENCIA ============
+    document.querySelectorAll(".pedido-incidencia").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const modalEl = document.getElementById("incidenciaModal");
+            const pedidoIdInput = document.getElementById("incidenciaPedidoId");
+            const motivoSelect = document.getElementById("incidenciaMotivo");
+
+            pedidoIdInput.value = btn.dataset.pedidoId;
+            motivoSelect.value = "";
+
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        });
+    });
+
     // ============ ELIMINAR ============
     document.querySelectorAll(".pedido-eliminar").forEach(btn => {
         btn.addEventListener("click", () => {
