@@ -9,11 +9,13 @@ public class PedidosIndexViewModel
     public List<Repartidor> Repartidores { get; set; } = new();
     public List<Repartidor> RepartidoresFiltro { get; set; } = new();
     public List<Cliente> ClientesFiltro { get; set; } = new();
+    public Dictionary<long, string> MotivosIncidenciaPorPedido { get; set; } = new();
     public string? EstadoFiltro { get; set; }
     public long? IdClienteFiltro { get; set; }
     public long? IdRepartidorFiltro { get; set; }
     public string? ErrorFiltros { get; set; }
     public bool TieneFiltrosAplicados { get; set; }
+    
 }
 
 public class ClienteBusquedaViewModel

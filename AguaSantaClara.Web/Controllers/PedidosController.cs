@@ -57,8 +57,28 @@ public class PedidosController : Controller
             .OrderBy(r => r.Nombre)
             .ToList();
 
+        var incidencias = await _context.Incidencias
+            .Where(i => i.EstadoRegistro)
+            .OrderByDescending(i => i.FechaCreacion)
+            .ToListAsync();
+
+        var motivosIncidenciaPorPedido = incidencias
+            .GroupBy(i => i.IdPedido)
+            .ToDictionary(
+                grupo => grupo.Key,
+                grupo =>
+                {
+                    var incidencia = grupo.First();
+
+                    return incidencia.Motivo == MotivosIncidencia.Otros &&
+                        !string.IsNullOrWhiteSpace(incidencia.Detalle)
+                        ? incidencia.Detalle!
+                        : incidencia.Motivo;
+                });
+
         var modelo = new PedidosIndexViewModel
         {
+            MotivosIncidenciaPorPedido = motivosIncidenciaPorPedido,
             Pedidos = await consultaPedidos
                 .Include(p => p.Repartidor)
                 .Include(p => p.Clientes).ThenInclude(c => c.Cliente)
