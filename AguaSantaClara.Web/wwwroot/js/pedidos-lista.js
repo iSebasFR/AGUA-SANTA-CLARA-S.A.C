@@ -100,6 +100,123 @@
         });
     });
 
+    // ============ REGISTRAR INCIDENCIA ============
+    const incidenciaMotivo = document.getElementById("incidenciaMotivo");
+    const incidenciaOtrosContainer = document.getElementById("incidenciaOtrosContainer");
+    const incidenciaOtros = document.getElementById("incidenciaOtros");
+    const incidenciaValidarBtn = document.getElementById("incidenciaValidarBtn");
+
+    document.querySelectorAll(".pedido-incidencia").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const modalEl = document.getElementById("incidenciaModal");
+            const pedidoIdInput = document.getElementById("incidenciaPedidoId");
+
+            pedidoIdInput.value = btn.dataset.pedidoId;
+
+            incidenciaMotivo.value = "";
+            incidenciaOtros.value = "";
+            incidenciaOtrosContainer.classList.add("d-none");
+
+            incidenciaMotivo.classList.remove("is-invalid");
+            incidenciaOtros.classList.remove("is-invalid");
+
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        });
+    });
+
+    incidenciaMotivo?.addEventListener("change", () => {
+        const esOtros = incidenciaMotivo.value === "Otros";
+
+        incidenciaOtrosContainer.classList.toggle("d-none", !esOtros);
+
+        incidenciaMotivo.classList.remove("is-invalid");
+        incidenciaOtros.classList.remove("is-invalid");
+
+        if (!esOtros) {
+            incidenciaOtros.value = "";
+        }
+    });
+
+    incidenciaValidarBtn?.addEventListener("click", async () => {
+        let valido = true;
+
+        incidenciaMotivo.classList.remove("is-invalid");
+        incidenciaOtros.classList.remove("is-invalid");
+
+        if (!incidenciaMotivo.value) {
+            incidenciaMotivo.classList.add("is-invalid");
+            valido = false;
+        }
+
+        if (
+            incidenciaMotivo.value === "Otros" &&
+            !incidenciaOtros.value.trim()
+        ) {
+            incidenciaOtros.classList.add("is-invalid");
+            valido = false;
+        }
+
+        if (!valido) return;
+
+        incidenciaValidarBtn.disabled = true;
+
+        const pedidoId = $("incidenciaPedidoId").value;
+
+        const cuerpo = {
+            motivo: incidenciaMotivo.value,
+            detalle: incidenciaMotivo.value === "Otros"
+                ? incidenciaOtros.value.trim()
+                : null
+        };
+
+        try {
+            const resp = await fetch(
+                `/Pedidos/RegistrarIncidencia?idPedido=${encodeURIComponent(pedidoId)}`,
+                {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": token
+                    },
+                    body: JSON.stringify(cuerpo)
+                }
+            );
+
+            const datos = await resp.json().catch(() => null);
+
+            if (!resp.ok) {
+                mostrarToast(
+                    datos?.errores?.[0]?.mensaje ||
+                    "No se pudo registrar la incidencia.",
+                    "error"
+                );
+
+                incidenciaValidarBtn.disabled = false;
+                return;
+            }
+
+            sessionStorage.setItem(
+                "pedidoToast",
+                datos?.mensaje || "INCIDENCIA REGISTRADA CORRECTAMENTE"
+            );
+
+            bootstrap.Modal
+                .getOrCreateInstance($("incidenciaModal"))
+                .hide();
+
+            window.location.reload();
+
+        } catch {
+            mostrarToast(
+                "No se pudo conectar con el servidor.",
+                "error"
+            );
+
+            incidenciaValidarBtn.disabled = false;
+        }
+    });
+
     // ============ ELIMINAR ============
     document.querySelectorAll(".pedido-eliminar").forEach(btn => {
         btn.addEventListener("click", () => {

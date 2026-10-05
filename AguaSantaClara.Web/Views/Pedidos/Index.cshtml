@@ -601,6 +601,7 @@
                         <th>Repartidor</th>
                         <th style="text-align:right;">Total</th>
                         <th>Estado</th>
+                        <th>Motivo de incidencia</th>
                         @if (esVendedora)
                         {
                             <th>Acciones</th>
@@ -611,7 +612,7 @@
                     @if (!Model.Pedidos.Any())
                     {
                         <tr>
-                            <td colspan="@(esVendedora ? 8 : 6)" class="empty-row">
+                            <td colspan="@(esVendedora ? 9 : 7)" class="empty-row">
                                 @(Model.TieneFiltrosAplicados ? "No se encontraron pedidos con esos filtros." : "No hay pedidos registrados.")
                             </td>
                         </tr>
@@ -668,6 +669,22 @@
                                         <span class="status-badge @claseEstado">@pedido.Estado</span>
                                     }
                                 </td>
+                                <td>
+                                    @if (Model.MotivosIncidenciaPorPedido.TryGetValue(
+                                        pedido.Id,
+                                        out var motivoIncidencia))
+                                    {
+                                        <span style="font-size:12px;color:#1d1d1f;">
+                                            @motivoIncidencia
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size:11.5px;color:#a1a1a6;">
+                                            —
+                                        </span>
+                                    }
+                                </td>
                                 @if (esVendedora)
                                 {
                                     <td>
@@ -679,8 +696,18 @@
                                                         data-bs-toggle="modal" data-bs-target="#pedidoModal">
                                                     Editar
                                                 </button>
-                                                <button type="button" class="btn-tabla danger pedido-eliminar" data-pedido-id="@pedido.Id">
+
+                                                <button type="button" class="btn-tabla danger pedido-eliminar"
+                                                        data-pedido-id="@pedido.Id">
                                                     Eliminar
+                                                </button>
+                                            }
+                                            else if (pedido.Estado == "Enviado")
+                                            {
+                                                <button type="button"
+                                                        class="btn-tabla pedido-incidencia"
+                                                        data-pedido-id="@pedido.Id">
+                                                    Registrar Incidencia
                                                 </button>
                                             }
                                             else
@@ -703,6 +730,99 @@
 {
     <partial name="_CrearPedido" model="Model" />
 }
+
+<!-- MODAL REGISTRAR INCIDENCIA -->
+<div class="modal fade" id="incidenciaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px; border:none;">
+
+            <div class="modal-header" style="border-bottom:1px solid #e5e5ea;">
+                <div>
+                    <h5 class="modal-title"
+                        style="font-size:15px;font-weight:600;color:#1d1d1f;">
+                        Registrar incidencia
+                    </h5>
+                    <p style="font-size:12.5px;color:#6e6e73;margin:3px 0 0;">
+                        Selecciona el motivo por el cual no se pudo completar la entrega.
+                    </p>
+                </div>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar">
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding:20px;">
+
+                <input type="hidden" id="incidenciaPedidoId" />
+
+                <div class="mb-3">
+                    <label for="incidenciaMotivo"
+                           class="form-label"
+                           style="font-size:13px;font-weight:500;color:#1d1d1f;">
+                        Motivo de la incidencia
+                    </label>
+
+                    <select id="incidenciaMotivo"
+                            class="form-select"
+                            style="height:40px;border-radius:9px;border-color:#e5e5ea;font-size:13px;">
+                        <option value="">Seleccione un motivo</option>
+                        <option value="Cliente ausente">Cliente ausente</option>
+                        <option value="Dirección incorrecta">Dirección incorrecta</option>
+                        <option value="Producto dañado">Producto dañado</option>
+                        <option value="Vehículo descompuesto">Vehículo descompuesto</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+
+                    <div class="invalid-feedback">
+                        Seleccione un motivo de incidencia.
+                    </div>
+                </div>
+
+                <div id="incidenciaOtrosContainer" class="d-none">
+                    <label for="incidenciaOtros"
+                           class="form-label"
+                           style="font-size:13px;font-weight:500;color:#1d1d1f;">
+                        Especifique el motivo
+                    </label>
+
+                    <textarea id="incidenciaOtros"
+                              class="form-control"
+                              rows="3"
+                              maxlength="250"
+                              placeholder="Ingrese el motivo de la incidencia"
+                              style="border-radius:9px;border-color:#e5e5ea;font-size:13px;resize:none;"></textarea>
+
+                    <div class="invalid-feedback">
+                        Ingrese el motivo de la incidencia.
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer"
+                 style="border-top:1px solid #e5e5ea;padding:14px 20px;">
+
+                <button type="button"
+                        class="btn-apple"
+                        style="background:#f2f2f4;color:#1d1d1f;box-shadow:none;"
+                        data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+                <button type="button"
+                        id="incidenciaValidarBtn"
+                        class="btn-apple">
+                    Registrar incidencia
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+</div>
 
 <!-- MODAL PREVIEW MENSAJE -->
 <div class="modal fade" id="previewEnvioModal" tabindex="-1" aria-hidden="true">

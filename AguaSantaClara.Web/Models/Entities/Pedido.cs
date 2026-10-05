@@ -5,17 +5,19 @@ public static class EstadosPedido
     public const string Pendiente = "Pendiente";
     public const string Enviado = "Enviado";
     public const string Entregado = "Entregado";
+    public const string ConIncidencia = "Con Incidencia";
 
-    public static readonly string[] Todos = { Pendiente, Enviado, Entregado };
+    public static readonly string[] Todos =
+    {
+        Pendiente, Enviado, Entregado, ConIncidencia
+    };
 
-    /// <summary>
-    /// Estados a los que se puede transicionar desde <paramref name="estadoActual"/>.
-    /// </summary>
     public static IEnumerable<string> SiguientesPermitidos(string estadoActual) => estadoActual switch
     {
         Pendiente => new[] { Enviado },
         Enviado => new[] { Entregado },
         Entregado => Array.Empty<string>(),
+        ConIncidencia => Array.Empty<string>(),
         _ => Array.Empty<string>()
     };
 }

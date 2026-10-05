@@ -57,8 +57,28 @@ public class PedidosController : Controller
             .OrderBy(r => r.Nombre)
             .ToList();
 
+        var incidencias = await _context.Incidencias
+            .Where(i => i.EstadoRegistro)
+            .OrderByDescending(i => i.FechaCreacion)
+            .ToListAsync();
+
+        var motivosIncidenciaPorPedido = incidencias
+            .GroupBy(i => i.IdPedido)
+            .ToDictionary(
+                grupo => grupo.Key,
+                grupo =>
+                {
+                    var incidencia = grupo.First();
+
+                    return incidencia.Motivo == MotivosIncidencia.Otros &&
+                        !string.IsNullOrWhiteSpace(incidencia.Detalle)
+                        ? incidencia.Detalle!
+                        : incidencia.Motivo;
+                });
+
         var modelo = new PedidosIndexViewModel
         {
+            MotivosIncidenciaPorPedido = motivosIncidenciaPorPedido,
             Pedidos = await consultaPedidos
                 .Include(p => p.Repartidor)
                 .Include(p => p.Clientes).ThenInclude(c => c.Cliente)
@@ -265,6 +285,23 @@ public class PedidosController : Controller
         var resultado = await _pedidoService.CambiarEstadoAsync(idPedido, modelo?.Estado);
         return resultado.Ok
             ? Json(new { estado = resultado.Mensaje })
+            : BadRequest(resultado);
+    }
+
+    // ==================== REGISTRAR INCIDENCIA ====================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> RegistrarIncidencia(
+        long idPedido,
+        [FromBody] RegistrarIncidenciaViewModel? modelo)
+    {
+        var resultado = await _pedidoService.RegistrarIncidenciaAsync(
+            idPedido,
+            modelo ?? new RegistrarIncidenciaViewModel());
+
+        return resultado.Ok
+            ? Json(resultado)
             : BadRequest(resultado);
     }
 
