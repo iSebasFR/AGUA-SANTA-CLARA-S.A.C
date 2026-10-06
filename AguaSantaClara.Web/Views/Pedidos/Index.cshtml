@@ -218,6 +218,14 @@
         text-decoration: none;
     }
 
+    .pedido-reintentar,
+    .pedido-cancelar {
+        height: auto;
+        min-height: 40px;
+        padding: 7px 12px;
+        line-height: 1.2;
+    }
+
     .btn-tabla:hover {
         background: #1d1d1f;
         color: #ffffff;
@@ -670,7 +678,7 @@
                                     }
                                 </td>
                                 <td>
-                                    @if (Model.MotivosIncidenciaPorPedido.TryGetValue(
+                                    @if (pedido.Estado == "Con Incidencia" && Model.MotivosIncidenciaPorPedido.TryGetValue(
                                         pedido.Id,
                                         out var motivoIncidencia))
                                     {
@@ -710,9 +718,25 @@
                                                     Registrar Incidencia
                                                 </button>
                                             }
+                                            else if (pedido.Estado == "Con Incidencia")
+                                            {
+                                                <button type="button"
+                                                        class="btn-tabla pedido-reintentar"
+                                                        data-pedido-id="@pedido.Id">
+                                                    Reintentar entrega
+                                                </button>
+
+                                                <button type="button"
+                                                        class="btn-tabla danger pedido-cancelar"
+                                                        data-pedido-id="@pedido.Id">
+                                                    Cancelar Pedido
+                                                </button>
+                                            }
                                             else
                                             {
-                                                <span style="font-size:11.5px;color:#a1a1a6;font-style:italic;">—</span>
+                                                <span style="font-size:11.5px;color:#a1a1a6;font-style:italic;">
+                                                    —
+                                                </span>
                                             }
                                         </div>
                                     </td>
@@ -824,6 +848,77 @@
     </div>
 </div>
 
+<!-- MODAL REINTENTAR ENTREGA -->
+<div class="modal fade" id="reintentarEntregaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+
+            <div class="modal-header" style="border-bottom:1px solid #e5e5ea;">
+                <div>
+                    <h5 class="modal-title"
+                        style="font-size:15px;font-weight:600;">
+                        Reintentar entrega
+                    </h5>
+
+                    <p style="font-size:12.5px;color:#6e6e73;margin:3px 0 0;">
+                        Selecciona un nuevo repartidor para reenviar el pedido.
+                    </p>
+                </div>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar">
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding:20px;">
+                <input type="hidden" id="reintentarPedidoId" />
+
+                <label for="reintentarRepartidor"
+                       class="form-label"
+                       style="font-size:13px;font-weight:500;">
+                    Repartidor
+                </label>
+
+                <select id="reintentarRepartidor"
+                        class="form-select"
+                        style="height:40px;border-radius:9px;font-size:13px;">
+                    <option value="">Seleccione un repartidor</option>
+
+                    @foreach (var repartidor in Model.Repartidores)
+                    {
+                        <option value="@repartidor.Id">
+                            @repartidor.Nombre
+                        </option>
+                    }
+                </select>
+
+                <div class="invalid-feedback">
+                    Seleccione un repartidor.
+                </div>
+            </div>
+
+            <div class="modal-footer"
+                 style="border-top:1px solid #e5e5ea;">
+
+                <button type="button"
+                        class="btn-apple"
+                        style="background:#f2f2f4;color:#1d1d1f;"
+                        data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+                <button type="button"
+                        id="reintentarContinuarBtn"
+                        class="btn-apple success">
+                    Continuar
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
 <!-- MODAL PREVIEW MENSAJE -->
 <div class="modal fade" id="previewEnvioModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">

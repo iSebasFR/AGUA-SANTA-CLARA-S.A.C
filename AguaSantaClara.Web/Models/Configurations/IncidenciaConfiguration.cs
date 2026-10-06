@@ -26,7 +26,12 @@ public class IncidenciaConfiguration : IEntityTypeConfiguration<Incidencia>
                .WithMany()
                .HasForeignKey(i => i.IdPedido)
                .OnDelete(DeleteBehavior.Cascade);
-
+        builder.HasOne(i => i.UsuarioReporta)
+                .WithMany()
+                .HasForeignKey(i => i.IdUsuarioReporta)
+                .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(i => i.IdPedido).HasDatabaseName("idx_incidencia_pedido");
+        builder.Property(i => i.IdUsuarioReporta)
+               .HasColumnName("id_usuario_reporta");
     }
 }

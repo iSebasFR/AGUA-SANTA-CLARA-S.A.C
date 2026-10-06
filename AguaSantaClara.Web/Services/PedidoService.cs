@@ -79,9 +79,7 @@ public class PedidoService : IPedidoService
         return new PedidoResultado { Mensaje = estadoCanonico };
     }
 
-    public async Task<PedidoResultado> RegistrarIncidenciaAsync(
-    long idPedido,
-    RegistrarIncidenciaViewModel modelo)
+    public async Task<PedidoResultado> RegistrarIncidenciaAsync(long idPedido,RegistrarIncidenciaViewModel modelo,long idUsuario)
     {
         var resultado = new PedidoResultado
         {
@@ -139,6 +137,7 @@ public class PedidoService : IPedidoService
         var incidencia = new Incidencia
         {
             IdPedido = pedido.Id,
+            IdUsuarioReporta = idUsuario,
             Motivo = motivoCanonico,
             Detalle = motivoCanonico == MotivosIncidencia.Otros
                 ? detalle
@@ -464,6 +463,171 @@ public class PedidoService : IPedidoService
             errores.Add(new ErrorPedido("pedidos", "Solo se pueden enviar pedidos en estado Pendiente."));
 
         return (errores, pedidos, repartidor);
+    }
+
+    public async Task<PedidoResultado> PreviewReintentarEntregaAsync(
+        long idPedido,
+        ReintentarEntregaViewModel modelo)
+    {
+        var (errores, pedido, repartidor) =
+            await ValidarReintentoEntregaAsync(idPedido, modelo.IdRepartidor);
+
+        if (errores.Count > 0)
+            return new PedidoResultado { Errores = errores };
+
+        var mensaje = PedidoMensajeBuilder.ConstruirVarios(
+            new List<Pedido> { pedido! });
+
+        return new PedidoResultado
+        {
+            IdPedido = pedido!.Id,
+            Total = pedido.Total,
+            Mensaje = mensaje,
+            WhatsappUrl = PedidoMensajeBuilder.ConstruirUrl(
+                repartidor!.Celular,
+                mensaje)
+        };
+    }
+
+    public async Task<PedidoResultado> ReintentarEntregaAsync(
+        long idPedido,
+        ReintentarEntregaViewModel modelo)
+    {
+        var (errores, pedido, repartidor) =
+            await ValidarReintentoEntregaAsync(idPedido, modelo.IdRepartidor);
+
+        if (errores.Count > 0)
+            return new PedidoResultado { Errores = errores };
+
+        pedido!.IdRepartidor = repartidor!.Id;
+        pedido.Estado = EstadosPedido.Enviado;
+        pedido.FechaActualizacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        var mensaje = PedidoMensajeBuilder.ConstruirVarios(
+            new List<Pedido> { pedido });
+
+        return new PedidoResultado
+        {
+            IdPedido = pedido.Id,
+            Total = pedido.Total,
+            Mensaje = "PEDIDO REENVIADO CORRECTAMENTE",
+            WhatsappUrl = PedidoMensajeBuilder.ConstruirUrl(
+                repartidor.Celular,
+                mensaje)
+        };
+    }
+
+    private async Task<(List<ErrorPedido> Errores, Pedido? Pedido, Repartidor? Repartidor)>
+        ValidarReintentoEntregaAsync(
+            long idPedido,
+            long? idRepartidor)
+    {
+        var errores = new List<ErrorPedido>();
+
+        Repartidor? repartidor = null;
+
+        if (idRepartidor.HasValue)
+        {
+            repartidor = await _context.Repartidores
+                .FirstOrDefaultAsync(r =>
+                    r.Id == idRepartidor.Value &&
+                    r.Estado &&
+                    r.EstadoRegistro);
+        }
+
+        if (repartidor == null)
+        {
+            errores.Add(
+                new ErrorPedido(
+                    "idRepartidor",
+                    "Selecciona un repartidor."));
+        }
+        else if (!CelularValido(repartidor.Celular))
+        {
+            errores.Add(
+                new ErrorPedido(
+                    "idRepartidor",
+                    "El celular del repartidor no tiene un formato válido."));
+        }
+
+        var pedido = await _context.Pedidos
+            .Include(p => p.Clientes)
+                .ThenInclude(c => c.Cliente)
+            .Include(p => p.Clientes)
+                .ThenInclude(c => c.Direccion)
+            .Include(p => p.Clientes)
+                .ThenInclude(c => c.Detalles)
+                .ThenInclude(d => d.Producto)
+            .Include(p => p.Clientes)
+                .ThenInclude(c => c.Detalles)
+                .ThenInclude(d => d.Local)
+            .FirstOrDefaultAsync(p =>
+                p.Id == idPedido &&
+                p.EstadoRegistro);
+
+        if (pedido == null)
+        {
+            errores.Add(
+                new ErrorPedido(
+                    "pedido",
+                    "El pedido no existe."));
+        }
+        else if (pedido.Estado != EstadosPedido.ConIncidencia)
+        {
+            errores.Add(
+                new ErrorPedido(
+                    "pedido",
+                    "Solo se puede reintentar un pedido con incidencia."));
+        }
+
+        return (errores, pedido, repartidor);
+    }
+
+    public async Task<PedidoResultado> CancelarConIncidenciaAsync(long idPedido)
+    {
+        var pedido = await _context.Pedidos
+            .FirstOrDefaultAsync(p =>
+                p.Id == idPedido &&
+                p.EstadoRegistro);
+
+        if (pedido == null)
+        {
+            return new PedidoResultado
+            {
+                Errores =
+                {
+                    new ErrorPedido(
+                        "pedido",
+                        "El pedido no existe.")
+                }
+            };
+        }
+
+        if (pedido.Estado != EstadosPedido.ConIncidencia)
+        {
+            return new PedidoResultado
+            {
+                Errores =
+                {
+                    new ErrorPedido(
+                        "pedido",
+                        "Solo se puede cancelar un pedido con incidencia.")
+                }
+            };
+        }
+
+        pedido.EstadoRegistro = false;
+        pedido.FechaActualizacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return new PedidoResultado
+        {
+            IdPedido = pedido.Id,
+            Mensaje = "PEDIDO CANCELADO CORRECTAMENTE"
+        };
     }
 
     public async Task<ClienteBusquedaViewModel?> BuscarClienteAsync(string tipo, string termino)
