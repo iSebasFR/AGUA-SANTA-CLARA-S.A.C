@@ -63,7 +63,7 @@ namespace AguaSantaClara.Web.Migrations
             migrationBuilder.AddCheckConstraint(
                 name: "chk_pedido_estado",
                 table: "pedido",
-                sql: "estado IN ('Pendiente', 'Enviado', 'Entregado')");
+                sql: "estado IN ('Pendiente', 'Enviado', 'Entregado', 'Con Incidencia', 'Pagado', 'Pago Parcial')");
 
             migrationBuilder.CreateIndex(
                 name: "idx_detalle_local",
