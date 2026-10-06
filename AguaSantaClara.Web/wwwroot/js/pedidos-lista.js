@@ -217,6 +217,216 @@
         }
     });
 
+    // ============ REINTENTAR ENTREGA ============
+    const reintentarPedidoId = $("reintentarPedidoId");
+    const reintentarRepartidor = $("reintentarRepartidor");
+    const reintentarContinuarBtn = $("reintentarContinuarBtn");
+
+    document.querySelectorAll(".pedido-reintentar").forEach(btn => {
+        btn.addEventListener("click", () => {
+            reintentarPedidoId.value = btn.dataset.pedidoId;
+            reintentarRepartidor.value = "";
+            reintentarRepartidor.classList.remove("is-invalid");
+
+            bootstrap.Modal
+                .getOrCreateInstance($("reintentarEntregaModal"))
+                .show();
+        });
+    });
+
+    reintentarContinuarBtn?.addEventListener("click", async () => {
+        reintentarRepartidor.classList.remove("is-invalid");
+
+        if (!reintentarRepartidor.value) {
+            reintentarRepartidor.classList.add("is-invalid");
+            return;
+        }
+
+        const pedidoId = reintentarPedidoId.value;
+
+        const cuerpo = {
+            idRepartidor: Number(reintentarRepartidor.value)
+        };
+
+        reintentarContinuarBtn.disabled = true;
+
+        try {
+            const resp = await fetch(
+                `/Pedidos/PreviewReintentarEntrega?idPedido=${encodeURIComponent(pedidoId)}`,
+                {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": token
+                    },
+                    body: JSON.stringify(cuerpo)
+                }
+            );
+
+            const datos = await resp.json().catch(() => null);
+
+            if (!resp.ok) {
+                mostrarToast(
+                    datos?.errores?.[0]?.mensaje ||
+                    "No se pudo preparar el reenvío.",
+                    "error"
+                );
+
+                reintentarContinuarBtn.disabled = false;
+                return;
+            }
+
+            const previewModalEl = $("previewEnvioModal");
+
+            $("previewEnvioMensaje").textContent =
+                datos.mensaje ?? "";
+
+            $("previewEnvioDestinatario").textContent =
+                reintentarRepartidor.options[
+                    reintentarRepartidor.selectedIndex
+                ].text.trim();
+
+            bootstrap.Modal
+                .getOrCreateInstance($("reintentarEntregaModal"))
+                .hide();
+
+            const confirmBtn = $("previewEnvioConfirmar");
+            const nuevoBtn = confirmBtn.cloneNode(true);
+
+            confirmBtn.parentNode.replaceChild(
+                nuevoBtn,
+                confirmBtn
+            );
+
+            nuevoBtn.addEventListener("click", async () => {
+                nuevoBtn.disabled = true;
+
+                try {
+                    const resp2 = await fetch(
+                        `/Pedidos/ReintentarEntrega?idPedido=${encodeURIComponent(pedidoId)}`,
+                        {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "RequestVerificationToken": token
+                            },
+                            body: JSON.stringify(cuerpo)
+                        }
+                    );
+
+                    const datos2 =
+                        await resp2.json().catch(() => null);
+
+                    if (!resp2.ok) {
+                        mostrarToast(
+                            datos2?.errores?.[0]?.mensaje ||
+                            "No se pudo reenviar el pedido.",
+                            "error"
+                        );
+
+                        nuevoBtn.disabled = false;
+                        return;
+                    }
+
+                    sessionStorage.setItem(
+                        "pedidoToast",
+                        datos2?.mensaje ||
+                        "PEDIDO REENVIADO CORRECTAMENTE"
+                    );
+
+                    bootstrap.Modal
+                        .getOrCreateInstance(previewModalEl)
+                        .hide();
+
+                    if (datos2?.whatsappUrl) {
+                        window.open(
+                            datos2.whatsappUrl,
+                            "_blank"
+                        );
+                    }
+
+                    window.location.reload();
+
+                } catch {
+                    mostrarToast(
+                        "No se pudo conectar con el servidor.",
+                        "error"
+                    );
+
+                    nuevoBtn.disabled = false;
+                }
+            });
+
+            bootstrap.Modal
+                .getOrCreateInstance(previewModalEl)
+                .show();
+
+            reintentarContinuarBtn.disabled = false;
+
+        } catch {
+            mostrarToast(
+                "No se pudo conectar con el servidor.",
+                "error"
+            );
+
+            reintentarContinuarBtn.disabled = false;
+        }
+    });
+
+    // ============ CANCELAR PEDIDO CON INCIDENCIA ============
+    document.querySelectorAll(".pedido-cancelar").forEach(btn => {
+        btn.addEventListener("click", () => {
+            window.abrirModalConfirm(
+                "Cancelar pedido",
+                "¿Seguro que deseas cancelar este pedido?",
+                "danger",
+                async () => {
+                    try {
+                        const resp = await fetch(
+                            `/Pedidos/CancelarConIncidencia?idPedido=${encodeURIComponent(btn.dataset.pedidoId)}`,
+                            {
+                                method: "POST",
+                                credentials: "same-origin",
+                                headers: {
+                                    "RequestVerificationToken": token
+                                }
+                            }
+                        );
+
+                        const datos =
+                            await resp.json().catch(() => null);
+
+                        if (!resp.ok) {
+                            mostrarToast(
+                                datos?.errores?.[0]?.mensaje ||
+                                "No se pudo cancelar el pedido.",
+                                "error"
+                            );
+                            return;
+                        }
+
+                        sessionStorage.setItem(
+                            "pedidoToast",
+                            datos?.mensaje ||
+                            "PEDIDO CANCELADO CORRECTAMENTE"
+                        );
+
+                        window.location.reload();
+
+                    } catch {
+                        mostrarToast(
+                            "No se pudo conectar con el servidor.",
+                            "error"
+                        );
+                    }
+                },
+                "Cancelar pedido"
+            );
+        });
+    });
+
     // ============ ELIMINAR ============
     document.querySelectorAll(".pedido-eliminar").forEach(btn => {
         btn.addEventListener("click", () => {

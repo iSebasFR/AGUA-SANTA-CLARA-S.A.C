@@ -18,11 +18,12 @@ public class Incidencia
 {
     public long Id { get; set; }
     public long IdPedido { get; set; }
+    public long? IdUsuarioReporta { get; set; } 
     public string Motivo { get; set; } = MotivosIncidencia.ClienteAusente;
     public string? Detalle { get; set; }
     public bool EstadoRegistro { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaActualizacion { get; set; }
-
     public Pedido Pedido { get; set; } = null!;
+    public Usuario? UsuarioReporta { get; set; }
 }

@@ -296,9 +296,65 @@ public class PedidosController : Controller
         long idPedido,
         [FromBody] RegistrarIncidenciaViewModel? modelo)
     {
+        var idUsuarioTexto = User.FindFirst(
+            System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (!long.TryParse(idUsuarioTexto, out var idUsuario))
+            return Unauthorized();
+
         var resultado = await _pedidoService.RegistrarIncidenciaAsync(
             idPedido,
-            modelo ?? new RegistrarIncidenciaViewModel());
+            modelo ?? new RegistrarIncidenciaViewModel(),
+            idUsuario);
+
+        return resultado.Ok
+            ? Json(resultado)
+            : BadRequest(resultado);
+    }
+
+    // ==================== REINTENTAR ENTREGA ====================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> PreviewReintentarEntrega(
+        long idPedido,
+        [FromBody] ReintentarEntregaViewModel? modelo)
+    {
+        var resultado =
+            await _pedidoService.PreviewReintentarEntregaAsync(
+                idPedido,
+                modelo ?? new ReintentarEntregaViewModel());
+
+        return resultado.Ok
+            ? Json(resultado)
+            : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> ReintentarEntrega(
+        long idPedido,
+        [FromBody] ReintentarEntregaViewModel? modelo)
+    {
+        var resultado =
+            await _pedidoService.ReintentarEntregaAsync(
+                idPedido,
+                modelo ?? new ReintentarEntregaViewModel());
+
+        return resultado.Ok
+            ? Json(resultado)
+            : BadRequest(resultado);
+    }
+
+    // ==================== CANCELAR PEDIDO CON INCIDENCIA ====================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> CancelarConIncidencia(long idPedido)
+    {
+        var resultado =
+            await _pedidoService.CancelarConIncidenciaAsync(idPedido);
 
         return resultado.Ok
             ? Json(resultado)
