@@ -56,3 +56,45 @@ document.addEventListener('click', function (e) {
         cargarMotivos(form);
     }
 });
+
+// ==================== T25: ENVIAR FORMULARIO (VALIDACIÓN) ====================
+document.addEventListener('submit', async function (e) {
+    const form = e.target;
+    if (form.id !== 'formModificarStock') return;
+
+    e.preventDefault();
+
+    const boton = form.querySelector('button[type="submit"]');
+    if (boton) boton.disabled = true;
+
+    try {
+        const respuesta = await fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        const tipo = respuesta.headers.get('content-type') || '';
+
+        if (tipo.includes('application/json')) {
+            // Validación correcta: cerrar la ventana y avisar (T26 actualizará el listado)
+            const data = await respuesta.json();
+
+            if (data.ok) {
+                bootstrap.Modal.getOrCreateInstance(modalEl()).hide();
+                document.dispatchEvent(new CustomEvent('stock:guardado', { detail: data }));
+            }
+        } else if (respuesta.ok) {
+            // HTML con errores de validación: se muestra dentro de la misma ventana
+            contenidoModal().innerHTML = await respuesta.text();
+            inicializarFormulario();
+        } else {
+            console.error('Error al guardar el stock. Código:', respuesta.status);
+        }
+    } catch (error) {
+        console.error('Error de red al guardar el stock:', error);
+    } finally {
+        // Si la ventana se reemplazó, este botón ya no existe y no pasa nada
+        if (boton) boton.disabled = false;
+    }
+});
