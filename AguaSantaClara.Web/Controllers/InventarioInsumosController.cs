@@ -1,4 +1,5 @@
 using AguaSantaClara.Web.Data;
+using AguaSantaClara.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,5 +29,28 @@ public class InventarioInsumosController : Controller
             .ToListAsync();
 
         return View(insumos);
+    }
+
+    // ==================== VENTANA MODIFICAR CANTIDAD ====================
+    [HttpGet("Modificar/{id:long}")]
+    public async Task<IActionResult> Modificar(long id)
+    {
+        var insumo = await _context.Insumos
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == id && i.EstadoRegistro);
+
+        if (insumo == null)
+            return NotFound();
+
+        var model = new ModificarStockInsumoViewModel
+        {
+            Id = insumo.Id,
+            NombreInsumo = insumo.Nombre,
+            StockActual = insumo.StockActual,
+            Accion = "Aumentar",
+            Motivo = MotivosStockInsumo.PorAccion["Aumentar"][0]
+        };
+
+        return PartialView("_Modificar", model);
     }
 }

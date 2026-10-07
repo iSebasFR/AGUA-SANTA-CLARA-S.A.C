@@ -49,3 +49,44 @@ body.app-body {
 }
 .btn-tabla:hover { background: #1d1d1f; color: #fff; border-color: #1d1d1f; }
 .empty-row { text-align: center; padding: 60px 20px; color: #6e6e73; font-size: 13px; }
+
+/* ===== T24: ventana Modificar cantidad ===== */
+.modal-backdrop.show { backdrop-filter: blur(6px); }
+#modalModificarStock .modal-content {
+    border: 0; border-radius: 18px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.18);
+}
+#modalModificarStock .modal-header { padding: 22px 24px 0; }
+#modalModificarStock .modal-body { padding: 16px 24px 24px; }
+
+.lbl-mini {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    color: #6e6e73; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.accion-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.accion-btn {
+    height: 48px; border: 1px solid #e5e5ea; border-radius: 10px; background: #fff;
+    color: #6e6e73; font-size: 14px; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.2s;
+}
+.accion-btn.active-aumentar { background: #e8f9ee; border-color: #b8e6c6; color: #1a8a3a; }
+.accion-btn.active-descontar { background: #ffebea; border-color: #ffd0cc; color: #ff3b30; }
+
+.campo-modal {
+    height: 44px; border: 1px solid #e5e5ea; border-radius: 10px;
+    background-color: #fbfcfd; font-size: 14px; color: #1d1d1f;
+}
+.campo-modal:focus {
+    background-color: #fff; border-color: #1d1d1f; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+.botones-modal { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn-modal-cancelar, .btn-modal-guardar {
+    height: 46px; border: 0; border-radius: 12px; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+}
+.btn-modal-cancelar { background: #f2f2f4; color: #1d1d1f; }
+.btn-modal-cancelar:hover { background: #e8e8ea; }
+.btn-modal-guardar { background: #1d1d1f; color: #fff; }
+.btn-modal-guardar:hover { background: #000; }
+.btn-modal-guardar:disabled { opacity: 0.6; cursor: wait; }
