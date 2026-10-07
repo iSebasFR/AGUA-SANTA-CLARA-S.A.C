@@ -1,4 +1,5 @@
 using AguaSantaClara.Web.Data;
+using AguaSantaClara.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public class InventarioProductosController : Controller
 
         return View(locales);
     }
-    
+
     // ==================== T19: PRODUCTOS POR LOCAL ====================
 [HttpGet("ProductosPorLocal")]
 public async Task<IActionResult> ProductosPorLocal(long idLocal)
@@ -53,5 +54,35 @@ public async Task<IActionResult> ProductosPorLocal(long idLocal)
         .ToListAsync();
 
     return Json(productos);
+}
+// ==================== T20: MOSTRAR VENTANA DE MODIFICACIÓN ====================
+[HttpGet("Modificar/{idLocal:long}/{idProducto:long}")]
+public async Task<IActionResult> Modificar(long idLocal, long idProducto)
+{
+    var productoLocal = await _context.ProductosLocal
+        .AsNoTracking()
+        .Include(pl => pl.Producto)
+        .FirstOrDefaultAsync(pl =>
+            pl.IdLocal == idLocal &&
+            pl.IdProducto == idProducto &&
+            pl.Estado &&
+            pl.EstadoRegistro &&
+            pl.Producto.Estado &&
+            pl.Producto.EstadoRegistro);
+
+    if (productoLocal == null)
+        return NotFound();
+
+    var model = new AguaSantaClara.Web.Models.ModificarStockProductoViewModel
+    {
+        IdProducto = productoLocal.IdProducto,
+        IdLocal = productoLocal.IdLocal,
+        NombreProducto = productoLocal.Producto.Nombre,
+        StockActual = productoLocal.Stock,
+        Accion = "Aumentar",
+        Motivo = StockProductoHelper.PorAccion["Aumentar"][0]
+    };
+
+    return PartialView("_Modificar", model);
 }
 }

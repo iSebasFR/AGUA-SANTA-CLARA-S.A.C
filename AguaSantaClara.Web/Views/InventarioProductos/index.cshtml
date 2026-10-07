@@ -1,8 +1,12 @@
-@model IEnumerable<AguaSantaClara.Web.Models.Entities.Local>
+@model IEnumerable<AguaSantaClara.Web.Models.Entities.Local>    
 
 @{
     ViewData["Title"] = "Inventario de productos";
 }
+
+<link rel="stylesheet"
+      href="~/css/inventario-productos.css"
+      asp-append-version="true" />
 
 <div class="container-fluid py-4">
 
@@ -67,6 +71,13 @@
 
 </div>
 
+<div class="modal fade" id="modalModificarStock" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="contenidoModalStock">
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         document.getElementById("local").addEventListener("change", async function () {
@@ -122,8 +133,10 @@
                         <td>${producto.stock} unid.</td>
                         <td>
                             <button type="button"
-                                    class="btn btn-sm btn-outline-primary">
-                                Modificar cantidad
+                                class="btn btn-sm btn-outline-primary btn-modificar-stock"
+                                data-id-local="${idLocal}"
+                                data-id-producto="${producto.id}">
+                                    Modificar cantidad
                             </button>
                         </td>
                     </tr>
@@ -139,5 +152,81 @@
                 `;
             }
         });
+        document.addEventListener("click", async function (event) {
+
+    const boton = event.target.closest(".btn-modificar-stock");
+
+    if (!boton) {
+        return;
+    }
+
+    const idLocal = boton.dataset.idLocal;
+    const idProducto = boton.dataset.idProducto;
+
+    try {
+        const response = await fetch(
+            `/Inventario/Productos/Modificar/${idLocal}/${idProducto}`
+        );
+
+        if (!response.ok) {
+            throw new Error("No se pudo cargar la ventana.");
+        }
+
+        const contenido = await response.text();
+
+        document.getElementById("contenidoModalStock").innerHTML = contenido;
+
+        const modalElement = document.getElementById("modalModificarStock");
+        const modal = new bootstrap.Modal(modalElement);
+
+        modal.show();
+
+    } catch (error) {
+        alert("No se pudo cargar la ventana de modificación.");
+    }
+});
+
+
+document.addEventListener("change", function (event) {
+
+    if (event.target.id !== "accionAumentar" &&
+        event.target.id !== "accionDescontar") {
+        return;
+    }
+
+    const accion = event.target.value;
+    const motivo = document.getElementById("motivo");
+
+    if (!motivo) {
+        return;
+    }
+
+    const motivos = {
+        Aumentar: [
+            "Producción",
+            "Devolución (de cliente)",
+            "Ajuste"
+        ],
+        Descontar: [
+            "Producto dañado/Merma",
+            "Pérdida",
+            "Ajuste"
+        ]
+    };
+
+    motivo.innerHTML = "";
+
+    motivos[accion].forEach(function (nombreMotivo) {
+
+        const option = document.createElement("option");
+
+        option.value = nombreMotivo;
+        option.textContent = nombreMotivo;
+
+        motivo.appendChild(option);
+    });
+
+    motivo.selectedIndex = 0;
+});
     </script>
 }
