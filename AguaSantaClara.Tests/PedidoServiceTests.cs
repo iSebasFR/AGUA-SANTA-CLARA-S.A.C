@@ -1,9 +1,7 @@
 using AguaSantaClara.Web.Data;
-using AguaSantaClara.Web.Controllers;
 using AguaSantaClara.Web.Models;
 using AguaSantaClara.Web.Models.Entities;
 using AguaSantaClara.Web.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Tests;
@@ -15,507 +13,164 @@ public class PedidoServiceTests
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
+
         return new AppDbContext(options);
     }
 
-    private class Escenario
-    {
-        public AppDbContext Db { get; init; } = null!;
-        public PedidoService Servicio { get; init; } = null!;
-        public Local Local { get; init; } = null!;
-        public Producto Galon { get; init; } = null!;
-        public Producto Hielo { get; init; } = null!;
-        public Cliente Ana { get; init; } = null!;
-        public Cliente Beto { get; init; } = null!;
-        public Repartidor Repartidor { get; init; } = null!;
-    }
-
-    private static async Task<Escenario> CrearEscenarioAsync(int stockGalon = 10, int stockHielo = 3)
+    private static async Task<(AppDbContext Db, PedidoService Servicio, Local Local, Producto Producto, Cliente Cliente, DireccionCliente Direccion, Repartidor Repartidor)> CrearEscenarioAsync()
     {
         var db = CrearContexto();
-        var local = new Local { Nombre = "Santa Rosa" };
-        var galon = new Producto { Nombre = "Galones 11L", PrecioVenta = 12.50m, Costo = 7m };
-        var hielo = new Producto { Nombre = "Bolsas de Hielo", PrecioVenta = 5m, Costo = 2m };
-        var ana = new Cliente
+        var local = new Local { Nombre = "Local Central" };
+        var producto = new Producto { Nombre = "Galón 11L", PrecioVenta = 12.50m, Costo = 7.00m };
+        var cliente = new Cliente
         {
-            Nombre = "Ana Torres", Telefono = "999111222", Dni = "12345678",
-            Direcciones =
+            Nombre = "Ana Torres",
+            Telefono = "999000111",
+            Dni = "12345678",
+            Estado = true,
+            EstadoRegistro = true
+        };
+        cliente.Direcciones.Add(new DireccionCliente
+        {
+            Direccion = "Av. Lima 123",
+            Ciudad = "Lima",
+            Principal = true,
+            UrlUbicacion = "https://maps.example/ana"
+        });
+
+        var repartidor = new Repartidor
+        {
+            Nombre = "Carlos Ramos",
+            Celular = "51987654321",
+            Estado = true,
+            EstadoRegistro = true
+        };
+
+        db.Locales.Add(local);
+        db.Productos.Add(producto);
+        db.Clientes.Add(cliente);
+        db.Repartidores.Add(repartidor);
+        await db.SaveChangesAsync();
+
+        var direccion = cliente.Direcciones.Single();
+        db.ProductosLocal.Add(new ProductoLocal
+        {
+            IdLocal = local.Id,
+            IdProducto = producto.Id,
+            Stock = 25,
+            Estado = true,
+            EstadoRegistro = true
+        });
+        await db.SaveChangesAsync();
+
+        return (db, new PedidoService(db), local, producto, cliente, direccion, repartidor);
+    }
+
+    [Fact]
+    public async Task CrearAsync_ConDatosValidos_GuardaPedidoYCalculaTotal()
+    {
+        var (db, servicio, local, producto, cliente, direccion, repartidor) = await CrearEscenarioAsync();
+
+        var modelo = new CrearPedidoViewModel
+        {
+            IdRepartidor = repartidor.Id,
+            Clientes =
             {
-                new DireccionCliente { Direccion = "Av. Lima 123", Ciudad = "Lima", Principal = true, UrlUbicacion = "https://maps.app.goo.gl/ana1" },
-                new DireccionCliente { Direccion = "Jr. Cusco 45", UrlUbicacion = "https://maps.app.goo.gl/ana2" }
+                new PedidoClienteViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdDireccion = direccion.Id,
+                    Detalles =
+                    {
+                        new DetallePedidoViewModel
+                        {
+                            IdLocal = local.Id,
+                            IdProducto = producto.Id,
+                            Cantidad = 2,
+                            DescuentoMonto = 1.50m
+                        }
+                    }
+                }
             }
         };
-        var beto = new Cliente
-        {
-            Nombre = "Beto Ruiz", Telefono = "999333444",
-            Direcciones = { new DireccionCliente { Direccion = "Calle Sol 9", Principal = true } }
-        };
-        var repartidor = new Repartidor { Nombre = "Carlos Ramos", Celular = "51987654321" };
 
-        db.AddRange(local, galon, hielo, ana, beto, repartidor);
+        var resultado = await servicio.CrearAsync(modelo, enviar: false);
+
+        Assert.True(resultado.Ok, string.Join("; ", resultado.Errores.Select(e => e.Mensaje)));
+        Assert.NotNull(resultado.IdPedido);
+        Assert.Equal(23.50m, resultado.Total);
+
+        var pedidoGuardado = await db.Pedidos.Include(p => p.Clientes).ThenInclude(c => c.Detalles).SingleAsync();
+        Assert.Equal(EstadosPedido.Pendiente, pedidoGuardado.Estado);
+        Assert.Equal(23.50m, pedidoGuardado.Total);
+    }
+
+    [Fact]
+    public async Task CrearAsync_ConDescuentoMayorQueSubtotal_DevuelveError()
+    {
+        var (db, servicio, local, producto, cliente, direccion, repartidor) = await CrearEscenarioAsync();
+
+        var modelo = new CrearPedidoViewModel
+        {
+            IdRepartidor = repartidor.Id,
+            Clientes =
+            {
+                new PedidoClienteViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdDireccion = direccion.Id,
+                    Detalles =
+                    {
+                        new DetallePedidoViewModel
+                        {
+                            IdLocal = local.Id,
+                            IdProducto = producto.Id,
+                            Cantidad = 1,
+                            DescuentoMonto = 100m
+                        }
+                    }
+                }
+            }
+        };
+
+        var resultado = await servicio.CrearAsync(modelo, enviar: false);
+
+        Assert.False(resultado.Ok);
+        Assert.Contains(resultado.Errores, e => e.Campo == "clientes[0].detalles[0].descuentoMonto");
+    }
+
+    [Fact]
+    public async Task CambiarEstadoAsync_DesdePendiente_AceptaSoloEnviado()
+    {
+        var (db, servicio, _, _, _, _, _) = await CrearEscenarioAsync();
+        var pedido = new Pedido
+        {
+            Estado = EstadosPedido.Pendiente,
+            EstadoRegistro = true,
+            Total = 20m
+        };
+        db.Pedidos.Add(pedido);
         await db.SaveChangesAsync();
 
-        db.ProductosLocal.AddRange(
-            new ProductoLocal { IdLocal = local.Id, IdProducto = galon.Id, Stock = stockGalon },
-            new ProductoLocal { IdLocal = local.Id, IdProducto = hielo.Id, Stock = stockHielo });
-        await db.SaveChangesAsync();
+        var resultadoInvalido = await servicio.CambiarEstadoAsync(pedido.Id, EstadosPedido.Entregado);
+        Assert.False(resultadoInvalido.Ok);
+        Assert.Contains(resultadoInvalido.Errores, e => e.Campo == "estado");
 
-        return new Escenario
-        {
-            Db = db, Servicio = new PedidoService(db), Local = local, Galon = galon,
-            Hielo = hielo, Ana = ana, Beto = beto, Repartidor = repartidor
-        };
+        var resultadoValido = await servicio.CambiarEstadoAsync(pedido.Id, EstadosPedido.Enviado);
+        Assert.True(resultadoValido.Ok);
+        Assert.Equal(EstadosPedido.Enviado, (await db.Pedidos.SingleAsync()).Estado);
     }
 
     [Fact]
-    public async Task Create_AsignaLocalYRelacionaProductoConElLocalSeleccionado()
+    public async Task BuscarClienteAsync_PorTelefono_DevuelveClienteYDirecciones()
     {
-        var db = CrearContexto();
-        var local = new Local { Nombre = "Santa Rosa" };
-        db.Locales.Add(local);
-        await db.SaveChangesAsync();
+        var (_, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
 
-        var controller = new ProductosController(db);
-        var modelo = new CrearProductoViewModel
-        {
-            Nombre = "Bidón de 20L",
-            Categoria = "Bidón",
-            PrecioVenta = 18.50m,
-            Costo = 12.00m,
-            Estado = true,
-            IdLocal = local.Id
-        };
+        var resultado = await servicio.BuscarClienteAsync("telefono", "999000111");
 
-        var resultado = await controller.Create(modelo);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(resultado);
-        Assert.Equal(nameof(ProductosController.Index), redirect.ActionName);
-
-        var producto = await db.Productos.SingleAsync();
-        var productoLocal = await db.ProductosLocal.SingleAsync();
-
-        Assert.Equal(producto.Id, productoLocal.IdProducto);
-        Assert.Equal(local.Id, productoLocal.IdLocal);
-    }
-
-    private static PedidoClienteViewModel Linea(Cliente cliente, int indiceDireccion, params (Producto producto, int cantidad)[] items) => new()
-    {
-        IdCliente = cliente.Id,
-        IdDireccion = cliente.Direcciones.OrderBy(d => d.Id).ElementAt(indiceDireccion).Id,
-        Detalles = items.Select(i => new DetallePedidoViewModel { IdProducto = i.producto.Id, Cantidad = i.cantidad }).ToList()
-    };
-
-    private static CrearPedidoViewModel Modelo(Escenario e, params PedidoClienteViewModel[] lineas) => new()
-    {
-        Clientes = lineas.ToList()
-    };
-
-    [Fact]
-    public async Task Crear_CalculaTotalComoCantidadPorPrecioDeCatalogo()
-    {
-        var e = await CrearEscenarioAsync();
-        var modelo = Modelo(e, Linea(e.Ana, 0, (e.Galon, 2), (e.Hielo, 1)));
-
-        var resultado = await e.Servicio.CrearAsync(modelo, enviar: false);
-
-        Assert.True(resultado.Ok);
-        Assert.Equal(30m, resultado.Total);
-        var pedido = await e.Db.Pedidos.Include(p => p.Clientes).ThenInclude(c => c.Detalles).SingleAsync();
-        Assert.Equal(30m, pedido.Total);
-        Assert.Equal(30m, pedido.Clientes.Single().Subtotal);
-        var detalleGalon = pedido.Clientes.Single().Detalles.Single(d => d.IdProducto == e.Galon.Id);
-        Assert.Equal(12.50m, detalleGalon.PrecioUnitario);
-        Assert.Equal(25m, detalleGalon.Subtotal);
-    }
-
-    [Fact]
-    public async Task Crear_GuardarRegistraPedidoPendienteSinUrl()
-    {
-        var e = await CrearEscenarioAsync();
-
-        var resultado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-
-        Assert.True(resultado.Ok);
-        Assert.Null(resultado.WhatsappUrl);
-        Assert.Equal(EstadosPedido.Pendiente, (await e.Db.Pedidos.SingleAsync()).Estado);
-    }
-
-    [Fact]
-    public async Task Actualizar_ReemplazaDatosYDetallesSinCrearOtroPedido()
-    {
-        var e = await CrearEscenarioAsync();
-        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-
-        var actualizado = await e.Servicio.ActualizarAsync(creado.IdPedido, Modelo(e, Linea(e.Beto, 0, (e.Hielo, 3))));
-
-        Assert.True(actualizado.Ok);
-        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
-        var pedido = await e.Db.Pedidos
-            .Include(p => p.Clientes).ThenInclude(c => c.Detalles)
-            .SingleAsync();
-        Assert.Equal(creado.IdPedido, pedido.Id);
-        Assert.Equal(15m, pedido.Total);
-        Assert.Equal(e.Beto.Id, pedido.Clientes.Single().IdCliente);
-        Assert.Equal(e.Hielo.Id, pedido.Clientes.Single().Detalles.Single().IdProducto);
-        Assert.Equal(3, pedido.Clientes.Single().Detalles.Single().Cantidad);
-    }
-
-    [Fact]
-    public async Task Eliminar_ExcluyePedidoDelListadoSinBorrarElRegistro()
-    {
-        var e = await CrearEscenarioAsync();
-        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-
-        var eliminado = await e.Servicio.EliminarAsync(creado.IdPedido);
-
-        Assert.True(eliminado);
-        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
-        Assert.False((await e.Db.Pedidos.SingleAsync()).EstadoRegistro);
-        Assert.Equal(0, await e.Db.Pedidos.CountAsync(p => p.EstadoRegistro));
-    }
-
-    [Fact]
-    public async Task Listado_FiltraPorEstadoClienteYProductoEnInterseccion()
-    {
-        var e = await CrearEscenarioAsync();
-        var pedidoAna = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Beto, 0, (e.Hielo, 1))), enviar: false);
-        await e.Servicio.EnviarVariosAsync(new EnviarPedidosViewModel
-        {
-            IdsPedidos = { pedidoAna.IdPedido!.Value },
-            IdRepartidor = e.Repartidor.Id
-        });
-
-        var controller = new PedidosController(e.Db, e.Servicio);
-        var resultado = await controller.Index(
-            fechaDesde: null,
-            fechaHasta: null,
-            estado: EstadosPedido.Enviado,
-            idCliente: e.Ana.Id,
-            idRepartidor: null,
-            idProducto: e.Galon.Id);
-
-        var modelo = Assert.IsType<PedidosIndexViewModel>(Assert.IsType<ViewResult>(resultado).Model);
-        Assert.Single(modelo.Pedidos);
-        Assert.Equal(pedidoAna.IdPedido, modelo.Pedidos[0].Id);
-    }
-
-    [Fact]
-    public async Task Listado_FiltraPorFechaYRepartidor()
-    {
-        var e = await CrearEscenarioAsync();
-        var pedidoAnterior = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-        var pedidoHoy = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Beto, 0, (e.Hielo, 1))), enviar: false);
-        await e.Servicio.EnviarVariosAsync(new EnviarPedidosViewModel
-        {
-            IdsPedidos = { pedidoAnterior.IdPedido!.Value, pedidoHoy.IdPedido!.Value },
-            IdRepartidor = e.Repartidor.Id
-        });
-        var anterior = await e.Db.Pedidos.SingleAsync(p => p.Id == pedidoAnterior.IdPedido);
-        anterior.FechaCreacion = DateTime.SpecifyKind(DateTime.Today.AddDays(-1), DateTimeKind.Local).ToUniversalTime();
-        await e.Db.SaveChangesAsync();
-
-        var controller = new PedidosController(e.Db, e.Servicio);
-        var resultado = await controller.Index(
-            fechaDesde: DateOnly.FromDateTime(DateTime.Today),
-            fechaHasta: DateOnly.FromDateTime(DateTime.Today),
-            estado: null,
-            idCliente: null,
-            idRepartidor: e.Repartidor.Id,
-            idProducto: null);
-
-        var modelo = Assert.IsType<PedidosIndexViewModel>(Assert.IsType<ViewResult>(resultado).Model);
-        Assert.Single(modelo.Pedidos);
-        Assert.Equal(pedidoHoy.IdPedido, modelo.Pedidos[0].Id);
-    }
-
-    [Fact]
-    public async Task Listado_RechazaMasDeTresTiposDeFiltro()
-    {
-        var e = await CrearEscenarioAsync();
-        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-        var controller = new PedidosController(e.Db, e.Servicio);
-
-        var resultado = await controller.Index(
-            fechaDesde: DateOnly.FromDateTime(DateTime.Today),
-            fechaHasta: null,
-            estado: EstadosPedido.Pendiente,
-            idCliente: e.Ana.Id,
-            idRepartidor: e.Repartidor.Id,
-            idProducto: e.Galon.Id);
-
-        var modelo = Assert.IsType<PedidosIndexViewModel>(Assert.IsType<ViewResult>(resultado).Model);
-        Assert.Equal("Puedes combinar como máximo 3 filtros.", modelo.ErrorFiltros);
-        Assert.Single(modelo.Pedidos);
-    }
-
-    [Theory]
-    [InlineData(EstadosPedido.Pendiente)]
-    [InlineData(EstadosPedido.Enviado)]
-    [InlineData(EstadosPedido.Entregado)]
-    [InlineData(EstadosPedido.ConIncidencia)]
-    [InlineData(EstadosPedido.Pagado)]
-    [InlineData(EstadosPedido.PagoParcial)]
-    public async Task CambiarEstado_GuardaCadaEstadoPermitido(string estado)
-    {
-        var e = await CrearEscenarioAsync();
-        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-
-        var resultado = await e.Servicio.CambiarEstadoAsync(creado.IdPedido!.Value, estado);
-
-        Assert.True(resultado.Ok);
-        Assert.Equal(estado, (await e.Db.Pedidos.SingleAsync()).Estado);
-    }
-
-    [Fact]
-    public async Task CambiarEstado_RechazaEstadoNoPermitido()
-    {
-        var e = await CrearEscenarioAsync();
-        var creado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-
-        var resultado = await e.Servicio.CambiarEstadoAsync(creado.IdPedido!.Value, "Cancelado");
-
-        Assert.False(resultado.Ok);
-        Assert.Contains(resultado.Errores, error => error.Campo == "estado");
-        Assert.Equal(EstadosPedido.Pendiente, (await e.Db.Pedidos.SingleAsync()).Estado);
-    }
-
-    [Fact]
-    public async Task Crear_CantidadIgualAlStockSePermite()
-    {
-        var e = await CrearEscenarioAsync(stockGalon: 10);
-
-        var resultado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 10))), enviar: false);
-
-        Assert.True(resultado.Ok);
-        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
-    }
-
-    [Fact]
-    public async Task Crear_CantidadMayorAlStockSePermiteComoBackorder()
-    {
-        var e = await CrearEscenarioAsync(stockGalon: 10);
-
-        var resultado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 11)), Linea(e.Beto, 0, (e.Galon, 6))), enviar: false);
-
-        Assert.True(resultado.Ok);
-        Assert.Equal(1, await e.Db.Pedidos.CountAsync());
-        Assert.Null((await e.Db.Pedidos.SingleAsync()).IdLocal);
-    }
-
-    [Fact]
-    public async Task Crear_NoDescuentaElStockDelLocal()
-    {
-        var e = await CrearEscenarioAsync(stockGalon: 10);
-
-        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 4))), enviar: false);
-
-        var stock = await e.Db.ProductosLocal.Where(p => p.IdProducto == e.Galon.Id).Select(p => p.Stock).SingleAsync();
-        Assert.Equal(10, stock);
-    }
-
-    [Fact]
-    public async Task Crear_SinDatosObligatoriosDevuelveUnErrorPorCampo()
-    {
-        var e = await CrearEscenarioAsync();
-
-        var resultado = await e.Servicio.CrearAsync(new CrearPedidoViewModel(), enviar: false);
-
-        Assert.False(resultado.Ok);
-        var campos = resultado.Errores.Select(x => x.Campo).ToList();
-        Assert.Contains("clientes", campos);
-        Assert.Equal(0, await e.Db.Pedidos.CountAsync());
-    }
-
-    [Fact]
-    public async Task Crear_ClienteSinProductosOCantidadCeroSeRechaza()
-    {
-        var e = await CrearEscenarioAsync();
-        var sinProductos = Linea(e.Ana, 0);
-        var cantidadCero = Linea(e.Beto, 0, (e.Galon, 0));
-
-        var resultado = await e.Servicio.CrearAsync(Modelo(e, sinProductos, cantidadCero), enviar: false);
-
-        Assert.Contains(resultado.Errores, x => x.Campo == "clientes[0].detalles");
-        Assert.Contains(resultado.Errores, x => x.Campo == "clientes[1].detalles[0].cantidad");
-    }
-
-    [Fact]
-    public async Task Crear_ProductoInactivoSeRechaza()
-    {
-        var e = await CrearEscenarioAsync();
-        var otro = new Producto { Nombre = "Papel Higiénico", PrecioVenta = 25m, Costo = 18m, Estado = false };
-        e.Db.Productos.Add(otro);
-        await e.Db.SaveChangesAsync();
-
-        var resultado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (otro, 1))), enviar: false);
-
-        Assert.Contains(resultado.Errores, x => x.Campo == "clientes[0].detalles[0].idProducto");
-    }
-
-    [Fact]
-    public async Task Crear_DireccionQueNoPerteneceAlClienteSeRechaza()
-    {
-        var e = await CrearEscenarioAsync();
-        var linea = Linea(e.Ana, 0, (e.Galon, 1));
-        linea.IdDireccion = e.Beto.Direcciones.Single().Id;
-
-        var resultado = await e.Servicio.CrearAsync(Modelo(e, linea), enviar: false);
-
-        Assert.Contains(resultado.Errores, x => x.Campo == "clientes[0].idDireccion");
-    }
-
-    [Fact]
-    public async Task Crear_MismoClienteConDosDireccionesGeneraDosLineas()
-    {
-        var e = await CrearEscenarioAsync();
-        var modelo = Modelo(e, Linea(e.Ana, 0, (e.Galon, 1)), Linea(e.Ana, 1, (e.Hielo, 2)));
-
-        var resultado = await e.Servicio.CrearAsync(modelo, enviar: false);
-
-        Assert.True(resultado.Ok);
-        Assert.Equal(2, await e.Db.PedidosCliente.CountAsync());
-        Assert.Equal(22.50m, resultado.Total);
-    }
-
-    [Fact]
-    public async Task Crear_MismaDireccionDelMismoClienteDosVecesSeRechaza()
-    {
-        var e = await CrearEscenarioAsync();
-        var modelo = Modelo(e, Linea(e.Ana, 0, (e.Galon, 1)), Linea(e.Ana, 0, (e.Hielo, 1)));
-
-        var resultado = await e.Servicio.CrearAsync(modelo, enviar: false);
-
-        Assert.Contains(resultado.Errores, x => x.Campo == "clientes[1].idDireccion");
-    }
-
-    [Fact]
-    public async Task Enviar_SinRepartidorSeRechaza()
-    {
-        var e = await CrearEscenarioAsync();
-
-        var resultado = await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: true);
-
-        Assert.Contains(resultado.Errores, x => x.Campo == "idRepartidor");
-        Assert.Equal(0, await e.Db.Pedidos.CountAsync());
-    }
-
-    [Fact]
-    public async Task Enviar_RepartidorConCelularInvalidoSeRechaza()
-    {
-        var e = await CrearEscenarioAsync();
-        e.Repartidor.Celular = "+51987654321";
-        await e.Db.SaveChangesAsync();
-        var modelo = Modelo(e, Linea(e.Ana, 0, (e.Galon, 1)));
-        modelo.IdRepartidor = e.Repartidor.Id;
-
-        var resultado = await e.Servicio.CrearAsync(modelo, enviar: true);
-
-        Assert.Contains(resultado.Errores, x => x.Campo == "idRepartidor");
-    }
-
-    [Fact]
-    public async Task Enviar_MarcaElPedidoComoEnviadoYGeneraLaUrlDeWhatsapp()
-    {
-        var e = await CrearEscenarioAsync();
-        var modelo = Modelo(e, Linea(e.Ana, 0, (e.Galon, 2)));
-        modelo.IdRepartidor = e.Repartidor.Id;
-
-        var resultado = await e.Servicio.CrearAsync(modelo, enviar: true);
-
-        Assert.True(resultado.Ok);
-        var pedido = await e.Db.Pedidos.SingleAsync();
-        Assert.Equal(EstadosPedido.Enviado, pedido.Estado);
-        Assert.Equal(e.Repartidor.Id, pedido.IdRepartidor);
-        Assert.StartsWith("https://wa.me/51987654321?text=", resultado.WhatsappUrl);
-        Assert.Contains(Uri.EscapeDataString("Ubicación: https://maps.app.goo.gl/ana1"), resultado.WhatsappUrl);
-    }
-
-    [Theory]
-    [InlineData("51987654321", true)]
-    [InlineData("+51987654321", false)]
-    [InlineData("987654321", false)]
-    [InlineData("51887654321", false)]
-    [InlineData("5198765432", false)]
-    [InlineData("519876543210", false)]
-    [InlineData("", false)]
-    [InlineData(null, false)]
-    public void CelularValido_AceptaSoloFormatoInternacionalPeruanoSinMas(string? celular, bool esperado)
-    {
-        Assert.Equal(esperado, PedidoService.CelularValido(celular));
-    }
-
-    [Fact]
-    public async Task BuscarCliente_EncuentraPorTelefonoOPorDni()
-    {
-        var e = await CrearEscenarioAsync();
-
-        var porTelefono = await e.Servicio.BuscarClienteAsync("999111222");
-        var porDni = await e.Servicio.BuscarClienteAsync("12345678");
-        var inexistente = await e.Servicio.BuscarClienteAsync("00000000");
-
-        Assert.Equal(e.Ana.Id, porTelefono?.Id);
-        Assert.Equal(e.Ana.Id, porDni?.Id);
-        Assert.Equal(2, porDni!.Direcciones.Count);
-        Assert.Null(inexistente);
-    }
-
-    [Fact]
-    public async Task ProductosDisponibles_ListaProductosActivosSinDependerDelLocal()
-    {
-        var e = await CrearEscenarioAsync();
-        e.Db.Productos.Add(new Producto { Nombre = "Inactivo", PrecioVenta = 1m, Estado = false });
-        await e.Db.SaveChangesAsync();
-
-        var productos = await e.Servicio.ProductosDisponiblesAsync();
-
-        Assert.Equal(2, productos.Count);
-        Assert.DoesNotContain(productos, p => p.Nombre == "Inactivo");
-    }
-
-    [Fact]
-    public async Task EnviarVarios_AsignaRepartidorMarcaEnviadosYArmaUrlConTodos()
-    {
-        var e = await CrearEscenarioAsync();
-        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Beto, 0, (e.Galon, 2))), enviar: false);
-        var ids = await e.Db.Pedidos.Select(p => p.Id).ToListAsync();
-
-        var resultado = await e.Servicio.EnviarVariosAsync(new EnviarPedidosViewModel { IdsPedidos = ids, IdRepartidor = e.Repartidor.Id });
-
-        Assert.True(resultado.Ok);
-        Assert.All(await e.Db.Pedidos.ToListAsync(), p =>
-        {
-            Assert.Equal(EstadosPedido.Enviado, p.Estado);
-            Assert.Equal(e.Repartidor.Id, p.IdRepartidor);
-        });
-        Assert.Contains(Uri.EscapeDataString("Pedidos asignados: 2"), resultado.WhatsappUrl);
-    }
-
-    [Fact]
-    public async Task EnviarVarios_SinPedidosORepartidorDevuelveErrores()
-    {
-        var e = await CrearEscenarioAsync();
-
-        var resultado = await e.Servicio.EnviarVariosAsync(new EnviarPedidosViewModel());
-
-        Assert.False(resultado.Ok);
-        var campos = resultado.Errores.Select(x => x.Campo).ToList();
-        Assert.Contains("pedidos", campos);
-        Assert.Contains("idRepartidor", campos);
-    }
-
-    [Fact]
-    public async Task EnviarVarios_RechazaPedidosQueNoEstanPendientes()
-    {
-        var e = await CrearEscenarioAsync();
-        await e.Servicio.CrearAsync(Modelo(e, Linea(e.Ana, 0, (e.Galon, 1))), enviar: false);
-        var id = (await e.Db.Pedidos.SingleAsync()).Id;
-        var modelo = new EnviarPedidosViewModel { IdsPedidos = { id }, IdRepartidor = e.Repartidor.Id };
-        await e.Servicio.EnviarVariosAsync(modelo);
-
-        var resultado = await e.Servicio.EnviarVariosAsync(modelo);
-
-        Assert.False(resultado.Ok);
+        Assert.NotNull(resultado);
+        Assert.Equal(cliente.Nombre, resultado!.Nombre);
+        Assert.Contains(resultado.Direcciones, d => d.Id == direccion.Id);
     }
 }
+

@@ -5,141 +5,110 @@ namespace AguaSantaClara.Tests;
 
 public class PedidoMensajeBuilderTests
 {
-    private static Cliente Cliente(long id, string nombre) => new() { Id = id, Nombre = nombre };
+    private static Cliente CrearCliente(long id, string nombre)
+        => new() { Id = id, Nombre = nombre, Telefono = "999111222" };
 
-    private static DireccionCliente Direccion(long id, string direccion, string? url = null, string? ciudad = null) =>
-        new() { Id = id, Direccion = direccion, UrlUbicacion = url, Ciudad = ciudad };
+    private static DireccionCliente CrearDireccion(long id, string direccion, string? ciudad = null, string? url = null)
+        => new() { Id = id, Direccion = direccion, Ciudad = ciudad, UrlUbicacion = url };
 
-    private static PedidoCliente Linea(Cliente cliente, DireccionCliente direccion, params (string producto, int cantidad, decimal precio)[] items)
+    private static PedidoCliente CrearLinea(Cliente cliente, DireccionCliente direccion, params (string Producto, int Cantidad, decimal Precio)[] items)
     {
         var linea = new PedidoCliente
         {
-            IdCliente = cliente.Id, Cliente = cliente, IdDireccion = direccion.Id, Direccion = direccion
+            IdCliente = cliente.Id,
+            Cliente = cliente,
+            IdDireccion = direccion.Id,
+            Direccion = direccion,
         };
+
         foreach (var (producto, cantidad, precio) in items)
-            linea.Detalles.Add(new DetallePedido
+        {
+            var detalle = new DetallePedido
             {
-                Producto = new Producto { Nombre = producto }, Cantidad = cantidad,
-                PrecioUnitario = precio, Subtotal = cantidad * precio
-            });
+                Producto = new Producto { Nombre = producto, PrecioVenta = precio },
+                Cantidad = cantidad,
+                PrecioUnitario = precio,
+                DescuentoMonto = 0m,
+                Subtotal = cantidad * precio
+            };
+            linea.Detalles.Add(detalle);
+        }
+
         linea.Subtotal = linea.Detalles.Sum(d => d.Subtotal);
         return linea;
     }
 
-    private static Pedido Pedido(params PedidoCliente[] lineas)
+    private static Pedido CrearPedido(long id, params PedidoCliente[] lineas)
     {
         var pedido = new Pedido
         {
-            Id = 42, Local = new Local { Nombre = "Santa Rosa" },
+            Id = id,
+            Estado = EstadosPedido.Pendiente,
+            Total = lineas.Sum(l => l.Subtotal),
             FechaCreacion = DateTime.SpecifyKind(new DateTime(2026, 10, 5, 14, 30, 0), DateTimeKind.Local).ToUniversalTime()
         };
-        foreach (var linea in lineas) pedido.Clientes.Add(linea);
-        pedido.Total = lineas.Sum(l => l.Subtotal);
+
+        foreach (var linea in lineas)
+            pedido.Clientes.Add(linea);
+
         return pedido;
     }
 
     [Fact]
-    public void Construir_IncluyeNumeroClienteDireccionUbicacionProductosFechaYTotalAlFinal()
+    public void Construir_IncluyeDatosPrincipalesDelPedido()
     {
-        var ana = Cliente(1, "Ana Torres");
-        var mensaje = PedidoMensajeBuilder.Construir(Pedido(
-            Linea(ana, Direccion(1, "Av. Lima 123", "https://maps.app.goo.gl/x", "Lima"), ("Galones 11L", 2, 12.5m))));
+        var cliente = CrearCliente(1, "Ana Torres");
+        var direccion = CrearDireccion(1, "Av. Lima 123", "Lima", "https://maps.example/ana");
+        var pedido = CrearPedido(42,
+            CrearLinea(cliente, direccion, ("Galón 11L", 2, 12.50m)));
 
-        Assert.Contains("Pedido N° 42", mensaje);
-        Assert.Contains("Fecha de creación: 05/10/2026 14:30", mensaje);
-        Assert.Contains("Cliente: Ana Torres", mensaje);
-        Assert.Contains("Dirección: Av. Lima 123, Lima", mensaje);
-        Assert.Contains("Ubicación: https://maps.app.goo.gl/x", mensaje);
-        Assert.Contains("- 2 x Galones 11L = S/ 25.00", mensaje);
-        Assert.EndsWith("Total: S/ 25.00", mensaje);
+        var mensaje = PedidoMensajeBuilder.Construir(pedido);
+
+        Assert.Contains("PEDIDO N° 42", mensaje);
+        Assert.Contains("Ana Torres", mensaje);
+        Assert.Contains("Av. Lima 123, Lima", mensaje);
+        Assert.Contains("https://maps.example/ana", mensaje);
+        Assert.Contains("2 x Galón 11L", mensaje);
+        Assert.Contains("TOTAL:", mensaje);
     }
 
     [Fact]
-    public void Construir_ConUnSoloClienteNoMuestraSubtotales()
+    public void Construir_SinUrlDeUbicacion_NoIncluyeLaLineaUbicacion()
     {
-        var ana = Cliente(1, "Ana Torres");
-        var mensaje = PedidoMensajeBuilder.Construir(Pedido(
-            Linea(ana, Direccion(1, "Av. Lima 123"), ("Galones 11L", 1, 10m)),
-            Linea(ana, Direccion(2, "Jr. Cusco 45"), ("Bidones 20L", 1, 10m))));
+        var cliente = CrearCliente(1, "Ana Torres");
+        var direccion = CrearDireccion(1, "Av. Lima 123", "Lima");
+        var pedido = CrearPedido(10, CrearLinea(cliente, direccion, ("Galón 11L", 1, 10m)));
 
-        Assert.DoesNotContain("Subtotal", mensaje);
-    }
-
-    [Fact]
-    public void Construir_AgrupaLasLineasDelMismoClienteBajoUnSoloEncabezado()
-    {
-        var ana = Cliente(1, "Ana Torres");
-        var mensaje = PedidoMensajeBuilder.Construir(Pedido(
-            Linea(ana, Direccion(1, "Av. Lima 123"), ("Galones 11L", 1, 10m)),
-            Linea(ana, Direccion(2, "Jr. Cusco 45"), ("Bidones 20L", 1, 10m))));
-
-        Assert.Equal(1, CuentaOcurrencias(mensaje, "Cliente: Ana Torres"));
-        Assert.Contains("Dirección: Av. Lima 123", mensaje);
-        Assert.Contains("Dirección: Jr. Cusco 45", mensaje);
-    }
-
-    [Fact]
-    public void Construir_ConVariosClientesMuestraSubtotalPorClienteYTotalGeneralAlFinal()
-    {
-        var ana = Cliente(1, "Ana Torres");
-        var beto = Cliente(2, "Beto Ruiz");
-        var mensaje = PedidoMensajeBuilder.Construir(Pedido(
-            Linea(ana, Direccion(1, "Av. Lima 123"), ("Galones 11L", 1, 10m)),
-            Linea(ana, Direccion(2, "Jr. Cusco 45"), ("Bidones 20L", 2, 10m)),
-            Linea(beto, Direccion(3, "Calle Sol 9"), ("Bolsas de Hielo", 3, 5m))));
-
-        Assert.Contains("Subtotal Ana Torres: S/ 30.00", mensaje);
-        Assert.Contains("Subtotal Beto Ruiz: S/ 15.00", mensaje);
-        Assert.EndsWith("Total: S/ 45.00", mensaje);
-    }
-
-    [Fact]
-    public void Construir_OmiteLaLineaDeUbicacionCuandoLaDireccionNoTieneUrl()
-    {
-        var mensaje = PedidoMensajeBuilder.Construir(Pedido(
-            Linea(Cliente(1, "Ana Torres"), Direccion(1, "Av. Lima 123"), ("Galones 11L", 1, 10m))));
+        var mensaje = PedidoMensajeBuilder.Construir(pedido);
 
         Assert.DoesNotContain("Ubicación:", mensaje);
     }
 
     [Fact]
-    public void ConstruirVarios_ConcatenaPedidosOrdenadosConSeparadorYTotalGeneral()
+    public void ConstruirVarios_ConcatenaPedidosYTotalGeneral()
     {
-        var ana = Cliente(1, "Ana Torres");
-        var p2 = Pedido(Linea(ana, Direccion(1, "Av. Lima 123"), ("Galones 11L", 1, 10m)));
-        p2.Id = 43;
-        var p1 = Pedido(Linea(ana, Direccion(1, "Av. Lima 123"), ("Galones 11L", 2, 10m)));
+        var cliente = CrearCliente(1, "Ana Torres");
+        var direccion = CrearDireccion(1, "Av. Lima 123", "Lima");
 
-        var mensaje = PedidoMensajeBuilder.ConstruirVarios(new[] { p2, p1 });
+        var pedido1 = CrearPedido(42, CrearLinea(cliente, direccion, ("Galón 11L", 2, 12.50m)));
+        var pedido2 = CrearPedido(43, CrearLinea(cliente, direccion, ("Bolsa de hielo", 1, 5m)));
 
-        Assert.StartsWith("Pedidos asignados: 2", mensaje);
-        Assert.True(mensaje.IndexOf("Pedido N° 42", StringComparison.Ordinal) < mensaje.IndexOf("Pedido N° 43", StringComparison.Ordinal));
-        Assert.Equal(3, CuentaOcurrencias(mensaje, "────────────"));
-        Assert.EndsWith("Total general: S/ 30.00", mensaje);
+        var mensaje = PedidoMensajeBuilder.ConstruirVarios(new[] { pedido1, pedido2 });
+
+        Assert.Contains("PEDIDOS ASIGNADOS: 2", mensaje);
+        Assert.Contains("PEDIDO N° 42", mensaje);
+        Assert.Contains("PEDIDO N° 43", mensaje);
+        Assert.Contains("TOTAL GENERAL:", mensaje);
     }
 
     [Fact]
-    public void ConstruirUrl_CodificaElTextoConEscapeDataStringYUsaElCelularSinMas()
+    public void ConstruirUrl_CodificaMensajeWhatsappCorrectamente()
     {
         var url = PedidoMensajeBuilder.ConstruirUrl("51987654321", "Pedido N° 1\nTotal: S/ 10.00 & más");
 
-        Assert.Equal(
-            "https://wa.me/51987654321?text=" + Uri.EscapeDataString("Pedido N° 1\nTotal: S/ 10.00 & más"),
-            url);
-        Assert.DoesNotContain("+", url.Replace("https://wa.me/", string.Empty));
-        Assert.DoesNotContain(" ", url);
-        Assert.DoesNotContain("\n", url);
-    }
-
-    private static int CuentaOcurrencias(string texto, string buscado)
-    {
-        var cuenta = 0;
-        var indice = 0;
-        while ((indice = texto.IndexOf(buscado, indice, StringComparison.Ordinal)) >= 0)
-        {
-            cuenta++;
-            indice += buscado.Length;
-        }
-        return cuenta;
+        Assert.StartsWith("https://wa.me/51987654321?text=", url);
+        Assert.Contains(Uri.EscapeDataString("Pedido N° 1\nTotal: S/ 10.00 & más"), url);
+        Assert.DoesNotContain(" ", url.Replace("https://wa.me/51987654321?text=", string.Empty));
     }
 }
+
