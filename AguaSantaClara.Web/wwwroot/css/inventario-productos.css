@@ -1,0 +1,100 @@
+#modalModificarStock .modal-dialog {
+    max-width: 430px;
+}
+
+#modalModificarStock .modal-content {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.18);
+}
+
+#modalModificarStock .modal-header {
+    padding: 18px 20px 8px;
+}
+
+#modalModificarStock .modal-body {
+    padding: 8px 20px 12px;
+}
+
+#modalModificarStock .modal-footer {
+    padding: 0 20px 18px;
+}
+
+#modalModificarStock .form-label {
+    color: #555;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+}
+
+.stock-action-group {
+    display: flex;
+    gap: 8px;
+}
+
+.stock-action {
+    flex: 1;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.stock-action span {
+    font-size: 15px;
+}
+
+.stock-action.increase {
+    color: #198754;
+    background: #fff;
+    border-color: #198754;
+}
+
+.stock-action.decrease {
+    color: #dc3545;
+    background: #fff;
+    border-color: #dc3545;
+}
+
+.btn-check:checked + .stock-action.increase {
+    color: #fff;
+    background: #198754;
+}
+
+.btn-check:checked + .stock-action.decrease {
+    color: #fff;
+    background: #dc3545;
+}
+
+.stock-input {
+    height: 38px;
+    border-radius: 7px;
+    font-size: 13px;
+}
+
+.stock-btn-cancel {
+    min-width: 95px;
+    height: 38px;
+    border-radius: 7px;
+    font-size: 13px;
+}
+
+.stock-btn-save {
+    min-width: 95px;
+    height: 38px;
+    border-radius: 7px;
+    background: #212121;
+    color: white;
+    font-size: 13px;
+}
+
+.stock-btn-save:hover {
+    background: #111;
+    color: white;
+}

@@ -1,0 +1,312 @@
+@model IEnumerable<AguaSantaClara.Web.Models.Entities.Local>    
+
+@{
+    ViewData["Title"] = "Inventario de productos";
+}
+
+<link rel="stylesheet"
+      href="~/css/inventario-productos.css"
+      asp-append-version="true" />
+
+<div class="container-fluid py-4">
+
+    <div class="mb-4">
+        <h1 class="fw-bold mb-1">Inventario de productos</h1>
+        <p class="text-muted mb-0">
+            Consulta y actualiza el stock por sucursal.
+        </p>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+
+            <div class="row align-items-end">
+                <div class="col-md-6">
+                    <label for="local" class="form-label fw-semibold">
+                        Local:
+                    </label>
+
+                    <select id="local" class="form-select">
+                        <option value="">Selecciona un local</option>
+
+                        @foreach (var local in Model)
+                        {
+                            <option value="@local.Id">
+                                @local.Nombre
+                            </option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>PRODUCTO</th>
+                            <th>CATEGORÍA</th>
+                            <th>STOCK ACTUAL</th>
+                            <th>ACCIONES</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="productosInventario">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                Selecciona un local para ver sus productos.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<div class="modal fade" id="modalModificarStock" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="contenidoModalStock">
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById("local").addEventListener("change", async function () {
+
+            const idLocal = this.value;
+            const tbody = document.getElementById("productosInventario");
+
+            if (!idLocal) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-5">
+                            Selecciona un local para ver sus productos.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-5">
+                        Cargando productos...
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const response = await fetch(
+                    `/Inventario/Productos/ProductosPorLocal?idLocal=${idLocal}`
+                );
+
+                if (!response.ok) {
+                    throw new Error("No se pudieron cargar los productos.");
+                }
+
+                const productos = await response.json();
+
+                if (productos.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                No hay productos disponibles para este local.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = productos.map(producto => `
+                    <tr>
+                        <td>${producto.nombre}</td>
+                        <td>${producto.categoria ?? "-"}</td>
+                        <td>${producto.stock} unid.</td>
+                        <td>
+                            <button type="button"
+                                class="btn btn-sm btn-outline-primary btn-modificar-stock"
+                                data-id-local="${idLocal}"
+                                data-id-producto="${producto.id}">
+                                    Modificar cantidad
+                            </button>
+                        </td>
+                    </tr>
+                `).join("");
+
+            } catch (error) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-danger py-5">
+                            Ocurrió un error al cargar los productos.
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+        document.addEventListener("click", async function (event) {
+
+    const boton = event.target.closest(".btn-modificar-stock");
+
+    if (!boton) {
+        return;
+    }
+
+    const idLocal = boton.dataset.idLocal;
+    const idProducto = boton.dataset.idProducto;
+
+    try {
+        const response = await fetch(
+            `/Inventario/Productos/Modificar/${idLocal}/${idProducto}`
+        );
+
+        if (!response.ok) {
+            throw new Error("No se pudo cargar la ventana.");
+        }
+
+        const contenido = await response.text();
+
+        document.getElementById("contenidoModalStock").innerHTML = contenido;
+
+        const modalElement = document.getElementById("modalModificarStock");
+        const modal = new bootstrap.Modal(modalElement);
+
+        modal.show();
+
+    } catch (error) {
+        alert("No se pudo cargar la ventana de modificación.");
+    }
+});
+
+
+document.addEventListener("change", function (event) {
+
+    if (event.target.id !== "accionAumentar" &&
+        event.target.id !== "accionDescontar") {
+        return;
+    }
+
+    const accion = event.target.value;
+    const motivo = document.getElementById("motivo");
+
+    if (!motivo) {
+        return;
+    }
+
+    const motivos = {
+        Aumentar: [
+            "Producción",
+            "Devolución (de cliente)",
+            "Ajuste"
+        ],
+        Descontar: [
+            "Producto dañado/Merma",
+            "Pérdida",
+            "Ajuste"
+        ]
+    };
+
+    motivo.innerHTML = "";
+
+    motivos[accion].forEach(function (nombreMotivo) {
+
+        const option = document.createElement("option");
+
+        option.value = nombreMotivo;
+        option.textContent = nombreMotivo;
+
+        motivo.appendChild(option);
+    });
+
+    motivo.selectedIndex = 0;
+});
+        document.addEventListener("submit", async function (event) {
+
+            if (event.target.id !== "formModificarStock") {
+                return;
+            }
+
+            event.preventDefault();
+
+            const form = event.target;
+            const botonGuardar = document.getElementById("btnGuardarStock");
+
+            botonGuardar.disabled = true;
+            botonGuardar.textContent = "Validando...";
+
+            try {
+
+                const formData = new FormData(form);
+
+                const response = await fetch(
+                    "/Inventario/Productos/Modificar",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+                const contentType = response.headers.get("content-type") || "";
+
+                if (contentType.includes("application/json")) {
+
+                    const resultado = await response.json();
+
+                   if (resultado.ok) {
+
+    const modalElement = document.getElementById("modalModificarStock");
+    const modal = bootstrap.Modal.getInstance(modalElement);
+
+    if (modal) {
+        modal.hide();
+    }
+
+    // Mostrar mensaje de éxito
+    const mensajeExito = document.createElement("div");
+
+    mensajeExito.className =
+        "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3 shadow";
+    
+    mensajeExito.style.zIndex = "9999";
+
+    mensajeExito.innerHTML = `
+        <strong>✓ Stock actualizado</strong>
+        <div class="small">
+            La cantidad del producto se actualizó correctamente.
+        </div>
+    `;
+
+    document.body.appendChild(mensajeExito);
+
+    // Actualizar automáticamente el listado
+    document.getElementById("local").dispatchEvent(new Event("change"));
+
+    // Ocultar mensaje después de 3 segundos
+    setTimeout(function () {
+        mensajeExito.remove();
+    }, 3000);
+
+    return;
+}
+            }
+                const contenido = await response.text();
+
+                document.getElementById("contenidoModalStock").innerHTML = contenido;
+
+            } catch (error) {
+
+                alert("Ocurrió un error al validar la modificación.");
+
+            }
+
+        });
+    </script>
+}
