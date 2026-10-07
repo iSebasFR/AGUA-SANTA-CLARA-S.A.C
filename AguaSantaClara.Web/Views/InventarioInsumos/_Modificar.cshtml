@@ -1,0 +1,54 @@
+
+@model AguaSantaClara.Web.Models.ModificarStockInsumoViewModel
+
+<div class="modal-header border-0 pb-0">
+    <div>
+        <h5 class="modal-title fw-bold">Modificar cantidad</h5>
+        <p class="text-muted small mb-0">@Model.NombreInsumo · Stock actual: @Model.StockActual unid.</p>
+    </div>
+</div>
+
+<form id="formModificarStock" method="post" action="@Url.Content("~/Inventario/Insumos/Modificar")"
+      data-motivos="@System.Text.Json.JsonSerializer.Serialize(AguaSantaClara.Web.Models.MotivosStockInsumo.PorAccion)"
+      novalidate>
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="Accion" />
+
+    <div class="modal-body pt-3">
+
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+        <div class="mb-3">
+            <div class="lbl-mini mb-2">Acción</div>
+            <div class="accion-group">
+                <button type="button" class="accion-btn" data-accion="Aumentar">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+                    Aumentar
+                </button>
+                <button type="button" class="accion-btn" data-accion="Descontar">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 4 4 4-4M12 8v8"/></svg>
+                    Descontar
+                </button>
+            </div>
+            <span asp-validation-for="Accion" class="text-danger small d-block mt-1"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Cantidad" class="lbl-mini mb-2 d-block">Cantidad</label>
+            <input asp-for="Cantidad" type="number" min="1" step="1" class="form-control campo-modal" />
+            <span asp-validation-for="Cantidad" class="text-danger small d-block mt-1"></span>
+        </div>
+
+        <div class="mb-4">
+            <label asp-for="Motivo" class="lbl-mini mb-2 d-block">Motivo</label>
+            <select asp-for="Motivo" class="form-select campo-modal" data-motivo-actual="@Model.Motivo"></select>
+            <span asp-validation-for="Motivo" class="text-danger small d-block mt-1"></span>
+        </div>
+
+        <div class="botones-modal">
+            <button type="button" class="btn-modal-cancelar" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn-modal-guardar">Guardar</button>
+        </div>
+    </div>
+</form>
