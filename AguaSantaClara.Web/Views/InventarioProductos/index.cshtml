@@ -260,16 +260,43 @@ document.addEventListener("change", function (event) {
 
                     const resultado = await response.json();
 
-                    if (resultado.ok) {
-                        alert(resultado.mensaje);
-                    }
+                   if (resultado.ok) {
 
-                    botonGuardar.disabled = false;
-                    botonGuardar.textContent = "Guardar";
+    const modalElement = document.getElementById("modalModificarStock");
+    const modal = bootstrap.Modal.getInstance(modalElement);
 
-                    return;
-                }
+    if (modal) {
+        modal.hide();
+    }
 
+    // Mostrar mensaje de éxito
+    const mensajeExito = document.createElement("div");
+
+    mensajeExito.className =
+        "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3 shadow";
+    
+    mensajeExito.style.zIndex = "9999";
+
+    mensajeExito.innerHTML = `
+        <strong>✓ Stock actualizado</strong>
+        <div class="small">
+            La cantidad del producto se actualizó correctamente.
+        </div>
+    `;
+
+    document.body.appendChild(mensajeExito);
+
+    // Actualizar automáticamente el listado
+    document.getElementById("local").dispatchEvent(new Event("change"));
+
+    // Ocultar mensaje después de 3 segundos
+    setTimeout(function () {
+        mensajeExito.remove();
+    }, 3000);
+
+    return;
+}
+            }
                 const contenido = await response.text();
 
                 document.getElementById("contenidoModalStock").innerHTML = contenido;

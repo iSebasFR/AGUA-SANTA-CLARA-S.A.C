@@ -171,13 +171,14 @@ else if (model.Accion == "Descontar")
     productoLocal.Stock -= model.Cantidad!.Value;
 }
 
-await _context.SaveChangesAsync();
+var cambios = await _context.SaveChangesAsync();
 
 return Json(new
 {
     ok = true,
-    mensaje = "Stock actualizado correctamente.",
-    nuevoStock = productoLocal.Stock
+    mensaje = "GUARDADO EXITOSAMENTE",
+    stockFinal = productoLocal.Stock,
+    cambiosGuardados = cambios
 });
 }
 }
