@@ -66,3 +66,78 @@
     </div>
 
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById("local").addEventListener("change", async function () {
+
+            const idLocal = this.value;
+            const tbody = document.getElementById("productosInventario");
+
+            if (!idLocal) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-5">
+                            Selecciona un local para ver sus productos.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-5">
+                        Cargando productos...
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const response = await fetch(
+                    `/Inventario/Productos/ProductosPorLocal?idLocal=${idLocal}`
+                );
+
+                if (!response.ok) {
+                    throw new Error("No se pudieron cargar los productos.");
+                }
+
+                const productos = await response.json();
+
+                if (productos.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                No hay productos disponibles para este local.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = productos.map(producto => `
+                    <tr>
+                        <td>${producto.nombre}</td>
+                        <td>${producto.categoria ?? "-"}</td>
+                        <td>${producto.stock} unid.</td>
+                        <td>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary">
+                                Modificar cantidad
+                            </button>
+                        </td>
+                    </tr>
+                `).join("");
+
+            } catch (error) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-danger py-5">
+                            Ocurrió un error al cargar los productos.
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+    </script>
+}
