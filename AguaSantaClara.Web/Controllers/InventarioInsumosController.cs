@@ -110,7 +110,25 @@ public class InventarioInsumosController : Controller
             return PartialView("_Modificar", model);
         }
 
-        // T25: solo validamos. El guardado real se hace en T26.
-        return Json(new { ok = true });
+                // ==================== T26: APLICAR EL CAMBIO DE STOCK ====================
+        var cantidad = model.Cantidad!.Value;
+
+        insumo.StockActual = model.Accion == "Aumentar"
+            ? insumo.StockActual + cantidad
+            : insumo.StockActual - cantidad;
+
+        // AppDbContext solo sobrescribe SaveChanges() síncrono, así que se asigna a mano
+        insumo.FechaActualizacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Json(new
+        {
+            ok = true,
+            id = insumo.Id,
+            stockActual = insumo.StockActual,
+            clase = StockInsumoHelper.ClaseCss(insumo.StockActual, insumo.StockMinimo),
+            mensaje = "Guardado Exitosamente"
+        });
     }
-}
+}   

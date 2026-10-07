@@ -98,3 +98,43 @@ document.addEventListener('submit', async function (e) {
         if (boton) boton.disabled = false;
     }
 });
+
+// ==================== T26: TOAST Y ACTUALIZACIÓN EN TIEMPO REAL ====================
+function mostrarToast(mensaje, tipo) {
+    const contenedor = document.getElementById('toastContainer');
+    if (!contenedor) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-custom toast-' + (tipo || 'success');
+    toast.innerHTML =
+        '<div class="toast-icon">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+        '</div>' +
+        '<div>' +
+            '<div class="toast-title"></div>' +
+            '<div class="toast-msg">El stock se actualizó correctamente.</div>' +
+        '</div>' +
+        '<div class="toast-progress"></div>';
+
+    toast.querySelector('.toast-title').textContent = mensaje;
+    contenedor.appendChild(toast);
+
+    setTimeout(function () { toast.remove(); }, 3000);
+}
+
+document.addEventListener('stock:guardado', function (e) {
+    const data = e.detail;
+
+    const fila = document.querySelector('tr[data-insumo-id="' + data.id + '"]');
+    if (fila) {
+        const badge = fila.querySelector('[data-stock]');
+        if (badge) {
+            badge.textContent = data.stockActual + ' unid.';
+            badge.dataset.stock = data.stockActual;
+            badge.classList.remove('stock-ok', 'stock-bajo', 'stock-agotado');
+            if (data.clase) badge.classList.add(data.clase);
+        }
+    }
+
+    mostrarToast(data.mensaje || 'Guardado Exitosamente', 'success');
+});
