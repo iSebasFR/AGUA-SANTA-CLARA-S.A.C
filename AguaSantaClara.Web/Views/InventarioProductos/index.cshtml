@@ -1,0 +1,68 @@
+@model IEnumerable<AguaSantaClara.Web.Models.Entities.Local>
+
+@{
+    ViewData["Title"] = "Inventario de productos";
+}
+
+<div class="container-fluid py-4">
+
+    <div class="mb-4">
+        <h1 class="fw-bold mb-1">Inventario de productos</h1>
+        <p class="text-muted mb-0">
+            Consulta y actualiza el stock por sucursal.
+        </p>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+
+            <div class="row align-items-end">
+                <div class="col-md-6">
+                    <label for="local" class="form-label fw-semibold">
+                        Local:
+                    </label>
+
+                    <select id="local" class="form-select">
+                        <option value="">Selecciona un local</option>
+
+                        @foreach (var local in Model)
+                        {
+                            <option value="@local.Id">
+                                @local.Nombre
+                            </option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>PRODUCTO</th>
+                            <th>CATEGORÍA</th>
+                            <th>STOCK ACTUAL</th>
+                            <th>ACCIONES</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="productosInventario">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                Selecciona un local para ver sus productos.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>
