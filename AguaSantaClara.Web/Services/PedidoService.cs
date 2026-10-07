@@ -639,15 +639,17 @@ public class PedidoService : IPedidoService
             .Include(c => c.Direcciones.Where(d => d.EstadoRegistro))
             .Where(c => c.Estado && c.EstadoRegistro);
 
+        var patron = valor.ToLowerInvariant();
+
         query = tipo?.ToLowerInvariant() switch
         {
-            "telefono" => query.Where(c => EF.Functions.ILike(c.Telefono, $"%{valor}%")),
-            "dni" => query.Where(c => c.Dni != null && EF.Functions.ILike(c.Dni, $"%{valor}%")),
-            "nombre" => query.Where(c => EF.Functions.ILike(c.Nombre, $"%{valor}%")),
+            "telefono" => query.Where(c => c.Telefono != null && c.Telefono.ToLower().Contains(patron)),
+            "dni" => query.Where(c => c.Dni != null && c.Dni.ToLower().Contains(patron)),
+            "nombre" => query.Where(c => c.Nombre.ToLower().Contains(patron)),
             _ => query.Where(c =>
-                EF.Functions.ILike(c.Telefono, $"%{valor}%") ||
-                (c.Dni != null && EF.Functions.ILike(c.Dni, $"%{valor}%")) ||
-                EF.Functions.ILike(c.Nombre, $"%{valor}%"))
+                (c.Telefono != null && c.Telefono.ToLower().Contains(patron)) ||
+                (c.Dni != null && c.Dni.ToLower().Contains(patron)) ||
+                c.Nombre.ToLower().Contains(patron))
         };
 
         var cliente = await query
