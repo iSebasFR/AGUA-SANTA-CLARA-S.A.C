@@ -19,90 +19,133 @@
     </button>
 </div>
 
-<div class="modal-body pt-2">
+<form id="formModificarStock">
 
-    <div class="mb-3">
-        <label class="form-label small fw-semibold text-uppercase">
-            Acción
-        </label>
+    @Html.AntiForgeryToken()
 
-        <div class="stock-action-group">
+    <input type="hidden"
+           name="IdProducto"
+           value="@Model.IdProducto" />
 
-            <input type="radio"
-                   class="btn-check"
-                   name="Accion"
-                   id="accionAumentar"
-                   value="Aumentar"
-                   checked>
+    <input type="hidden"
+           name="IdLocal"
+           value="@Model.IdLocal" />
 
-            <label class="stock-action increase"
-                   for="accionAumentar">
-                <span>⊕</span>
-                Aumentar
-            </label>
+    <input type="hidden"
+           name="NombreProducto"
+           value="@Model.NombreProducto" />
 
-            <input type="radio"
-                   class="btn-check"
-                   name="Accion"
-                   id="accionDescontar"
-                   value="Descontar">
+    <input type="hidden"
+           name="StockActual"
+           value="@Model.StockActual" />
 
-            <label class="stock-action decrease"
-                   for="accionDescontar">
-                <span>⊖</span>
-                Descontar
-            </label>
+    <div class="modal-body pt-2">
 
+        <div asp-validation-summary="ModelOnly"
+             class="text-danger small mb-3">
         </div>
+
+        <div class="mb-3">
+            <label class="form-label small fw-semibold text-uppercase">
+                Acción
+            </label>
+
+            <div class="stock-action-group">
+
+                <input type="radio"
+                       class="btn-check"
+                       name="Accion"
+                       id="accionAumentar"
+                       value="Aumentar"
+                       @(Model.Accion == "Aumentar" ? "checked" : "")>
+
+                <label class="stock-action increase"
+                       for="accionAumentar">
+                    <span>⊕</span>
+                    Aumentar
+                </label>
+
+                <input type="radio"
+                       class="btn-check"
+                       name="Accion"
+                       id="accionDescontar"
+                       value="Descontar"
+                       @(Model.Accion == "Descontar" ? "checked" : "")>
+
+                <label class="stock-action decrease"
+                       for="accionDescontar">
+                    <span>⊖</span>
+                    Descontar
+                </label>
+
+            </div>
+
+            <span asp-validation-for="Accion"
+                  class="text-danger small">
+            </span>
+        </div>
+
+        <div class="mb-3">
+            <label for="cantidad"
+                   class="form-label small fw-semibold text-uppercase">
+                Cantidad
+            </label>
+
+            <input type="number"
+                   id="cantidad"
+                   name="Cantidad"
+                   class="form-control stock-input"
+                   min="1"
+                   step="1"
+                   value="@Model.Cantidad"
+                   placeholder="Ingrese la cantidad">
+
+            <span asp-validation-for="Cantidad"
+                  class="text-danger small">
+            </span>
+        </div>
+
+        <div class="mb-2">
+            <label for="motivo"
+                   class="form-label small fw-semibold text-uppercase">
+                Motivo
+            </label>
+
+            <select id="motivo"
+                    name="Motivo"
+                    class="form-select stock-input">
+
+                @foreach (var motivo in StockProductoHelper.PorAccion[Model.Accion])
+                {
+                    <option value="@motivo"
+                            selected="@(Model.Motivo == motivo)">
+                        @motivo
+                    </option>
+                }
+
+            </select>
+
+            <span asp-validation-for="Motivo"
+                  class="text-danger small">
+            </span>
+        </div>
+
     </div>
 
-    <div class="mb-3">
-        <label for="cantidad"
-               class="form-label small fw-semibold text-uppercase">
-            Cantidad
-        </label>
+    <div class="modal-footer border-0 pt-0">
 
-        <input type="number"
-               id="cantidad"
-               name="Cantidad"
-               class="form-control stock-input"
-               min="1"
-               step="1"
-               placeholder="Ingrese la cantidad">
+        <button type="button"
+                class="btn btn-light stock-btn-cancel"
+                data-bs-dismiss="modal">
+            Cancelar
+        </button>
+
+        <button type="submit"
+                class="btn stock-btn-save"
+                id="btnGuardarStock">
+            Guardar
+        </button>
+
     </div>
 
-    <div class="mb-2">
-        <label for="motivo"
-               class="form-label small fw-semibold text-uppercase">
-            Motivo
-        </label>
-
-        <select id="motivo"
-                name="Motivo"
-                class="form-select stock-input">
-
-            @foreach (var motivo in StockProductoHelper.PorAccion["Aumentar"])
-            {
-                <option value="@motivo">
-                    @motivo
-                </option>
-            }
-
-        </select>
-    </div>
-
-</div>
-
-<div class="modal-footer border-0 pt-0">
-    <button type="button"
-            class="btn btn-light stock-btn-cancel"
-            data-bs-dismiss="modal">
-        Cancelar
-    </button>
-
-    <button type="button"
-            class="btn stock-btn-save"
-            id="btnGuardarStock">
-        Guardar
-    </button>
-</div>
+</form>

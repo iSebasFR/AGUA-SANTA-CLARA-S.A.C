@@ -228,5 +228,58 @@ document.addEventListener("change", function (event) {
 
     motivo.selectedIndex = 0;
 });
+        document.addEventListener("submit", async function (event) {
+
+            if (event.target.id !== "formModificarStock") {
+                return;
+            }
+
+            event.preventDefault();
+
+            const form = event.target;
+            const botonGuardar = document.getElementById("btnGuardarStock");
+
+            botonGuardar.disabled = true;
+            botonGuardar.textContent = "Validando...";
+
+            try {
+
+                const formData = new FormData(form);
+
+                const response = await fetch(
+                    "/Inventario/Productos/Modificar",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+                const contentType = response.headers.get("content-type") || "";
+
+                if (contentType.includes("application/json")) {
+
+                    const resultado = await response.json();
+
+                    if (resultado.ok) {
+                        alert(resultado.mensaje);
+                    }
+
+                    botonGuardar.disabled = false;
+                    botonGuardar.textContent = "Guardar";
+
+                    return;
+                }
+
+                const contenido = await response.text();
+
+                document.getElementById("contenidoModalStock").innerHTML = contenido;
+
+            } catch (error) {
+
+                alert("Ocurrió un error al validar la modificación.");
+
+            }
+
+        });
     </script>
 }

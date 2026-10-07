@@ -85,4 +85,85 @@ public async Task<IActionResult> Modificar(long idLocal, long idProducto)
 
     return PartialView("_Modificar", model);
 }
+// ==================== T21: VALIDAR MODIFICACIÓN DE STOCK ====================
+[HttpPost("Modificar")]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Modificar(ModificarStockProductoViewModel model)
+{
+    var productoLocal = await _context.ProductosLocal
+        .FirstOrDefaultAsync(pl =>
+            pl.IdLocal == model.IdLocal &&
+            pl.IdProducto == model.IdProducto &&
+            pl.Estado &&
+            pl.EstadoRegistro);
+
+    if (productoLocal == null)
+        return NotFound();
+
+    ModelState.Remove(nameof(model.Cantidad));
+
+    // Validar cantidad
+    if (model.Cantidad == null || model.Cantidad <= 0)
+    {
+        ModelState.AddModelError(
+            nameof(model.Cantidad),
+            "La cantidad debe ser un número entero mayor a cero.");
+    }
+
+    // Validar acción
+    if (string.IsNullOrWhiteSpace(model.Accion) ||
+        !StockProductoHelper.PorAccion.ContainsKey(model.Accion))
+    {
+        ModelState.AddModelError(
+            nameof(model.Accion),
+            "Seleccione una acción válida.");
+    }
+
+    // Validar motivo
+    if (string.IsNullOrWhiteSpace(model.Motivo) ||
+        !StockProductoHelper.PorAccion.TryGetValue(
+            model.Accion ?? "",
+            out var motivosPermitidos) ||
+        !motivosPermitidos.Contains(model.Motivo))
+    {
+        ModelState.AddModelError(
+            nameof(model.Motivo),
+            "Seleccione un motivo válido.");
+    }
+
+    // Validar que el descuento no deje stock negativo
+    if (model.Cantidad.HasValue &&
+        model.Cantidad > 0 &&
+        model.Accion == "Descontar" &&
+        model.Cantidad > productoLocal.Stock)
+    {
+        ModelState.AddModelError(
+            nameof(model.Cantidad),
+            $"No se puede descontar más del stock disponible ({productoLocal.Stock} unid.).");
+    }
+
+    if (!ModelState.IsValid)
+    {
+        var producto = await _context.Productos
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p =>
+                p.Id == model.IdProducto &&
+                p.Estado &&
+                p.EstadoRegistro);
+
+        if (producto == null)
+            return NotFound();
+
+        model.NombreProducto = producto.Nombre;
+        model.StockActual = productoLocal.Stock;
+
+        return PartialView("_Modificar", model);
+    }
+
+    return Json(new
+    {
+        ok = true,
+        mensaje = "Validación correcta."
+    });
+}
 }
