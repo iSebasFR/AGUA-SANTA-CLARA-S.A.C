@@ -160,10 +160,24 @@ public async Task<IActionResult> Modificar(ModificarStockProductoViewModel model
         return PartialView("_Modificar", model);
     }
 
-    return Json(new
-    {
-        ok = true,
-        mensaje = "Validación correcta."
-    });
+    // ==================== T22: ACTUALIZAR STOCK ====================
+
+if (model.Accion == "Aumentar")
+{
+    productoLocal.Stock += model.Cantidad!.Value;
+}
+else if (model.Accion == "Descontar")
+{
+    productoLocal.Stock -= model.Cantidad!.Value;
+}
+
+await _context.SaveChangesAsync();
+
+return Json(new
+{
+    ok = true,
+    mensaje = "Stock actualizado correctamente.",
+    nuevoStock = productoLocal.Stock
+});
 }
 }
