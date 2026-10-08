@@ -59,22 +59,14 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// 5. Migración automática + Seed DENTRO del mismo scope al arrancar
+// 5. Aplicar migraciones y datos iniciales antes de aceptar solicitudes.
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    try
-    {
-        var db = services.GetRequiredService<AppDbContext>();
-        db.Database.Migrate();
+    var db = services.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
 
-        await SeedData.InitializeAsync(services);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Ocurrió un error al aplicar las migraciones o sembrar la base de datos.");
-    }
+    await SeedData.InitializeAsync(services);
 }
 
 if (!app.Environment.IsDevelopment())
