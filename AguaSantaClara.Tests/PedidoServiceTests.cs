@@ -161,6 +161,113 @@ public class PedidoServiceTests
         Assert.Equal(EstadosPedido.Enviado, (await db.Pedidos.SingleAsync()).Estado);
     }
 
+    [Fact]
+    public async Task RegistrarPagosAsync_GuardaPagoParcialYRechazaMontoMayorAlPendiente()
+    {
+        var (db, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
+        var metodoPago = new MetodoPago { Nombre = "Efectivo" };
+        var pedido = new Pedido
+        {
+            Estado = EstadosPedido.Entregado,
+            Total = 20m,
+            Clientes =
+            {
+                new PedidoCliente
+                {
+                    Cliente = cliente,
+                    IdCliente = cliente.Id,
+                    Direccion = direccion,
+                    IdDireccion = direccion.Id,
+                    Subtotal = 20m
+                }
+            }
+        };
+        db.MetodosPago.Add(metodoPago);
+        db.Pedidos.Add(pedido);
+        await db.SaveChangesAsync();
+
+        var pagoParcial = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
+        {
+            Pagos =
+            {
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 8.50m
+                }
+            }
+        });
+
+        Assert.True(pagoParcial.Ok);
+        var pagoGuardado = await db.Pagos.SingleAsync();
+        Assert.Equal(pedido.Id, pagoGuardado.IdPedido);
+        Assert.Equal(cliente.Id, pagoGuardado.IdCliente);
+        Assert.Equal(metodoPago.Id, pagoGuardado.IdMetodoPago);
+        Assert.Equal(8.50m, pagoGuardado.Monto);
+        Assert.Equal(0m, cliente.DeudaTotal);
+
+        var excedePendiente = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
+        {
+            Pagos =
+            {
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 12m
+                }
+            }
+        });
+
+        Assert.False(excedePendiente.Ok);
+        Assert.Contains(excedePendiente.Errores, error => error.Campo == "pagos[0].monto");
+        Assert.Single(await db.Pagos.ToListAsync());
+    }
+
+    [Fact]
+    public async Task RegistrarPagosAsync_RechazaPedidoNoEntregado()
+    {
+        var (db, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
+        var metodoPago = new MetodoPago { Nombre = "Efectivo" };
+        var pedido = new Pedido
+        {
+            Estado = EstadosPedido.Enviado,
+            Total = 20m,
+            Clientes =
+            {
+                new PedidoCliente
+                {
+                    Cliente = cliente,
+                    IdCliente = cliente.Id,
+                    Direccion = direccion,
+                    IdDireccion = direccion.Id,
+                    Subtotal = 20m
+                }
+            }
+        };
+        db.MetodosPago.Add(metodoPago);
+        db.Pedidos.Add(pedido);
+        await db.SaveChangesAsync();
+
+        var resultado = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
+        {
+            Pagos =
+            {
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 5m
+                }
+            }
+        });
+
+        Assert.False(resultado.Ok);
+        Assert.Contains(resultado.Errores, error => error.Campo == "pedido");
+        Assert.Empty(await db.Pagos.ToListAsync());
+    }
+
     [Theory]
     [InlineData("telefono", "999000111")]
     [InlineData("dni", "12345678")]
@@ -177,4 +284,3 @@ public class PedidoServiceTests
         Assert.Contains(resultado.Direcciones, d => d.Id == direccion.Id);
     }
 }
-

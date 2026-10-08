@@ -92,6 +92,10 @@ public class PedidosController : Controller
                 .Where(l => l.Estado && l.EstadoRegistro)
                 .OrderBy(l => l.Nombre)
                 .ToListAsync(),
+            MetodosPago = await _context.MetodosPago
+                .Where(m => m.Estado && m.EstadoRegistro)
+                .OrderBy(m => m.Nombre)
+                .ToListAsync(),
             Repartidores = repartidoresDisponibles,
             RepartidoresFiltro = await _context.Repartidores
                 .Where(r => r.EstadoRegistro)
@@ -107,6 +111,26 @@ public class PedidosController : Controller
             ErrorFiltros = errorFiltros,
             TieneFiltrosAplicados = filtrosActivos > 0 && errorFiltros == null
         };
+
+        var idsPedidos = modelo.Pedidos
+            .Where(p => p.Estado == EstadosPedido.Entregado)
+            .Select(p => p.Id)
+            .ToList();
+        var pagosExistentes = await _context.Pagos
+            .Where(p => p.EstadoRegistro && idsPedidos.Contains(p.IdPedido))
+            .GroupBy(p => new { p.IdPedido, p.IdCliente })
+            .Select(grupo => new
+            {
+                grupo.Key.IdPedido,
+                grupo.Key.IdCliente,
+                Monto = grupo.Sum(p => p.Monto)
+            })
+            .ToListAsync();
+        modelo.MontosPagadosPorPedidoCliente = pagosExistentes
+            .GroupBy(grupo => grupo.IdPedido)
+            .ToDictionary(
+                grupo => grupo.Key,
+                grupo => grupo.ToDictionary(p => p.IdCliente, p => p.Monto));
 
         return View(modelo);
     }
@@ -285,6 +309,22 @@ public class PedidosController : Controller
         var resultado = await _pedidoService.CambiarEstadoAsync(idPedido, modelo?.Estado);
         return resultado.Ok
             ? Json(new { estado = resultado.Mensaje })
+            : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> RegistrarPagos(
+        long idPedido,
+        [FromBody] RegistrarPagosPedidoViewModel? modelo)
+    {
+        var resultado = await _pedidoService.RegistrarPagosAsync(
+            idPedido,
+            modelo ?? new RegistrarPagosPedidoViewModel());
+
+        return resultado.Ok
+            ? Json(new { mensaje = resultado.Mensaje })
             : BadRequest(resultado);
     }
 

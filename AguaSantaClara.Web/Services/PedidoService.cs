@@ -79,6 +79,102 @@ public class PedidoService : IPedidoService
         return new PedidoResultado { Mensaje = estadoCanonico };
     }
 
+    public async Task<PedidoResultado> RegistrarPagosAsync(
+        long idPedido,
+        RegistrarPagosPedidoViewModel modelo)
+    {
+        var resultado = new PedidoResultado { IdPedido = idPedido };
+        if (modelo.Pagos.Count == 0)
+        {
+            resultado.Errores.Add(new ErrorPedido("pagos", "Ingresa al menos un pago."));
+            return resultado;
+        }
+
+        if (modelo.Pagos.GroupBy(p => p.IdCliente).Any(g => g.Count() > 1))
+        {
+            resultado.Errores.Add(new ErrorPedido("pagos", "Solo se permite un monto por cliente en cada registro."));
+            return resultado;
+        }
+
+        var pedido = await _context.Pedidos
+            .Include(p => p.Clientes.Where(pc => pc.EstadoRegistro))
+            .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
+
+        if (pedido == null)
+        {
+            resultado.Errores.Add(new ErrorPedido("pedido", "El pedido no existe."));
+            return resultado;
+        }
+
+        if (pedido.Estado != EstadosPedido.Entregado)
+        {
+            resultado.Errores.Add(new ErrorPedido("pedido", "Solo se pueden registrar pagos de pedidos entregados."));
+            return resultado;
+        }
+
+        var montosPorCliente = pedido.Clientes
+            .GroupBy(pc => pc.IdCliente)
+            .ToDictionary(grupo => grupo.Key, grupo => grupo.Sum(pc => pc.Subtotal));
+        var idsMetodoPago = modelo.Pagos.Select(p => p.IdMetodoPago).Distinct().ToList();
+        var metodosPagoActivos = await _context.MetodosPago
+            .Where(m => idsMetodoPago.Contains(m.Id) && m.Estado && m.EstadoRegistro)
+            .Select(m => m.Id)
+            .ToListAsync();
+        var metodosPagoActivosSet = metodosPagoActivos.ToHashSet();
+        var montosPagados = await _context.Pagos
+            .Where(p => p.IdPedido == idPedido && p.EstadoRegistro)
+            .GroupBy(p => p.IdCliente)
+            .Select(grupo => new { IdCliente = grupo.Key, Monto = grupo.Sum(p => p.Monto) })
+            .ToDictionaryAsync(item => item.IdCliente, item => item.Monto);
+
+        for (var indice = 0; indice < modelo.Pagos.Count; indice++)
+        {
+            var pago = modelo.Pagos[indice];
+            var campo = $"pagos[{indice}]";
+
+            if (!montosPorCliente.TryGetValue(pago.IdCliente, out var montoPedido))
+            {
+                resultado.Errores.Add(new ErrorPedido($"{campo}.idCliente", "El cliente no pertenece al pedido."));
+                continue;
+            }
+
+            if (!metodosPagoActivosSet.Contains(pago.IdMetodoPago))
+            {
+                resultado.Errores.Add(new ErrorPedido($"{campo}.idMetodoPago", "Selecciona un método de pago activo."));
+            }
+
+            if (pago.Monto <= 0 || decimal.Round(pago.Monto, 2) != pago.Monto)
+            {
+                resultado.Errores.Add(new ErrorPedido($"{campo}.monto", "El monto debe ser mayor que cero y tener como máximo dos decimales."));
+                continue;
+            }
+
+            var montoPagado = montosPagados.GetValueOrDefault(pago.IdCliente);
+            var montoPendiente = montoPedido - montoPagado;
+            if (pago.Monto > montoPendiente)
+            {
+                resultado.Errores.Add(new ErrorPedido(
+                    $"{campo}.monto",
+                    $"El monto supera el saldo pendiente del cliente ({montoPendiente:0.00})."));
+            }
+        }
+
+        if (!resultado.Ok)
+            return resultado;
+
+        _context.Pagos.AddRange(modelo.Pagos.Select(pago => new Pago
+        {
+            IdPedido = idPedido,
+            IdCliente = pago.IdCliente,
+            IdMetodoPago = pago.IdMetodoPago,
+            Monto = pago.Monto
+        }));
+
+        await _context.SaveChangesAsync();
+        resultado.Mensaje = "Pagos registrados correctamente.";
+        return resultado;
+    }
+
     public async Task<PedidoResultado> RegistrarIncidenciaAsync(long idPedido,RegistrarIncidenciaViewModel modelo,long idUsuario)
     {
         var resultado = new PedidoResultado

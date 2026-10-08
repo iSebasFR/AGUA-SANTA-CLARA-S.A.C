@@ -9,6 +9,7 @@ public interface IPedidoService
     Task<PedidoResultado> ActualizarAsync(long idPedido, CrearPedidoViewModel modelo);
     Task<bool> EliminarAsync(long idPedido);
     Task<PedidoResultado> CambiarEstadoAsync(long idPedido, string? estado);
+    Task<PedidoResultado> RegistrarPagosAsync(long idPedido, RegistrarPagosPedidoViewModel modelo);
     Task<PedidoResultado> RegistrarIncidenciaAsync(long idPedido,RegistrarIncidenciaViewModel modelo,long idUsuario);
     Task<PedidoResultado> EnviarVariosAsync(EnviarPedidosViewModel modelo);
     Task<PedidoResultado> PreviewEnviarVariosAsync(EnviarPedidosViewModel modelo);
