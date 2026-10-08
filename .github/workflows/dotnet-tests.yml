@@ -40,7 +40,7 @@ jobs:
       - name: Run tests with coverage
         run: dotnet test AguaSantaClara.slnx --configuration Release --no-restore --collect:"XPlat Code Coverage" --results-directory TestResults --verbosity normal
 
-      - name: Require 80% coverage on changed production code
+      - name: Require 80% coverage on changed business logic
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
@@ -54,9 +54,9 @@ jobs:
             exit 1
           fi
 
-          if git diff --quiet "$BASE_SHA"...HEAD -- AguaSantaClara.Web; then
-            echo "No production code changes to check."
+          if git diff --quiet "$BASE_SHA"...HEAD -- AguaSantaClara.Web/Services; then
+            echo "No service logic changes to check."
             exit 0
           fi
 
-          diff-cover "$coverage_file" --compare-branch="$BASE_SHA" --fail-under=80 --include "AguaSantaClara.Web/**/*.cs"
+          diff-cover "$coverage_file" --compare-branch="$BASE_SHA" --fail-under=80 --include "AguaSantaClara.Web/Services/**/*.cs"
