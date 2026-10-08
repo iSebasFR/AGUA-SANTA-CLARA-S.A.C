@@ -24,6 +24,41 @@
 
     let repartidorSeleccionado = null;
 
+    // ============ DETALLE DE COBRO ============
+    const cobrarPagoModal = $("cobrarPagoModal");
+    const cobrarPagoTitulo = $("cobrarPagoTitulo");
+    const cobrarPagoClientes = $("cobrarPagoClientes");
+    const formatoMoneda = new Intl.NumberFormat("es-PE", {
+        style: "currency",
+        currency: "PEN"
+    });
+
+    document.querySelectorAll(".pedido-cobrar-pago").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const clientes = JSON.parse(btn.dataset.clientes);
+            cobrarPagoTitulo.textContent = `Cobrar pago — Pedido N° ${btn.dataset.pedidoId}`;
+            cobrarPagoClientes.replaceChildren();
+
+            clientes.forEach(cliente => {
+                const fila = document.createElement("div");
+                fila.className = "d-flex justify-content-between align-items-center gap-3 p-3 border rounded-3";
+
+                const nombre = document.createElement("span");
+                nombre.className = "fw-semibold";
+                nombre.textContent = cliente.nombre;
+
+                const monto = document.createElement("span");
+                monto.className = "text-nowrap";
+                monto.textContent = formatoMoneda.format(Number(cliente.monto));
+
+                fila.append(nombre, monto);
+                cobrarPagoClientes.append(fila);
+            });
+
+            bootstrap.Modal.getOrCreateInstance(cobrarPagoModal).show();
+        });
+    });
+
     const actualizar = () => {
         const n = marcados().length;
         $("pedidosSeleccionados").textContent = n;
