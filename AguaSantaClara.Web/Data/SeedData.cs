@@ -68,7 +68,9 @@ public static class SeedData
             }
         }
 
-        await SeedPedidosAsync(services.GetRequiredService<AppDbContext>());
+        var db = services.GetRequiredService<AppDbContext>();
+        await SeedMetodosPagoAsync(db);
+        await SeedPedidosAsync(db);
     }
 
     private static async Task SeedMetodosPagoAsync(AppDbContext db)

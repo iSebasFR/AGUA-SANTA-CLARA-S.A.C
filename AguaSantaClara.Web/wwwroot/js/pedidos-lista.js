@@ -24,6 +24,181 @@
 
     let repartidorSeleccionado = null;
 
+    // ============ DETALLE DE COBRO ============
+    const cobrarPagoModal = $("cobrarPagoModal");
+    const cobrarPagoTitulo = $("cobrarPagoTitulo");
+    const cobrarPagoClientes = $("cobrarPagoClientes");
+    const cobrarPagoGuardar = $("cobrarPagoGuardar");
+    const cobrarPagoSinMetodos = $("cobrarPagoSinMetodos");
+    const formatoMoneda = new Intl.NumberFormat("es-PE", {
+        style: "currency",
+        currency: "PEN"
+    });
+    let pedidoCobroActual = null;
+
+    const crearFilaPago = (cliente, monto, metodosPago) => {
+        const fila = document.createElement("div");
+        fila.className = "row g-2 align-items-end mb-2";
+        fila.dataset.pagoFila = "";
+        fila.dataset.pagoCliente = cliente.idCliente;
+
+        const montoColumna = document.createElement("div");
+        montoColumna.className = "col-sm-5";
+        const montoLabel = document.createElement("label");
+        montoLabel.className = "form-label small";
+        montoLabel.textContent = "Monto a pagar";
+        const montoInput = document.createElement("input");
+        montoInput.className = "form-control";
+        montoInput.type = "number";
+        montoInput.min = "0.01";
+        montoInput.max = monto.toFixed(2);
+        montoInput.step = "0.01";
+        montoInput.value = monto > 0 ? monto.toFixed(2) : "";
+        montoInput.dataset.pagoMonto = "";
+        montoInput.setAttribute("aria-label", `Monto de pago de ${cliente.nombre}`);
+        montoColumna.append(montoLabel, montoInput);
+
+        const metodoColumna = document.createElement("div");
+        metodoColumna.className = "col-sm-7";
+        const metodoLabel = document.createElement("label");
+        metodoLabel.className = "form-label small";
+        metodoLabel.textContent = "Método de pago";
+        const metodoSelect = document.createElement("select");
+        metodoSelect.className = "form-select";
+        metodoSelect.dataset.pagoMetodo = "";
+        metodoSelect.setAttribute("aria-label", `Método de pago de ${cliente.nombre}`);
+
+        const opcionInicial = document.createElement("option");
+        opcionInicial.value = "";
+        opcionInicial.textContent = "Seleccionar método";
+        metodoSelect.append(opcionInicial);
+        metodosPago.forEach(metodo => {
+            const opcion = document.createElement("option");
+            opcion.value = metodo.id;
+            opcion.textContent = metodo.nombre;
+            metodoSelect.append(opcion);
+        });
+
+        metodoColumna.append(metodoLabel, metodoSelect);
+        fila.append(montoColumna, metodoColumna);
+        return fila;
+    };
+
+    document.querySelectorAll(".pedido-cobrar-pago").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const clientes = JSON.parse(btn.dataset.clientes);
+            const metodosPago = window.__pedidosData?.metodosPago ?? [];
+            pedidoCobroActual = btn.dataset.pedidoId;
+            cobrarPagoTitulo.textContent = `Cobrar pago — Pedido N° ${btn.dataset.pedidoId}`;
+            cobrarPagoClientes.replaceChildren();
+            cobrarPagoSinMetodos.classList.toggle("d-none", metodosPago.length > 0);
+            let tieneSaldoPendiente = false;
+
+            clientes.forEach(cliente => {
+                const montoPendiente = Math.max(0, Number(cliente.monto) - Number(cliente.pagado));
+                const tarjeta = document.createElement("div");
+                tarjeta.className = "p-3 border rounded-3";
+
+                const nombre = document.createElement("span");
+                nombre.className = "fw-semibold";
+                nombre.textContent = cliente.nombre;
+
+                const saldo = document.createElement("div");
+                saldo.className = "small text-secondary mt-1";
+                saldo.textContent = `Pendiente: ${formatoMoneda.format(montoPendiente)} · Pagado: ${formatoMoneda.format(Number(cliente.pagado))}`;
+                tarjeta.append(nombre, saldo);
+
+                if (montoPendiente > 0 && metodosPago.length > 0) {
+                    tieneSaldoPendiente = true;
+                    const filasPago = document.createElement("div");
+                    filasPago.className = "mt-2";
+                    filasPago.append(crearFilaPago(cliente, montoPendiente, metodosPago));
+
+                    const agregarMetodo = document.createElement("button");
+                    agregarMetodo.type = "button";
+                    agregarMetodo.className = "btn btn-sm btn-outline-secondary mt-1";
+                    agregarMetodo.textContent = "Agregar otro método";
+                    agregarMetodo.addEventListener("click", () => {
+                        filasPago.append(crearFilaPago(cliente, 0, metodosPago));
+                    });
+
+                    tarjeta.append(filasPago, agregarMetodo);
+                } else if (montoPendiente <= 0) {
+                    const pagado = document.createElement("div");
+                    pagado.className = "small text-success mt-2";
+                    pagado.textContent = "Este cliente ya no tiene saldo pendiente.";
+                    tarjeta.append(pagado);
+                }
+
+                cobrarPagoClientes.append(tarjeta);
+            });
+
+            cobrarPagoGuardar.disabled = metodosPago.length === 0 || !tieneSaldoPendiente;
+            cobrarPagoGuardar.textContent = tieneSaldoPendiente
+                ? "Guardar"
+                : "Sin saldo pendiente";
+
+            bootstrap.Modal.getOrCreateInstance(cobrarPagoModal).show();
+        });
+    });
+
+    cobrarPagoGuardar.addEventListener("click", async () => {
+        const filasPago = [...cobrarPagoClientes.querySelectorAll("[data-pago-fila]")];
+        const filasConDatos = filasPago.filter(fila =>
+            fila.querySelector("[data-pago-monto]").value.trim() !== "" ||
+            fila.querySelector("[data-pago-metodo]").value !== ""
+        );
+        const pagos = filasConDatos.map(fila => ({
+            idCliente: Number(fila.dataset.pagoCliente),
+            idMetodoPago: Number(fila.querySelector("[data-pago-metodo]").value),
+            monto: Number(fila.querySelector("[data-pago-monto]").value)
+        }));
+
+        if (!pedidoCobroActual || pagos.length === 0 || filasConDatos.some(fila =>
+            fila.querySelector("[data-pago-monto]").value.trim() === "" ||
+            fila.querySelector("[data-pago-metodo]").value === ""
+        ) || pagos.some(pago =>
+            !Number.isSafeInteger(pago.idCliente) ||
+            !Number.isSafeInteger(pago.idMetodoPago) ||
+            !Number.isFinite(pago.monto) ||
+            pago.monto <= 0
+        )) {
+            mostrarToast("Ingresa un monto válido y selecciona el método de pago para cada cliente.", "error");
+            return;
+        }
+
+        cobrarPagoGuardar.disabled = true;
+        try {
+            const respuesta = await fetch(`/Pedidos/RegistrarPagos?idPedido=${encodeURIComponent(pedidoCobroActual)}`, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "RequestVerificationToken": token
+                },
+                body: JSON.stringify({ pagos })
+            });
+            const datos = await respuesta.json().catch(() => null);
+
+            if (!respuesta.ok) {
+                const mensajeError = datos?.errores?.[0]?.mensaje
+                    || datos?.mensaje
+                    || datos?.Mensaje
+                    || `No se pudieron registrar los pagos (HTTP ${respuesta.status}).`;
+                mostrarToast(mensajeError, "error");
+                cobrarPagoGuardar.disabled = false;
+                return;
+            }
+
+            sessionStorage.setItem("pedidoToast", datos?.mensaje || "Pagos registrados correctamente.");
+            bootstrap.Modal.getOrCreateInstance(cobrarPagoModal).hide();
+            window.location.reload();
+        } catch {
+            mostrarToast("No se pudo conectar con el servidor.", "error");
+            cobrarPagoGuardar.disabled = false;
+        }
+    });
+
     const actualizar = () => {
         const n = marcados().length;
         $("pedidosSeleccionados").textContent = n;

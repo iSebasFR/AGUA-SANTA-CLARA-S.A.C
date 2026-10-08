@@ -6,16 +6,30 @@ public class PedidosIndexViewModel
 {
     public List<Pedido> Pedidos { get; set; } = new();
     public List<Local> Locales { get; set; } = new();
+    public List<MetodoPago> MetodosPago { get; set; } = new();
     public List<Repartidor> Repartidores { get; set; } = new();
     public List<Repartidor> RepartidoresFiltro { get; set; } = new();
     public List<Cliente> ClientesFiltro { get; set; } = new();
     public Dictionary<long, string> MotivosIncidenciaPorPedido { get; set; } = new();
+    public Dictionary<long, Dictionary<long, decimal>> MontosPagadosPorPedidoCliente { get; set; } = new();
     public string? EstadoFiltro { get; set; }
     public long? IdClienteFiltro { get; set; }
     public long? IdRepartidorFiltro { get; set; }
     public string? ErrorFiltros { get; set; }
     public bool TieneFiltrosAplicados { get; set; }
     
+}
+
+public class RegistrarPagosPedidoViewModel
+{
+    public List<PagoClientePedidoViewModel> Pagos { get; set; } = new();
+}
+
+public class PagoClientePedidoViewModel
+{
+    public long IdCliente { get; set; }
+    public long IdMetodoPago { get; set; }
+    public decimal Monto { get; set; }
 }
 
 public class ClienteBusquedaViewModel

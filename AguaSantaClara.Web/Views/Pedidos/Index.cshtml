@@ -718,6 +718,26 @@
                                                     Registrar Incidencia
                                                 </button>
                                             }
+                                            else if (pedido.Estado == "Entregado")
+                                            {
+                                                <button type="button"
+                                                        class="btn-tabla pedido-cobrar-pago"
+                                                        data-pedido-id="@pedido.Id"
+                                                        data-clientes="@System.Text.Json.JsonSerializer.Serialize(pedido.Clientes
+                                                            .Where(pc => pc.EstadoRegistro)
+                                                            .GroupBy(pc => new { pc.IdCliente, pc.Cliente.Nombre })
+                                                            .Select(grupo => new
+                                                            {
+                                                                idCliente = grupo.Key.IdCliente,
+                                                                nombre = grupo.Key.Nombre,
+                                                                monto = grupo.Sum(pc => pc.Subtotal),
+                                                                pagado = Model.MontosPagadosPorPedidoCliente
+                                                                    .GetValueOrDefault(pedido.Id)?
+                                                                    .GetValueOrDefault(grupo.Key.IdCliente) ?? 0m
+                                                            }))">
+                                                    Cobrar pago
+                                                </button>
+                                            }
                                             else if (pedido.Estado == "Con Incidencia")
                                             {
                                                 <button type="button"
@@ -754,6 +774,39 @@
 {
     <partial name="_CrearPedido" model="Model" />
 }
+
+<!-- MODAL DETALLE DE COBRO -->
+<div class="modal fade" id="cobrarPagoModal" tabindex="-1" aria-labelledby="cobrarPagoTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="border-bottom:1px solid #e5e5ea;">
+                <div>
+                    <h5 class="modal-title" id="cobrarPagoTitulo" style="font-size:15px;font-weight:600;color:#1d1d1f;">
+                        Cobrar pago
+                    </h5>
+                    <p style="font-size:12.5px;color:#6e6e73;margin:3px 0 0;">
+                        Clientes y montos incluidos en el pedido.
+                    </p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:20px;">
+                <div id="cobrarPagoClientes" class="d-flex flex-column gap-2"></div>
+                <div id="cobrarPagoSinMetodos" class="alert alert-warning d-none mt-3 mb-0" role="alert">
+                    No hay métodos de pago activos configurados.
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #e5e5ea;padding:14px 20px;">
+                <button type="button" class="btn-apple" style="background:#f2f2f4;color:#1d1d1f;box-shadow:none;" data-bs-dismiss="modal">
+                    Cerrar
+                </button>
+                <button type="button" id="cobrarPagoGuardar" class="btn-apple success">
+                    Registrar pagos
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- MODAL REGISTRAR INCIDENCIA -->
 <div class="modal fade" id="incidenciaModal" tabindex="-1" aria-hidden="true">
@@ -979,6 +1032,9 @@
                 )),
                 repartidores: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                     Model.Repartidores.Select(r => new { id = r.Id, nombre = r.Nombre })
+                )),
+                metodosPago: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                    Model.MetodosPago.Select(m => new { id = m.Id, nombre = m.Nombre })
                 ))
             };
         </script>

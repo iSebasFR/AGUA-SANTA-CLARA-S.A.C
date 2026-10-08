@@ -646,7 +646,7 @@ namespace AguaSantaClara.Web.Migrations
 
                     b.ToTable("pedido", null, t =>
                         {
-                            t.HasCheckConstraint("chk_pedido_estado", "estado IN ('Pendiente', 'Enviado', 'Entregado', 'Con Incidencia')");
+                            t.HasCheckConstraint("chk_pedido_estado", "estado IN ('Pendiente', 'Enviado', 'Entregado', 'Con Incidencia', 'Pagado', 'Pago Parcial')");
 
                             t.HasCheckConstraint("chk_pedido_total_no_negativo", "total >= 0");
                         });

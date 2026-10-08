@@ -23,7 +23,7 @@ public class PedidoConfiguration : IEntityTypeConfiguration<Pedido>
         {
             t.HasCheckConstraint(
                 "chk_pedido_estado",
-                "estado IN ('Pendiente', 'Enviado', 'Entregado', 'Con Incidencia')");
+                "estado IN ('Pendiente', 'Enviado', 'Entregado', 'Con Incidencia', 'Pagado', 'Pago Parcial')");
             t.HasCheckConstraint("chk_pedido_total_no_negativo", "total >= 0");
         });
 
