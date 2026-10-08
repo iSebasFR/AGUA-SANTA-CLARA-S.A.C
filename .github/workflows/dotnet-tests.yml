@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -27,5 +29,34 @@ jobs:
       - name: Restore solution
         run: dotnet restore AguaSantaClara.slnx
 
-      - name: Run tests
-        run: dotnet test AguaSantaClara.slnx --configuration Release --no-restore --verbosity normal
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+
+      - name: Install diff-cover
+        run: python -m pip install diff-cover
+
+      - name: Run tests with coverage
+        run: dotnet test AguaSantaClara.slnx --configuration Release --no-restore --collect:"XPlat Code Coverage" --results-directory TestResults --verbosity normal
+
+      - name: Require 80% coverage on changed production code
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+
+          coverage_file="$(find TestResults -name coverage.cobertura.xml -print -quit)"
+          if [[ -z "$coverage_file" ]]; then
+            echo "Cobertura report was not generated."
+            exit 1
+          fi
+
+          if git diff --quiet "$BASE_SHA"...HEAD -- AguaSantaClara.Web; then
+            echo "No production code changes to check."
+            exit 0
+          fi
+
+          diff-cover "$coverage_file" --compare-branch="$BASE_SHA" --fail-under=80 --include "AguaSantaClara.Web/**/*.cs"

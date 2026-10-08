@@ -161,12 +161,16 @@ public class PedidoServiceTests
         Assert.Equal(EstadosPedido.Enviado, (await db.Pedidos.SingleAsync()).Estado);
     }
 
-    [Fact]
-    public async Task BuscarClienteAsync_PorTelefono_DevuelveClienteYDirecciones()
+    [Theory]
+    [InlineData("telefono", "999000111")]
+    [InlineData("dni", "12345678")]
+    [InlineData("NOMBRE", "ana")]
+    [InlineData("otro", "ANA")]
+    public async Task BuscarClienteAsync_PorCriterio_DevuelveClienteYDirecciones(string tipo, string termino)
     {
         var (_, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
 
-        var resultado = await servicio.BuscarClienteAsync("telefono", "999000111");
+        var resultado = await servicio.BuscarClienteAsync(tipo, termino);
 
         Assert.NotNull(resultado);
         Assert.Equal(cliente.Nombre, resultado!.Nombre);

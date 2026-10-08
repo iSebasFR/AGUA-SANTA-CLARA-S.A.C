@@ -718,6 +718,14 @@
                                                     Registrar Incidencia
                                                 </button>
                                             }
+                                            else if (pedido.Estado == "Entregado")
+                                            {
+                                                <button type="button"
+                                                        class="btn-tabla pedido-cobrar-pago"
+                                                        data-pedido-id="@pedido.Id">
+                                                    Cobrar pago
+                                                </button>
+                                            }
                                             else if (pedido.Estado == "Con Incidencia")
                                             {
                                                 <button type="button"
