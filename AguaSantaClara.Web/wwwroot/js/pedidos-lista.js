@@ -36,6 +36,54 @@
     });
     let pedidoCobroActual = null;
 
+    const crearFilaPago = (cliente, monto, metodosPago) => {
+        const fila = document.createElement("div");
+        fila.className = "row g-2 align-items-end mb-2";
+        fila.dataset.pagoFila = "";
+        fila.dataset.pagoCliente = cliente.idCliente;
+
+        const montoColumna = document.createElement("div");
+        montoColumna.className = "col-sm-5";
+        const montoLabel = document.createElement("label");
+        montoLabel.className = "form-label small";
+        montoLabel.textContent = "Monto a pagar";
+        const montoInput = document.createElement("input");
+        montoInput.className = "form-control";
+        montoInput.type = "number";
+        montoInput.min = "0.01";
+        montoInput.max = monto.toFixed(2);
+        montoInput.step = "0.01";
+        montoInput.value = monto > 0 ? monto.toFixed(2) : "";
+        montoInput.dataset.pagoMonto = "";
+        montoInput.setAttribute("aria-label", `Monto de pago de ${cliente.nombre}`);
+        montoColumna.append(montoLabel, montoInput);
+
+        const metodoColumna = document.createElement("div");
+        metodoColumna.className = "col-sm-7";
+        const metodoLabel = document.createElement("label");
+        metodoLabel.className = "form-label small";
+        metodoLabel.textContent = "Método de pago";
+        const metodoSelect = document.createElement("select");
+        metodoSelect.className = "form-select";
+        metodoSelect.dataset.pagoMetodo = "";
+        metodoSelect.setAttribute("aria-label", `Método de pago de ${cliente.nombre}`);
+
+        const opcionInicial = document.createElement("option");
+        opcionInicial.value = "";
+        opcionInicial.textContent = "Seleccionar método";
+        metodoSelect.append(opcionInicial);
+        metodosPago.forEach(metodo => {
+            const opcion = document.createElement("option");
+            opcion.value = metodo.id;
+            opcion.textContent = metodo.nombre;
+            metodoSelect.append(opcion);
+        });
+
+        metodoColumna.append(metodoLabel, metodoSelect);
+        fila.append(montoColumna, metodoColumna);
+        return fila;
+    };
+
     document.querySelectorAll(".pedido-cobrar-pago").forEach(btn => {
         btn.addEventListener("click", () => {
             const clientes = JSON.parse(btn.dataset.clientes);
@@ -44,7 +92,7 @@
             cobrarPagoTitulo.textContent = `Cobrar pago — Pedido N° ${btn.dataset.pedidoId}`;
             cobrarPagoClientes.replaceChildren();
             cobrarPagoSinMetodos.classList.toggle("d-none", metodosPago.length > 0);
-            cobrarPagoGuardar.disabled = metodosPago.length === 0;
+            let tieneSaldoPendiente = false;
 
             clientes.forEach(cliente => {
                 const montoPendiente = Math.max(0, Number(cliente.monto) - Number(cliente.pagado));
@@ -61,50 +109,20 @@
                 tarjeta.append(nombre, saldo);
 
                 if (montoPendiente > 0 && metodosPago.length > 0) {
-                    const controles = document.createElement("div");
-                    controles.className = "row g-2 mt-2";
+                    tieneSaldoPendiente = true;
+                    const filasPago = document.createElement("div");
+                    filasPago.className = "mt-2";
+                    filasPago.append(crearFilaPago(cliente, montoPendiente, metodosPago));
 
-                    const montoColumna = document.createElement("div");
-                    montoColumna.className = "col-sm-5";
-                    const montoLabel = document.createElement("label");
-                    montoLabel.className = "form-label small";
-                    montoLabel.textContent = "Monto a pagar";
-                    const montoInput = document.createElement("input");
-                    montoInput.className = "form-control";
-                    montoInput.type = "number";
-                    montoInput.min = "0.01";
-                    montoInput.max = montoPendiente.toFixed(2);
-                    montoInput.step = "0.01";
-                    montoInput.value = montoPendiente.toFixed(2);
-                    montoInput.dataset.pagoMonto = "";
-                    montoInput.setAttribute("aria-label", `Monto de pago de ${cliente.nombre}`);
-                    montoColumna.append(montoLabel, montoInput);
-
-                    const metodoColumna = document.createElement("div");
-                    metodoColumna.className = "col-sm-7";
-                    const metodoLabel = document.createElement("label");
-                    metodoLabel.className = "form-label small";
-                    metodoLabel.textContent = "Método de pago";
-                    const metodoSelect = document.createElement("select");
-                    metodoSelect.className = "form-select";
-                    metodoSelect.dataset.pagoMetodo = "";
-                    metodoSelect.setAttribute("aria-label", `Método de pago de ${cliente.nombre}`);
-
-                    const opcionInicial = document.createElement("option");
-                    opcionInicial.value = "";
-                    opcionInicial.textContent = "Seleccionar método";
-                    metodoSelect.append(opcionInicial);
-                    metodosPago.forEach(metodo => {
-                        const opcion = document.createElement("option");
-                        opcion.value = metodo.id;
-                        opcion.textContent = metodo.nombre;
-                        metodoSelect.append(opcion);
+                    const agregarMetodo = document.createElement("button");
+                    agregarMetodo.type = "button";
+                    agregarMetodo.className = "btn btn-sm btn-outline-secondary mt-1";
+                    agregarMetodo.textContent = "Agregar otro método";
+                    agregarMetodo.addEventListener("click", () => {
+                        filasPago.append(crearFilaPago(cliente, 0, metodosPago));
                     });
 
-                    metodoColumna.append(metodoLabel, metodoSelect);
-                    controles.append(montoColumna, metodoColumna);
-                    tarjeta.append(controles);
-                    tarjeta.dataset.pagoCliente = cliente.idCliente;
+                    tarjeta.append(filasPago, agregarMetodo);
                 } else if (montoPendiente <= 0) {
                     const pagado = document.createElement("div");
                     pagado.className = "small text-success mt-2";
@@ -115,18 +133,31 @@
                 cobrarPagoClientes.append(tarjeta);
             });
 
+            cobrarPagoGuardar.disabled = metodosPago.length === 0 || !tieneSaldoPendiente;
+            cobrarPagoGuardar.textContent = tieneSaldoPendiente
+                ? "Guardar"
+                : "Sin saldo pendiente";
+
             bootstrap.Modal.getOrCreateInstance(cobrarPagoModal).show();
         });
     });
 
     cobrarPagoGuardar.addEventListener("click", async () => {
-        const pagos = [...cobrarPagoClientes.querySelectorAll("[data-pago-cliente]")].map(fila => ({
+        const filasPago = [...cobrarPagoClientes.querySelectorAll("[data-pago-fila]")];
+        const filasConDatos = filasPago.filter(fila =>
+            fila.querySelector("[data-pago-monto]").value.trim() !== "" ||
+            fila.querySelector("[data-pago-metodo]").value !== ""
+        );
+        const pagos = filasConDatos.map(fila => ({
             idCliente: Number(fila.dataset.pagoCliente),
             idMetodoPago: Number(fila.querySelector("[data-pago-metodo]").value),
             monto: Number(fila.querySelector("[data-pago-monto]").value)
-        })).filter(pago => pago.monto > 0);
+        }));
 
-        if (!pedidoCobroActual || pagos.length === 0 || pagos.some(pago =>
+        if (!pedidoCobroActual || pagos.length === 0 || filasConDatos.some(fila =>
+            fila.querySelector("[data-pago-monto]").value.trim() === "" ||
+            fila.querySelector("[data-pago-metodo]").value === ""
+        ) || pagos.some(pago =>
             !Number.isSafeInteger(pago.idCliente) ||
             !Number.isSafeInteger(pago.idMetodoPago) ||
             !Number.isFinite(pago.monto) ||
@@ -150,7 +181,11 @@
             const datos = await respuesta.json().catch(() => null);
 
             if (!respuesta.ok) {
-                mostrarToast(datos?.errores?.[0]?.mensaje || "No se pudieron registrar los pagos.", "error");
+                const mensajeError = datos?.errores?.[0]?.mensaje
+                    || datos?.mensaje
+                    || datos?.Mensaje
+                    || `No se pudieron registrar los pagos (HTTP ${respuesta.status}).`;
+                mostrarToast(mensajeError, "error");
                 cobrarPagoGuardar.disabled = false;
                 return;
             }

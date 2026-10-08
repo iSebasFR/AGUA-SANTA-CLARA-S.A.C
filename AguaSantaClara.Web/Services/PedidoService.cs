@@ -90,12 +90,6 @@ public class PedidoService : IPedidoService
             return resultado;
         }
 
-        if (modelo.Pagos.GroupBy(p => p.IdCliente).Any(g => g.Count() > 1))
-        {
-            resultado.Errores.Add(new ErrorPedido("pagos", "Solo se permite un monto por cliente en cada registro."));
-            return resultado;
-        }
-
         var pedido = await _context.Pedidos
             .Include(p => p.Clientes.Where(pc => pc.EstadoRegistro))
             .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
@@ -106,9 +100,9 @@ public class PedidoService : IPedidoService
             return resultado;
         }
 
-        if (pedido.Estado != EstadosPedido.Entregado)
+        if (pedido.Estado is not (EstadosPedido.Entregado or EstadosPedido.PagoParcial))
         {
-            resultado.Errores.Add(new ErrorPedido("pedido", "Solo se pueden registrar pagos de pedidos entregados."));
+            resultado.Errores.Add(new ErrorPedido("pedido", "Solo se pueden registrar pagos de pedidos entregados o con pago parcial."));
             return resultado;
         }
 
@@ -126,6 +120,10 @@ public class PedidoService : IPedidoService
             .GroupBy(p => p.IdCliente)
             .Select(grupo => new { IdCliente = grupo.Key, Monto = grupo.Sum(p => p.Monto) })
             .ToDictionaryAsync(item => item.IdCliente, item => item.Monto);
+
+        var montosNuevosPorCliente = modelo.Pagos
+            .GroupBy(p => p.IdCliente)
+            .ToDictionary(grupo => grupo.Key, grupo => grupo.Sum(p => p.Monto));
 
         for (var indice = 0; indice < modelo.Pagos.Count; indice++)
         {
@@ -149,13 +147,19 @@ public class PedidoService : IPedidoService
                 continue;
             }
 
-            var montoPagado = montosPagados.GetValueOrDefault(pago.IdCliente);
-            var montoPendiente = montoPedido - montoPagado;
-            if (pago.Monto > montoPendiente)
+        }
+
+        foreach (var (idCliente, montoNuevo) in montosNuevosPorCliente)
+        {
+            if (!montosPorCliente.TryGetValue(idCliente, out var montoPedido))
+                continue;
+
+            var montoPendiente = montoPedido - montosPagados.GetValueOrDefault(idCliente);
+            if (montoNuevo > montoPendiente)
             {
                 resultado.Errores.Add(new ErrorPedido(
-                    $"{campo}.monto",
-                    $"El monto supera el saldo pendiente del cliente ({montoPendiente:0.00})."));
+                    "pagos",
+                    $"El total registrado para el cliente supera su saldo pendiente ({montoPendiente:0.00})."));
             }
         }
 
@@ -204,6 +208,20 @@ public class PedidoService : IPedidoService
             if (montoPagadoDespuesDelRegistro >= deuda.Monto)
                 deuda.Estado = EstadosDeuda.Pagada;
         }
+
+        var montosPagadosDespuesDelRegistro = montosPagados.ToDictionary(
+            pago => pago.Key,
+            pago => pago.Value);
+        foreach (var pago in modelo.Pagos)
+        {
+            montosPagadosDespuesDelRegistro[pago.IdCliente] =
+                montosPagadosDespuesDelRegistro.GetValueOrDefault(pago.IdCliente) + pago.Monto;
+        }
+
+        pedido.Estado = montosPorCliente.Keys.All(idCliente =>
+            montosPagadosDespuesDelRegistro.GetValueOrDefault(idCliente) >= montosPorCliente[idCliente])
+            ? EstadosPedido.Pagado
+            : EstadosPedido.PagoParcial;
 
         _context.Pagos.AddRange(modelo.Pagos.Select(pago => new Pago
         {

@@ -3,6 +3,8 @@ using AguaSantaClara.Web.Models;
 using AguaSantaClara.Web.Models.Entities;
 using AguaSantaClara.Web.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace AguaSantaClara.Tests;
 
@@ -162,10 +164,11 @@ public class PedidoServiceTests
     }
 
     [Fact]
-    public async Task RegistrarPagosAsync_GuardaPagoParcialYRechazaMontoMayorAlPendiente()
+    public async Task RegistrarPagosAsync_PermiteDividirElPagoDelClientePorMetodoYValidaElTotal()
     {
         var (db, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
         var metodoPago = new MetodoPago { Nombre = "Efectivo" };
+        var segundoMetodoPago = new MetodoPago { Nombre = "Yape" };
         var pedido = new Pedido
         {
             Estado = EstadosPedido.Entregado,
@@ -183,6 +186,7 @@ public class PedidoServiceTests
             }
         };
         db.MetodosPago.Add(metodoPago);
+        db.MetodosPago.Add(segundoMetodoPago);
         db.Pedidos.Add(pedido);
         await db.SaveChangesAsync();
 
@@ -194,18 +198,31 @@ public class PedidoServiceTests
                 {
                     IdCliente = cliente.Id,
                     IdMetodoPago = metodoPago.Id,
-                    Monto = 8.50m
+                    Monto = 6.50m
+                },
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = segundoMetodoPago.Id,
+                    Monto = 2m
                 }
             }
         });
 
         Assert.True(pagoParcial.Ok);
-        var pagoGuardado = await db.Pagos.SingleAsync();
-        Assert.Equal(pedido.Id, pagoGuardado.IdPedido);
-        Assert.Equal(cliente.Id, pagoGuardado.IdCliente);
-        Assert.Equal(metodoPago.Id, pagoGuardado.IdMetodoPago);
-        Assert.Equal(8.50m, pagoGuardado.Monto);
+        var pagosGuardados = await db.Pagos.OrderBy(p => p.IdMetodoPago).ToListAsync();
+        Assert.Equal(2, pagosGuardados.Count);
+        Assert.All(pagosGuardados, pago =>
+        {
+            Assert.Equal(pedido.Id, pago.IdPedido);
+            Assert.Equal(cliente.Id, pago.IdCliente);
+        });
+        Assert.Equal(metodoPago.Id, pagosGuardados[0].IdMetodoPago);
+        Assert.Equal(6.50m, pagosGuardados[0].Monto);
+        Assert.Equal(segundoMetodoPago.Id, pagosGuardados[1].IdMetodoPago);
+        Assert.Equal(2m, pagosGuardados[1].Monto);
         Assert.Equal(11.50m, cliente.DeudaTotal);
+        Assert.Equal(EstadosPedido.PagoParcial, pedido.Estado);
         var deuda = await db.Deudas.SingleAsync();
         Assert.Equal(20m, deuda.Monto);
         Assert.Equal(EstadosDeuda.Pendiente, deuda.Estado);
@@ -218,14 +235,20 @@ public class PedidoServiceTests
                 {
                     IdCliente = cliente.Id,
                     IdMetodoPago = metodoPago.Id,
-                    Monto = 12m
+                    Monto = 6m
+                },
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = segundoMetodoPago.Id,
+                    Monto = 6m
                 }
             }
         });
 
         Assert.False(excedePendiente.Ok);
-        Assert.Contains(excedePendiente.Errores, error => error.Campo == "pagos[0].monto");
-        Assert.Single(await db.Pagos.ToListAsync());
+        Assert.Contains(excedePendiente.Errores, error => error.Campo == "pagos");
+        Assert.Equal(2, await db.Pagos.CountAsync());
 
         var pagoRestante = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
         {
@@ -243,6 +266,25 @@ public class PedidoServiceTests
         Assert.True(pagoRestante.Ok);
         Assert.Equal(0m, cliente.DeudaTotal);
         Assert.Equal(EstadosDeuda.Pagada, deuda.Estado);
+        Assert.Equal(EstadosPedido.Pagado, pedido.Estado);
+        Assert.Equal(3, await db.Pagos.CountAsync());
+
+        var pagoPedidoCancelado = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
+        {
+            Pagos =
+            {
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 1m
+                }
+            }
+        });
+
+        Assert.False(pagoPedidoCancelado.Ok);
+        Assert.Contains(pagoPedidoCancelado.Errores, error => error.Campo == "pedido");
+        Assert.Equal(3, await db.Pagos.CountAsync());
     }
 
     [Fact]
@@ -310,6 +352,7 @@ public class PedidoServiceTests
         Assert.True(resultado.Ok);
         Assert.Equal(15m, cliente.DeudaTotal);
         Assert.Equal(34m, segundoCliente.DeudaTotal);
+        Assert.Equal(EstadosPedido.PagoParcial, pedido.Estado);
         Assert.Collection(
             await db.Deudas.OrderBy(d => d.IdCliente).ToListAsync(),
             deuda =>
@@ -324,6 +367,31 @@ public class PedidoServiceTests
                 Assert.Equal(30m, deuda.Monto);
                 Assert.Equal(EstadosDeuda.Pendiente, deuda.Estado);
             });
+
+        var saldosRestantes = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
+        {
+            Pagos =
+            {
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 15m
+                },
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = segundoCliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 30m
+                }
+            }
+        });
+
+        Assert.True(saldosRestantes.Ok);
+        Assert.Equal(EstadosPedido.Pagado, pedido.Estado);
+        Assert.Equal(0m, cliente.DeudaTotal);
+        Assert.Equal(4m, segundoCliente.DeudaTotal);
+        Assert.All(await db.Deudas.ToListAsync(), deuda => Assert.Equal(EstadosDeuda.Pagada, deuda.Estado));
     }
 
     [Fact]
@@ -367,6 +435,19 @@ public class PedidoServiceTests
         Assert.False(resultado.Ok);
         Assert.Contains(resultado.Errores, error => error.Campo == "pedido");
         Assert.Empty(await db.Pagos.ToListAsync());
+    }
+
+    [Fact]
+    public void ModeloPedido_AceptaEstadosGeneradosPorElRegistroDePagos()
+    {
+        using var db = CrearContexto();
+        var restriccion = db.GetService<IDesignTimeModel>().Model
+            .FindEntityType(typeof(Pedido))!
+            .GetCheckConstraints()
+            .Single(constraint => constraint.Name == "chk_pedido_estado");
+
+        Assert.Contains(EstadosPedido.Pagado, restriccion.Sql);
+        Assert.Contains(EstadosPedido.PagoParcial, restriccion.Sql);
     }
 
     [Theory]
