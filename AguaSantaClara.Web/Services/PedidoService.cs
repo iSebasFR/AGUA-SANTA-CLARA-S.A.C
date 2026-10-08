@@ -162,6 +162,49 @@ public class PedidoService : IPedidoService
         if (!resultado.Ok)
             return resultado;
 
+        var clientes = await _context.Clientes
+            .Where(c => montosPorCliente.Keys.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id);
+        var deudasExistentes = await _context.Deudas
+            .Where(d => d.EstadoRegistro && d.IdPedido == idPedido)
+            .ToListAsync();
+        var deudaPorCliente = deudasExistentes
+            .GroupBy(d => d.IdCliente)
+            .ToDictionary(grupo => grupo.Key, grupo => grupo.First());
+
+        foreach (var (idCliente, montoPedido) in montosPorCliente)
+        {
+            if (deudaPorCliente.ContainsKey(idCliente))
+                continue;
+
+            var deuda = new Deuda
+            {
+                IdPedido = idPedido,
+                IdCliente = idCliente,
+                Monto = montoPedido,
+                FechaVencimiento = DateTime.UtcNow.Date,
+                Estado = EstadosDeuda.Pendiente
+            };
+
+            _context.Deudas.Add(deuda);
+            deudaPorCliente.Add(idCliente, deuda);
+            clientes[idCliente].DeudaTotal += montoPedido;
+        }
+
+        foreach (var pago in modelo.Pagos)
+            clientes[pago.IdCliente].DeudaTotal = Math.Max(
+                0m,
+                clientes[pago.IdCliente].DeudaTotal - pago.Monto);
+
+        foreach (var (idCliente, deuda) in deudaPorCliente)
+        {
+            var montoPagadoDespuesDelRegistro =
+                montosPagados.GetValueOrDefault(idCliente) +
+                modelo.Pagos.Where(p => p.IdCliente == idCliente).Sum(p => p.Monto);
+            if (montoPagadoDespuesDelRegistro >= deuda.Monto)
+                deuda.Estado = EstadosDeuda.Pagada;
+        }
+
         _context.Pagos.AddRange(modelo.Pagos.Select(pago => new Pago
         {
             IdPedido = idPedido,

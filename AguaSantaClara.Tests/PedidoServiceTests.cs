@@ -205,7 +205,10 @@ public class PedidoServiceTests
         Assert.Equal(cliente.Id, pagoGuardado.IdCliente);
         Assert.Equal(metodoPago.Id, pagoGuardado.IdMetodoPago);
         Assert.Equal(8.50m, pagoGuardado.Monto);
-        Assert.Equal(0m, cliente.DeudaTotal);
+        Assert.Equal(11.50m, cliente.DeudaTotal);
+        var deuda = await db.Deudas.SingleAsync();
+        Assert.Equal(20m, deuda.Monto);
+        Assert.Equal(EstadosDeuda.Pendiente, deuda.Estado);
 
         var excedePendiente = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
         {
@@ -223,6 +226,104 @@ public class PedidoServiceTests
         Assert.False(excedePendiente.Ok);
         Assert.Contains(excedePendiente.Errores, error => error.Campo == "pagos[0].monto");
         Assert.Single(await db.Pagos.ToListAsync());
+
+        var pagoRestante = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
+        {
+            Pagos =
+            {
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 11.50m
+                }
+            }
+        });
+
+        Assert.True(pagoRestante.Ok);
+        Assert.Equal(0m, cliente.DeudaTotal);
+        Assert.Equal(EstadosDeuda.Pagada, deuda.Estado);
+    }
+
+    [Fact]
+    public async Task RegistrarPagosAsync_AcumulaLaDeudaPendientePorClienteIndependientemente()
+    {
+        var (db, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
+        var segundoCliente = new Cliente
+        {
+            Nombre = "Luis Pérez",
+            Telefono = "999222333",
+            Dni = "87654321",
+            DeudaTotal = 4m
+        };
+        var segundaDireccion = new DireccionCliente
+        {
+            Cliente = segundoCliente,
+            Direccion = "Jr. Sol 456",
+            Ciudad = "Lima"
+        };
+        db.Clientes.Add(segundoCliente);
+        await db.SaveChangesAsync();
+
+        var metodoPago = new MetodoPago { Nombre = "Yape" };
+        var pedido = new Pedido
+        {
+            Estado = EstadosPedido.Entregado,
+            Total = 50m,
+            Clientes =
+            {
+                new PedidoCliente
+                {
+                    Cliente = cliente,
+                    IdCliente = cliente.Id,
+                    Direccion = direccion,
+                    IdDireccion = direccion.Id,
+                    Subtotal = 20m
+                },
+                new PedidoCliente
+                {
+                    Cliente = segundoCliente,
+                    IdCliente = segundoCliente.Id,
+                    Direccion = segundaDireccion,
+                    IdDireccion = segundaDireccion.Id,
+                    Subtotal = 30m
+                }
+            }
+        };
+        db.MetodosPago.Add(metodoPago);
+        db.Pedidos.Add(pedido);
+        await db.SaveChangesAsync();
+
+        var resultado = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
+        {
+            Pagos =
+            {
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 5m
+                }
+            }
+        });
+
+        Assert.True(resultado.Ok);
+        Assert.Equal(15m, cliente.DeudaTotal);
+        Assert.Equal(34m, segundoCliente.DeudaTotal);
+        Assert.Collection(
+            await db.Deudas.OrderBy(d => d.IdCliente).ToListAsync(),
+            deuda =>
+            {
+                Assert.Equal(cliente.Id, deuda.IdCliente);
+                Assert.Equal(20m, deuda.Monto);
+                Assert.Equal(EstadosDeuda.Pendiente, deuda.Estado);
+            },
+            deuda =>
+            {
+                Assert.Equal(segundoCliente.Id, deuda.IdCliente);
+                Assert.Equal(30m, deuda.Monto);
+                Assert.Equal(EstadosDeuda.Pendiente, deuda.Estado);
+            });
     }
 
     [Fact]
