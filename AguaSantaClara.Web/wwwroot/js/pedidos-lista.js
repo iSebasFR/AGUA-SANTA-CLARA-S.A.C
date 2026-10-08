@@ -59,7 +59,7 @@
         montoColumna.append(montoLabel, montoInput);
 
         const metodoColumna = document.createElement("div");
-        metodoColumna.className = "col-sm-7";
+        metodoColumna.className = "col-sm-6";
         const metodoLabel = document.createElement("label");
         metodoLabel.className = "form-label small";
         metodoLabel.textContent = "Método de pago";
@@ -80,8 +80,28 @@
         });
 
         metodoColumna.append(metodoLabel, metodoSelect);
-        fila.append(montoColumna, metodoColumna);
+
+        const eliminarColumna = document.createElement("div");
+        eliminarColumna.className = "col-sm-1";
+        const eliminarBtn = document.createElement("button");
+        eliminarBtn.type = "button";
+        eliminarBtn.className = "btn btn-sm btn-outline-danger";
+        eliminarBtn.textContent = "×";
+        eliminarBtn.setAttribute("aria-label", `Eliminar método de pago de ${cliente.nombre}`);
+        eliminarBtn.title = "Eliminar método";
+        eliminarBtn.dataset.eliminarPago = "";
+        eliminarColumna.append(eliminarBtn);
+
+        fila.append(montoColumna, metodoColumna, eliminarColumna);
         return fila;
+    };
+
+    const actualizarBotonesEliminarPago = filasPago => {
+        const filas = [...filasPago.querySelectorAll("[data-pago-fila]")];
+        filas.forEach((fila, indice) => {
+            const boton = fila.querySelector("[data-eliminar-pago]");
+            if (boton) boton.hidden = indice === 0;
+        });
     };
 
     document.querySelectorAll(".pedido-cobrar-pago").forEach(btn => {
@@ -113,6 +133,13 @@
                     const filasPago = document.createElement("div");
                     filasPago.className = "mt-2";
                     filasPago.append(crearFilaPago(cliente, montoPendiente, metodosPago));
+                    actualizarBotonesEliminarPago(filasPago);
+                    filasPago.addEventListener("click", event => {
+                        const botonEliminar = event.target.closest("[data-eliminar-pago]");
+                        if (!botonEliminar || filasPago.querySelectorAll("[data-pago-fila]").length <= 1) return;
+                        botonEliminar.closest("[data-pago-fila]").remove();
+                        actualizarBotonesEliminarPago(filasPago);
+                    });
 
                     const agregarMetodo = document.createElement("button");
                     agregarMetodo.type = "button";
@@ -120,6 +147,7 @@
                     agregarMetodo.textContent = "Agregar otro método";
                     agregarMetodo.addEventListener("click", () => {
                         filasPago.append(crearFilaPago(cliente, 0, metodosPago));
+                        actualizarBotonesEliminarPago(filasPago);
                     });
 
                     tarjeta.append(filasPago, agregarMetodo);

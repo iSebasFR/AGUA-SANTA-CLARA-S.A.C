@@ -113,7 +113,7 @@ public class PedidosController : Controller
         };
 
         var idsPedidos = modelo.Pedidos
-            .Where(p => p.Estado == EstadosPedido.Entregado)
+            .Where(p => p.Estado is EstadosPedido.Entregado or EstadosPedido.PagoParcial)
             .Select(p => p.Id)
             .ToList();
         var pagosExistentes = await _context.Pagos

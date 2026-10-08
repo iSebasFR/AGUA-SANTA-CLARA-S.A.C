@@ -444,6 +444,22 @@
         font-weight: 600;
     }
 
+    .pedido-estado-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .pedido-estado-badge.pendiente { background: #fff7e6; color: #b8860b; }
+    .pedido-estado-badge.enviado { background: #eaf4fb; color: #3a8ab8; }
+    .pedido-estado-badge.entregado { background: #e8f9ee; color: #1a8a3a; }
+    .pedido-estado-badge.pagado { background: #dbeafe; color: #1d4ed8; }
+    .pedido-estado-badge.incidencia { background: #ffebea; color: #d93025; }
+    .pedido-estado-badge.pago-parcial { background: #f2eafe; color: #7541b8; }
+
     .direccion-text { font-size: 12.5px; color: #6e6e73; margin: 0; line-height: 1.5; }
 
     .direccion-link {
@@ -794,7 +810,7 @@
                             <span class="info-value">@sel.SaldoBidones</span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">Deuda total</span>
+                            <span class="info-label">Dueda total</span>
                             <span class="info-value">S/ @sel.DeudaTotal.ToString("0.00")</span>
                         </div>
                         <div class="info-item">
@@ -908,6 +924,17 @@
                             <tbody>
                                 @foreach (var pedido in Model.Pedidos)
                                 {
+                                    var claseEstadoPedido = pedido.Estado switch
+                                    {
+                                        "Pendiente" => "pendiente",
+                                        "Enviado" => "enviado",
+                                        "Entregado" => "entregado",
+                                        "Con Incidencia" => "incidencia",
+                                        "Pagado" => "pagado",
+                                        "Pago Parcial" => "pago-parcial",
+                                        _ => string.Empty
+                                    };
+
                                     var locales = pedido.Clientes
                                         .SelectMany(c => c.Detalles)
                                         .Select(d => d.Local?.Nombre)
@@ -922,7 +949,7 @@
                                         <td>@(pedido.Repartidor?.Nombre ?? "—")</td>
                                         <td style="text-align:right;">S/ @pedido.Total.ToString("0.00")</td>
                                         <td style="text-align:center;">
-                                            <span style="background:#eaf4fb; color:#3a8ab8; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:600;">@pedido.Estado</span>
+                                            <span class="pedido-estado-badge @claseEstadoPedido">@pedido.Estado</span>
                                         </td>
                                     </tr>
                                 }

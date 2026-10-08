@@ -194,6 +194,9 @@
     .status-badge.pendiente { background: #fff7e6; color: #b8860b; }
     .status-badge.enviado { background: #eaf4fb; color: #3a8ab8; }
     .status-badge.entregado { background: #e8f9ee; color: #1a8a3a; }
+    .status-badge.incidencia { background: #ffebea; color: #d93025; }
+    .status-badge.pagado { background: #dbeafe; color: #1d4ed8; }
+    .status-badge.pago-parcial { background: #f2eafe; color: #7541b8; }
 
     .acciones-tabla {
         display: inline-flex;
@@ -645,6 +648,9 @@
                                 "Pendiente" => "pendiente",
                                 "Enviado" => "enviado",
                                 "Entregado" => "entregado",
+                                "Con Incidencia" => "incidencia",
+                                "Pagado" => "pagado",
+                                "Pago Parcial" => "pago-parcial",
                                 _ => ""
                             };
 
@@ -718,7 +724,7 @@
                                                     Registrar Incidencia
                                                 </button>
                                             }
-                                            else if (pedido.Estado == "Entregado")
+                                            else if (pedido.Estado is "Entregado" or "Pago Parcial")
                                             {
                                                 <button type="button"
                                                         class="btn-tabla pedido-cobrar-pago"
