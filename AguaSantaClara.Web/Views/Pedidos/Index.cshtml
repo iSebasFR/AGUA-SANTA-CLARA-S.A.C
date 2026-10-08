@@ -718,7 +718,7 @@
                                                     Registrar Incidencia
                                                 </button>
                                             }
-                                            else if (pedido.Estado == "Entregado")
+                                            else if (pedido.Estado is "Entregado" or "Pago Parcial")
                                             {
                                                 <button type="button"
                                                         class="btn-tabla pedido-cobrar-pago"

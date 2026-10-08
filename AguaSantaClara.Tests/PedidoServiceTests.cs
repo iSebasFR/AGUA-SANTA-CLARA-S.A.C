@@ -1,7 +1,9 @@
 using AguaSantaClara.Web.Data;
+using AguaSantaClara.Web.Controllers;
 using AguaSantaClara.Web.Models;
 using AguaSantaClara.Web.Models.Entities;
 using AguaSantaClara.Web.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -392,6 +394,59 @@ public class PedidoServiceTests
         Assert.Equal(0m, cliente.DeudaTotal);
         Assert.Equal(4m, segundoCliente.DeudaTotal);
         Assert.All(await db.Deudas.ToListAsync(), deuda => Assert.Equal(EstadosDeuda.Pagada, deuda.Estado));
+    }
+
+    [Fact]
+    public async Task PedidosController_Index_IncluyePagosDePedidosParcialesParaMostrarSaldoPendiente()
+    {
+        await using var db = CrearContexto();
+        var metodoPago = new MetodoPago { Nombre = "Efectivo" };
+        var cliente = new Cliente
+        {
+            Nombre = "Ana Torres",
+            Telefono = "999111222"
+        };
+        var direccion = new DireccionCliente
+        {
+            Cliente = cliente,
+            Direccion = "Av. Lima 123"
+        };
+        var pedido = new Pedido
+        {
+            Estado = EstadosPedido.PagoParcial,
+            Total = 50m,
+            Clientes =
+            {
+                new PedidoCliente
+                {
+                    Cliente = cliente,
+                    IdCliente = cliente.Id,
+                    Direccion = direccion,
+                    IdDireccion = direccion.Id,
+                    Subtotal = 50m
+                }
+            }
+        };
+        db.MetodosPago.Add(metodoPago);
+        db.Pedidos.Add(pedido);
+        await db.SaveChangesAsync();
+        db.Pagos.Add(new Pago
+        {
+            Pedido = pedido,
+            IdPedido = pedido.Id,
+            Cliente = cliente,
+            IdCliente = cliente.Id,
+            MetodoPago = metodoPago,
+            IdMetodoPago = metodoPago.Id,
+            Monto = 17m
+        });
+        await db.SaveChangesAsync();
+
+        var controller = new PedidosController(db, new PedidoService(db));
+        var resultado = Assert.IsType<ViewResult>(await controller.Index(null, null, null));
+        var modelo = Assert.IsType<PedidosIndexViewModel>(resultado.Model);
+
+        Assert.Equal(17m, modelo.MontosPagadosPorPedidoCliente[pedido.Id][cliente.Id]);
     }
 
     [Fact]
