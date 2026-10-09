@@ -30,10 +30,22 @@ public class InventarioProductosController : Controller
         return View(locales);
     }
 
-    // ==================== T19: PRODUCTOS POR LOCAL ====================
+ // ==================== T19: PRODUCTOS POR LOCAL ====================
 [HttpGet("ProductosPorLocal")]
 public async Task<IActionResult> ProductosPorLocal(long idLocal)
 {
+    // Verificar que el local exista y esté activo.
+    var localValido = await _context.Locales
+        .AsNoTracking()
+        .AnyAsync(l =>
+            l.Id == idLocal &&
+            l.Estado &&
+            l.EstadoRegistro);
+
+    if (!localValido)
+        return BadRequest(new { mensaje = "Seleccione un local válido." });
+
+    // Obtener los productos del catálogo asignados a ese local.
     var productos = await _context.ProductosLocal
         .AsNoTracking()
         .Where(pl =>
@@ -46,7 +58,7 @@ public async Task<IActionResult> ProductosPorLocal(long idLocal)
         .ThenBy(pl => pl.Producto.Nombre)
         .Select(pl => new
         {
-            id = pl.IdProducto,
+            id = pl.Producto.Id,
             nombre = pl.Producto.Nombre,
             categoria = pl.Producto.Categoria,
             stock = pl.Stock
