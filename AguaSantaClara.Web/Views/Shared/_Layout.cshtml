@@ -120,9 +120,31 @@
                         <a asp-controller="Pedidos" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-cart-check"></i><span class="sidebar-label">Pedidos</span>
                         </a>
-                        <a asp-controller="InventarioProductos" asp-action="Index" class="sidebar-link">
-                            <i class="bi bi-boxes"></i><span class="sidebar-label">Productos</span>
-                        </a>
+                <!-- Inventario desplegable para Vendedora -->
+                <button type="button"
+                        class="sidebar-link sidebar-toggle"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#menuInventarioVendedora"
+                        aria-expanded="false"
+                        aria-controls="menuInventarioVendedora">
+                    <i class="bi bi-boxes"></i>
+                    <span class="sidebar-label">Inventario</span>
+                    <i class="bi bi-chevron-down sidebar-chevron"></i>
+                </button>
+
+                <div class="collapse sidebar-submenu" id="menuInventarioVendedora">
+                    <a asp-controller="InventarioProductos"
+                    asp-action="Index"
+                    class="sidebar-sublink">
+                        <span class="sidebar-label">Productos</span>
+                    </a>
+
+                    <a asp-controller="InventarioInsumos"
+                    asp-action="Index"
+                    class="sidebar-sublink">
+                        <span class="sidebar-label">Insumos</span>
+                    </a>
+                </div>
                     }
                 </nav>
 

@@ -50,35 +50,31 @@
                 Acción
             </label>
 
-            <div class="stock-action-group">
+                <div class="stock-action-group">
+                    <input type="radio"
+                        class="btn-check"
+                        name="Accion"
+                        id="accionAumentar"
+                        value="Aumentar"
+                        @(Model.Accion == "Aumentar" ? "checked" : "")>
 
-                <input type="radio"
-                       class="btn-check"
-                       name="Accion"
-                       id="accionAumentar"
-                       value="Aumentar"
-                       @(Model.Accion == "Aumentar" ? "checked" : "")>
+                    <label class="stock-action increase" for="accionAumentar">
+                        <span class="stock-action-icon">↑</span>
+                        Aumentar
+                    </label>
 
-                <label class="stock-action increase"
-                       for="accionAumentar">
-                    <span>⊕</span>
-                    Aumentar
-                </label>
+                    <input type="radio"
+                        class="btn-check"
+                        name="Accion"
+                        id="accionDescontar"
+                        value="Descontar"
+                        @(Model.Accion == "Descontar" ? "checked" : "")>
 
-                <input type="radio"
-                       class="btn-check"
-                       name="Accion"
-                       id="accionDescontar"
-                       value="Descontar"
-                       @(Model.Accion == "Descontar" ? "checked" : "")>
-
-                <label class="stock-action decrease"
-                       for="accionDescontar">
-                    <span>⊖</span>
-                    Descontar
-                </label>
-
-            </div>
+                    <label class="stock-action decrease" for="accionDescontar">
+                        <span class="stock-action-icon">↓</span>
+                        Descontar
+                    </label>
+                </div>
 
             <span asp-validation-for="Accion"
                   class="text-danger small">

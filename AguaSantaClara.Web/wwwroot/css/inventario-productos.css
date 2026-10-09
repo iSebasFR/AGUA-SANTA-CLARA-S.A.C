@@ -1,100 +1,305 @@
+
 #modalModificarStock .modal-dialog {
-    max-width: 430px;
+    max-width: 495px;
 }
 
 #modalModificarStock .modal-content {
     border: none;
-    border-radius: 12px;
+    border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.18);
 }
 
 #modalModificarStock .modal-header {
-    padding: 18px 20px 8px;
+    padding: 24px 30px 10px;
+}
+
+#modalModificarStock .modal-header .modal-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #252525;
 }
 
 #modalModificarStock .modal-body {
-    padding: 8px 20px 12px;
+    padding: 14px 30px 20px;
 }
 
 #modalModificarStock .modal-footer {
-    padding: 0 20px 18px;
+    display: flex;
+    gap: 10px;
+    padding: 0 30px 25px;
+}
+
+#modalModificarStock .modal-footer > button {
+    flex: 1;
+    margin: 0;
 }
 
 #modalModificarStock .form-label {
-    color: #555;
-    font-size: 11px;
-    letter-spacing: 0.3px;
+    display: block;
+    color: #777;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    margin-bottom: 9px;
 }
 
 .stock-action-group {
     display: flex;
-    gap: 8px;
+    gap: 9px;
 }
 
 .stock-action {
     flex: 1;
-    height: 38px;
+    height: 49px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    border: 1px solid #ddd;
-    border-radius: 7px;
-    font-size: 13px;
+    gap: 7px;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    background: #fff;
+    color: #777;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    transition: 0.15s ease;
+    transition: background .15s ease, border-color .15s ease;
 }
 
 .stock-action span {
-    font-size: 15px;
+    font-size: 16px;
 }
 
-.stock-action.increase {
-    color: #198754;
-    background: #fff;
-    border-color: #198754;
-}
-
+.stock-action.increase,
 .stock-action.decrease {
-    color: #dc3545;
     background: #fff;
-    border-color: #dc3545;
+    border-color: #e5e5e5;
 }
 
 .btn-check:checked + .stock-action.increase {
-    color: #fff;
-    background: #198754;
+    color: #409963;
+    background: #e7f8ed;
+    border-color: #c5e8d1;
 }
 
 .btn-check:checked + .stock-action.decrease {
-    color: #fff;
-    background: #dc3545;
+    color: #e45c5c;
+    background: #fde9e8;
+    border-color: #f8d4d2;
 }
 
 .stock-input {
-    height: 38px;
-    border-radius: 7px;
-    font-size: 13px;
+    height: 43px;
+    border: 1px solid #e4e5e8;
+    border-radius: 11px;
+    background-color: #fff;
+    color: #333;
+    font-size: 14px;
+    padding: 10px 13px;
+}
+
+.stock-input:focus {
+    border-color: #999;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+}
+
+.stock-btn-cancel,
+.stock-btn-save {
+    min-height: 46px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
 }
 
 .stock-btn-cancel {
-    min-width: 95px;
-    height: 38px;
-    border-radius: 7px;
-    font-size: 13px;
+    background: #f1f1f3;
+    color: #292929;
+}
+
+.stock-btn-cancel:hover {
+    background: #e7e7e9;
+    color: #222;
 }
 
 .stock-btn-save {
-    min-width: 95px;
-    height: 38px;
-    border-radius: 7px;
-    background: #212121;
-    color: white;
-    font-size: 13px;
+    background: #1d1d1f;
+    color: #fff;
 }
 
 .stock-btn-save:hover {
-    background: #111;
-    color: white;
+    background: #080808;
+    color: #fff;
+}
+
+@media (max-width: 576px) {
+    #modalModificarStock .modal-dialog {
+        margin: 12px;
+    }
+
+    #modalModificarStock .modal-header {
+        padding: 20px 20px 10px;
+    }
+
+    #modalModificarStock .modal-body {
+        padding: 12px 20px 18px;
+    }
+
+    #modalModificarStock .modal-footer {
+        padding: 0 20px 20px;
+    }
+}
+.stock-action-icon {
+    width: 17px;
+    height: 17px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+
+/* ================================
+   HU-08: DISEÑO DEL INVENTARIO
+================================ */
+
+/* Fondo y distribución de las tarjetas */
+.inventario-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+}
+
+/* Selector de local */
+.inventario-local-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 22px;
+}
+
+.inventario-local-card .form-label {
+    color: #202124;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.inventario-local-card .form-select {
+    max-width: 220px;
+    height: 40px;
+    border: 1px solid #dfe3e8;
+    border-radius: 10px;
+    font-size: 14px;
+    box-shadow: none;
+}
+
+/* Tabla de productos */
+.inventario-table {
+    margin-bottom: 0;
+    color: #202124;
+}
+
+.inventario-table thead th {
+    padding: 17px 18px;
+    background: #ffffff;
+    color: #777f89;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid #e9ecef;
+    white-space: nowrap;
+}
+
+.inventario-table tbody td {
+    padding: 19px 18px;
+    vertical-align: middle;
+    border-bottom: 1px solid #edf0f2;
+    font-size: 13px;
+}
+
+.inventario-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.inventario-table tbody tr:hover {
+    background: #fafcff;
+}
+
+/* Nombre del producto */
+.producto-nombre {
+    color: #25282c;
+    font-weight: 600;
+}
+
+/* Etiqueta de categoría */
+.categoria-badge {
+    display: inline-block;
+    padding: 5px 11px;
+    border-radius: 7px;
+    background: #eaf4fb;
+    color: #5d91b5;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Etiqueta de stock */
+.stock-badge {
+    display: inline-block;
+    padding: 7px 13px;
+    border-radius: 8px;
+    background: #e8f8ed;
+    color: #328653;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* Botón modificar */
+.btn-modificar-stock {
+    padding: 8px 12px;
+    border: 1px solid #e2e5e9;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #292d32;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-modificar-stock:hover {
+    background: #f5f7f9;
+    border-color: #cbd0d6;
+    color: #111827;
+}
+
+/* Mensajes de tabla vacía o carga */
+.inventario-estado-vacio {
+    padding: 30px 15px !important;
+    color: #737b85;
+    text-align: center;
+}
+
+/* Adaptación para pantallas pequeñas */
+@media (max-width: 768px) {
+    .inventario-local-card {
+        padding: 15px;
+    }
+
+    .inventario-local-card .form-select {
+        max-width: 100%;
+    }
+
+    .inventario-table thead th,
+    .inventario-table tbody td {
+        padding: 12px 10px;
+    }
 }
