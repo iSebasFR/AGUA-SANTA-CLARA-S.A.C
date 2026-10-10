@@ -154,9 +154,26 @@
                         <strong>@userName</strong>
                         <span>@roleName</span>
                     </div>
-                    @if (User.IsInRole("Vendedora"))
+                    @if (User.IsInRole("Vendedora") || User.IsInRole("Administradora"))
                     {
-                        @await Component.InvokeAsync("NotificacionesDeudas")
+                        <div class="dropdown notification-widget" data-api="/api/notificaciones">
+                            <button type="button"
+                                    class="icon-button position-relative"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                    aria-label="Abrir notificaciones">
+                                <i class="bi bi-bell"></i>
+                                <span class="notification-count badge rounded-pill bg-danger d-none"></span>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end notification-menu p-0 shadow">
+                                <div class="px-3 py-2 border-bottom">
+                                    <strong class="small">Notificaciones</strong>
+                                </div>
+                                <div class="notification-list" aria-live="polite">
+                                    <p class="small text-secondary px-3 py-3 mb-0">Cargando notificaciones...</p>
+                                </div>
+                            </div>
+                        </div>
                     }
                     <form asp-controller="Account" asp-action="Logout" method="post" class="sidebar-logout">
                         <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión">
@@ -198,6 +215,10 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (User.IsInRole("Vendedora") || User.IsInRole("Administradora"))
+    {
+        <script src="~/js/notificaciones.js" asp-append-version="true"></script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
