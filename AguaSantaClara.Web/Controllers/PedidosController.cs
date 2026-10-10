@@ -113,7 +113,7 @@ public class PedidosController : Controller
         };
 
         var idsPedidos = modelo.Pedidos
-            .Where(p => p.Estado == EstadosPedido.Entregado)
+            .Where(p => p.Estado is EstadosPedido.Entregado or EstadosPedido.PagoParcial)
             .Select(p => p.Id)
             .ToList();
         var pagosExistentes = await _context.Pagos
@@ -322,6 +322,22 @@ public class PedidosController : Controller
         var resultado = await _pedidoService.RegistrarPagosAsync(
             idPedido,
             modelo ?? new RegistrarPagosPedidoViewModel());
+
+        return resultado.Ok
+            ? Json(new { mensaje = resultado.Mensaje })
+            : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> RegistrarDeuda(
+        long idPedido,
+        [FromBody] RegistrarDeudaViewModel? modelo)
+    {
+        var resultado = await _pedidoService.RegistrarDeudaAsync(
+            idPedido,
+            modelo ?? new RegistrarDeudaViewModel());
 
         return resultado.Ok
             ? Json(new { mensaje = resultado.Mensaje })

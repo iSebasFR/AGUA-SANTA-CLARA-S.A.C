@@ -14,6 +14,7 @@ public class DeudaConfiguration : IEntityTypeConfiguration<Deuda>
         builder.Property(d => d.IdPedido).HasColumnName("id_pedido");
         builder.Property(d => d.IdCliente).HasColumnName("id_cliente");
         builder.Property(d => d.Monto).HasColumnName("monto").HasPrecision(12, 2);
+        builder.Property(d => d.MontoPagadoAlRegistrar).HasColumnName("monto_pagado_al_registrar").HasPrecision(12, 2);
         builder.Property(d => d.FechaVencimiento).HasColumnName("fecha_vencimiento").HasColumnType("date");
         builder.Property(d => d.Estado).HasColumnName("estado").HasMaxLength(20);
         builder.Property(d => d.EstadoRegistro).HasColumnName("estado_registro");
@@ -23,6 +24,7 @@ public class DeudaConfiguration : IEntityTypeConfiguration<Deuda>
         builder.ToTable(t =>
         {
             t.HasCheckConstraint("chk_deuda_monto_positivo", "monto > 0");
+            t.HasCheckConstraint("chk_deuda_monto_pagado_no_negativo", "monto_pagado_al_registrar >= 0");
             t.HasCheckConstraint("chk_deuda_estado", "estado IN ('Pendiente', 'Pagada', 'Vencida')");
         });
 

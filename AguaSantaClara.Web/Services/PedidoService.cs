@@ -205,7 +205,7 @@ public class PedidoService : IPedidoService
             var montoPagadoDespuesDelRegistro =
                 montosPagados.GetValueOrDefault(idCliente) +
                 modelo.Pagos.Where(p => p.IdCliente == idCliente).Sum(p => p.Monto);
-            if (montoPagadoDespuesDelRegistro >= deuda.Monto)
+            if (montoPagadoDespuesDelRegistro >= deuda.MontoPagadoAlRegistrar + deuda.Monto)
                 deuda.Estado = EstadosDeuda.Pagada;
         }
 
@@ -233,6 +233,88 @@ public class PedidoService : IPedidoService
 
         await _context.SaveChangesAsync();
         resultado.Mensaje = "Pagos registrados correctamente.";
+        return resultado;
+    }
+
+    public async Task<PedidoResultado> RegistrarDeudaAsync(long idPedido, RegistrarDeudaViewModel modelo)
+    {
+        var resultado = new PedidoResultado { IdPedido = idPedido };
+        if (modelo.IdCliente <= 0)
+            resultado.Errores.Add(new ErrorPedido("idCliente", "Selecciona un cliente deudor."));
+        if (modelo.Monto <= 0 || decimal.Round(modelo.Monto, 2) != modelo.Monto)
+            resultado.Errores.Add(new ErrorPedido("monto", "El monto debe ser mayor que cero y tener como máximo dos decimales."));
+        if (modelo.FechaVencimiento == null)
+            resultado.Errores.Add(new ErrorPedido("fechaVencimiento", "La fecha de vencimiento es obligatoria."));
+        if (!resultado.Ok)
+            return resultado;
+
+        var pedido = await _context.Pedidos
+            .Include(p => p.Clientes.Where(pc => pc.EstadoRegistro))
+            .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
+        if (pedido == null)
+        {
+            resultado.Errores.Add(new ErrorPedido("pedido", "El pedido no existe."));
+            return resultado;
+        }
+        if (pedido.Estado != EstadosPedido.PagoParcial)
+        {
+            resultado.Errores.Add(new ErrorPedido("pedido", "Solo se pueden registrar deudas de pedidos con pago parcial."));
+            return resultado;
+        }
+
+        var montoPedido = pedido.Clientes
+            .Where(pc => pc.IdCliente == modelo.IdCliente)
+            .Sum(pc => pc.Subtotal);
+        if (montoPedido <= 0)
+        {
+            resultado.Errores.Add(new ErrorPedido("idCliente", "El cliente seleccionado no pertenece al pedido."));
+            return resultado;
+        }
+
+        var montoPagado = await _context.Pagos
+            .Where(p => p.EstadoRegistro && p.IdPedido == idPedido && p.IdCliente == modelo.IdCliente)
+            .SumAsync(p => (decimal?)p.Monto) ?? 0m;
+        var montoPendiente = montoPedido - montoPagado;
+        if (montoPendiente <= 0)
+        {
+            resultado.Errores.Add(new ErrorPedido("monto", "El cliente seleccionado no tiene saldo pendiente en este pedido."));
+            return resultado;
+        }
+        if (modelo.Monto != montoPendiente)
+        {
+            resultado.Errores.Add(new ErrorPedido("monto", $"El monto debe coincidir con el saldo pendiente del pedido ({montoPendiente:0.00})."));
+            return resultado;
+        }
+
+        var deuda = await _context.Deudas
+            .FirstOrDefaultAsync(d => d.EstadoRegistro && d.IdPedido == idPedido && d.IdCliente == modelo.IdCliente);
+        var cliente = await _context.Clientes
+            .FirstOrDefaultAsync(c => c.Id == modelo.IdCliente && c.EstadoRegistro);
+        if (cliente == null)
+        {
+            resultado.Errores.Add(new ErrorPedido("idCliente", "El cliente no está disponible."));
+            return resultado;
+        }
+
+        if (deuda == null)
+        {
+            deuda = new Deuda
+            {
+                IdPedido = idPedido,
+                IdCliente = modelo.IdCliente,
+                Estado = EstadosDeuda.Pendiente
+            };
+            _context.Deudas.Add(deuda);
+            cliente.DeudaTotal += modelo.Monto;
+        }
+
+        deuda.Monto = modelo.Monto;
+        deuda.MontoPagadoAlRegistrar = montoPagado;
+        deuda.FechaVencimiento = modelo.FechaVencimiento.GetValueOrDefault().Date;
+        deuda.Estado = EstadosDeuda.Pendiente;
+
+        await _context.SaveChangesAsync();
+        resultado.Mensaje = "Deuda registrada correctamente.";
         return resultado;
     }
 
