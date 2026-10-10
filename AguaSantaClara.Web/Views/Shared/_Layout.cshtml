@@ -81,23 +81,6 @@
                             </a>
                         </div>
 
-                        <!-- Inventario desplegable -->
-                        <button type="button" class="sidebar-link sidebar-toggle"
-                                data-bs-toggle="collapse" data-bs-target="#menuInventario"
-                                aria-expanded="false" aria-controls="menuInventario">
-                            <i class="bi bi-boxes"></i>
-                            <span class="sidebar-label">Inventario</span>
-                            <i class="bi bi-chevron-down sidebar-chevron"></i>
-                        </button>
-                        <div class="collapse sidebar-submenu" id="menuInventario">
-                            <a asp-controller="Inventario" asp-action="Productos" class="sidebar-sublink">
-                                <span class="sidebar-label">Productos</span>
-                            </a>
-                            <a asp-controller="Inventario" asp-action="Insumos" class="sidebar-sublink">
-                                <span class="sidebar-label">Insumos</span>
-                            </a>
-                        </div>
-
                         <div class="sidebar-section-title sidebar-label">Operaciones</div>
                         <a asp-controller="Repartidores" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-truck"></i><span class="sidebar-label">Repartidores</span>
@@ -120,61 +103,41 @@
                         <a asp-controller="Pedidos" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-cart-check"></i><span class="sidebar-label">Pedidos</span>
                         </a>
-                <!-- Inventario desplegable para Vendedora -->
-                <button type="button"
-                        class="sidebar-link sidebar-toggle"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#menuInventarioVendedora"
-                        aria-expanded="false"
-                        aria-controls="menuInventarioVendedora">
-                    <i class="bi bi-boxes"></i>
-                    <span class="sidebar-label">Inventario</span>
-                    <i class="bi bi-chevron-down sidebar-chevron"></i>
-                </button>
 
-                <div class="collapse sidebar-submenu" id="menuInventarioVendedora">
-                    <a asp-controller="InventarioProductos"
-                    asp-action="Index"
-                    class="sidebar-sublink">
-                        <span class="sidebar-label">Productos</span>
-                    </a>
+                        <!-- Inventario desplegable para Vendedora -->
+                        <button type="button"
+                                class="sidebar-link sidebar-toggle"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#menuInventarioVendedora"
+                                aria-expanded="false"
+                                aria-controls="menuInventarioVendedora">
+                            <i class="bi bi-boxes"></i>
+                            <span class="sidebar-label">Inventario</span>
+                            <i class="bi bi-chevron-down sidebar-chevron"></i>
+                        </button>
 
-                    <a asp-controller="InventarioInsumos"
-                    asp-action="Index"
-                    class="sidebar-sublink">
-                        <span class="sidebar-label">Insumos</span>
-                    </a>
-                </div>
+                        <div class="collapse sidebar-submenu" id="menuInventarioVendedora">
+                            <a asp-controller="InventarioProductos"
+                               asp-action="Index"
+                               class="sidebar-sublink">
+                                <span class="sidebar-label">Productos</span>
+                            </a>
+
+                            <a asp-controller="InventarioInsumos"
+                               asp-action="Index"
+                               class="sidebar-sublink">
+                                <span class="sidebar-label">Insumos</span>
+                            </a>
+                        </div>
                     }
                 </nav>
 
-                <!-- ===== CUENTA (sin ícono de avatar) ===== -->
+                <!-- ===== CUENTA (sin ícono de avatar, sin notificaciones) ===== -->
                 <div class="sidebar-account">
                     <div class="account-copy sidebar-label">
                         <strong>@userName</strong>
                         <span>@roleName</span>
                     </div>
-                    @if (User.IsInRole("Vendedora") || User.IsInRole("Administradora"))
-                    {
-                        <div class="dropdown notification-widget" data-api="/api/notificaciones">
-                            <button type="button"
-                                    class="icon-button position-relative"
-                                    data-bs-toggle="dropdown"
-                                    aria-expanded="false"
-                                    aria-label="Abrir notificaciones">
-                                <i class="bi bi-bell"></i>
-                                <span class="notification-count badge rounded-pill bg-danger d-none"></span>
-                            </button>
-                            <div class="dropdown-menu dropdown-menu-end notification-menu p-0 shadow">
-                                <div class="px-3 py-2 border-bottom">
-                                    <strong class="small">Notificaciones</strong>
-                                </div>
-                                <div class="notification-list" aria-live="polite">
-                                    <p class="small text-secondary px-3 py-3 mb-0">Cargando notificaciones...</p>
-                                </div>
-                            </div>
-                        </div>
-                    }
                     <form asp-controller="Account" asp-action="Logout" method="post" class="sidebar-logout">
                         <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión">
                             <i class="bi bi-box-arrow-right"></i>
@@ -215,10 +178,6 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    @if (User.IsInRole("Vendedora") || User.IsInRole("Administradora"))
-    {
-        <script src="~/js/notificaciones.js" asp-append-version="true"></script>
-    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

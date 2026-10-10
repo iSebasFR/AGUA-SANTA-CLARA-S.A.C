@@ -303,3 +303,245 @@
         padding: 12px 10px;
     }
 }
+
+/* ============================================================ 
+   CONTENEDOR GENERAL
+   ============================================================ */
+.inventario-container {
+    max-width: 1200px;
+}
+
+/* ============================================================ 
+   TOASTS ESTILO APPLE
+   ============================================================ */
+.toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast-custom {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border-radius: 14px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+    min-width: 300px;
+    max-width: 380px;
+    animation: toastIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+}
+
+.toast-custom.success .toast-icon {
+    background: #e8f9ee;
+    color: #34c759;
+}
+
+.toast-custom.error .toast-icon {
+    background: #ffebea;
+    color: #ff3b30;
+}
+
+.toast-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+.toast-msg {
+    font-size: 12.5px;
+    color: #6e6e73;
+    margin-top: 1px;
+}
+
+.toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: #34c759;
+    animation: progress 3s linear forwards;
+}
+
+.toast-custom.error .toast-progress {
+    background: #ff3b30;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateX(24px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes progress {
+    from { width: 100%; }
+    to { width: 0%; }
+}
+
+/* ============================================================ 
+   MODAL MODIFICAR STOCK (estilo Apple)
+   ============================================================ */
+#modalModificarStock .modal-content {
+    border: none;
+    border-radius: 18px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+}
+
+#modalModificarStock .modal-header {
+    padding: 24px 28px 8px;
+}
+
+#modalModificarStock .modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1d1d1f;
+    letter-spacing: -0.025em;
+}
+
+#modalModificarStock .modal-body {
+    padding: 16px 28px 8px;
+}
+
+#modalModificarStock .modal-footer {
+    padding: 20px 28px 24px;
+    gap: 10px;
+    border: none;
+}
+
+.form-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #6e6e73;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stock-input {
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid #e5e5ea;
+    border-radius: 9px;
+    background: #fbfcfd;
+    font-family: inherit;
+    font-size: 13px;
+    color: #1d1d1f;
+    transition: all 0.2s;
+}
+
+.stock-input:focus {
+    outline: none;
+    background: #fff;
+    border-color: #1d1d1f;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Botones acción Aumentar / Descontar */
+.stock-action-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.stock-action {
+    padding: 12px;
+    border: 1px solid #e5e5ea;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6e6e73;
+    transition: all 0.2s;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.stock-action:hover {
+    border-color: #d2d2d7;
+}
+
+.stock-action-icon {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.btn-check:checked + .stock-action.increase {
+    background: #e8f9ee;
+    border-color: #b8e6c6;
+    color: #1a8a3a;
+}
+
+.btn-check:checked + .stock-action.decrease {
+    background: #ffebea;
+    border-color: #ffd0cc;
+    color: #ff3b30;
+}
+
+/* Botones del footer */
+.stock-btn-cancel {
+    flex: 1;
+    height: 42px;
+    border-radius: 11px;
+    background: #f2f2f4;
+    color: #1d1d1f;
+    border: none;
+    font-size: 13.5px;
+    font-weight: 500;
+}
+
+.stock-btn-cancel:hover {
+    background: #e8e8ea;
+    color: #1d1d1f;
+}
+
+.stock-btn-save {
+    flex: 1;
+    height: 42px;
+    border-radius: 11px;
+    background: #1d1d1f;
+    color: #ffffff;
+    border: none;
+    font-size: 13.5px;
+    font-weight: 500;
+}
+
+.stock-btn-save:hover {
+    background: #000000;
+    color: #ffffff;
+}

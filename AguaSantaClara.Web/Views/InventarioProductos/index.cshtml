@@ -8,51 +8,205 @@
       href="~/css/inventario-productos.css"
       asp-append-version="true" />
 
-<div class="container-fluid py-4 px-4">
+<style>
+    body.app-body {
+        background: linear-gradient(180deg, #eaf4fb 0%, #f0f7fc 40%, #fbfcfd 100%) !important;
+        background-attachment: fixed !important;
+    }
 
-    <!-- Encabezado -->
-    <div class="mb-4">
-        <h1 class="fw-bold mb-1">Inventario de productos</h1>
-        <p class="text-muted mb-0">
-            Consulta y actualiza el stock por sucursal.
-        </p>
+    .panel-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1d1d1f;
+        letter-spacing: -0.03em;
+        margin: 0;
+    }
+
+    .panel-subtitle {
+        font-size: 12.5px;
+        color: #6e6e73;
+        margin: 4px 0 0;
+    }
+
+    .inventario-local-card {
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .inventario-local-card label {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #1d1d1f;
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    .select-filter {
+        height: 36px;
+        padding: 0 32px 0 12px;
+        border: 1px solid #e5e5ea;
+        border-radius: 9px;
+        background: #fbfcfd;
+        font-family: inherit;
+        font-size: 12.5px;
+        color: #1d1d1f;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%236e6e73' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        min-width: 220px;
+    }
+
+    .select-filter:focus {
+        outline: none;
+        background-color: #ffffff;
+        border-color: #1d1d1f;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-tabla {
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .tabla-inventario {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+
+    .tabla-inventario thead th {
+        text-align: left;
+        padding: 14px 16px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        background: #fbfcfd;
+        border-bottom: 1px solid #e5e5ea;
+        white-space: nowrap;
+    }
+
+    .tabla-inventario tbody td {
+        padding: 14px 16px;
+        font-size: 13px;
+        color: #1d1d1f;
+        border-bottom: 1px solid #f0f0f2;
+        vertical-align: middle;
+    }
+
+    .tabla-inventario tbody tr:last-child td { border-bottom: none; }
+    .tabla-inventario tbody tr:hover { background: #fbfcfd; }
+
+    .prod-name {
+        font-weight: 600;
+        color: #1d1d1f;
+    }
+
+    .badge-categoria {
+        display: inline-block;
+        padding: 3px 10px;
+        background: #eaf4fb;
+        color: #3a8ab8;
+        border-radius: 6px;
+        font-size: 11.5px;
+        font-weight: 600;
+    }
+
+    .stock-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        background: #e8f9ee;
+        color: #1a8a3a;
+    }
+
+    .btn-tabla {
+        height: 30px;
+        padding: 0 12px;
+        background: #ffffff;
+        color: #1d1d1f;
+        border: 1px solid #e5e5ea;
+        border-radius: 7px;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .btn-tabla:hover {
+        background: #1d1d1f;
+        color: #ffffff;
+        border-color: #1d1d1f;
+    }
+
+    .empty-row {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6e6e73;
+        font-size: 13px;
+    }
+</style>
+
+<div class="container py-4">
+
+    <!-- HEADER -->
+    <div style="margin-bottom:20px;">
+        <h1 class="panel-title">Inventario de productos</h1>
+        <p class="panel-subtitle">Consulta y actualiza el stock por sucursal.</p>
     </div>
 
-    <!-- Selector de local -->
+    <!-- SELECTOR DE LOCAL -->
     <div class="inventario-local-card">
-        <label for="local" class="form-label fw-semibold">
-            Local:
-        </label>
-
-        <select id="local" class="form-select">
+        <label for="local">Local:</label>
+        <select id="local" class="select-filter">
             <option value="">Selecciona un local</option>
-
             @foreach (var local in Model)
             {
-                <option value="@local.Id">
-                    @local.Nombre
-                </option>
+                <option value="@local.Id">@local.Nombre</option>
             }
         </select>
     </div>
 
-    <!-- Tabla de productos -->
-    <div class="inventario-card">
-        <div class="table-responsive">
-            <table class="table inventario-table align-middle mb-0">
+    <!-- TABLA -->
+    <div class="card-tabla">
+        <div style="overflow-x:auto;">
+            <table class="tabla-inventario">
                 <thead>
                     <tr>
-                        <th>PRODUCTO</th>
-                        <th>CATEGORÍA</th>
-                        <th>STOCK ACTUAL</th>
-                        <th class="text-end">ACCIONES</th>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Stock actual</th>
+                        <th style="text-align:right;">Acciones</th>
                     </tr>
                 </thead>
-
                 <tbody id="productosInventario">
                     <tr>
-                        <td colspan="4"
-                            class="inventario-estado-vacio">
+                        <td colspan="4" class="empty-row">
                             Selecciona un local para ver sus productos.
                         </td>
                     </tr>
@@ -68,35 +222,63 @@
      id="modalModificarStock"
      tabindex="-1"
      aria-hidden="true">
-
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" id="contenidoModalStock">
-        </div>
+        <div class="modal-content" id="contenidoModalStock"></div>
     </div>
 </div>
 
+<!-- Contenedor de toasts -->
+<div class="toast-container" id="toastContainer"></div>
+
 @section Scripts {
     <script>
-
         function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, character => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    }[character]));
-}
+            return String(value ?? "").replace(/[&<>"']/g, character => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            }[character]));
+        }
 
+        // ============ TOAST APPLE ============
+        function mostrarToast(mensaje, tipo) {
+            const container = document.getElementById("toastContainer");
+            if (!container) return;
+
+            const toast = document.createElement("div");
+            toast.className = "toast-custom " + (tipo || "success");
+            const icono = tipo === "error" ? "!" : "✓";
+            const titulo = tipo === "error" ? "Error" : "Listo";
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icono}</div>
+                <div class="toast-content">
+                    <div class="toast-title">${titulo}</div>
+                    <div class="toast-msg">${escapeHtml(mensaje)}</div>
+                </div>
+                <div class="toast-progress"></div>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                toast.style.transform = "translateX(24px) scale(0.96)";
+                toast.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ============ CARGAR PRODUCTOS POR LOCAL ============
         document.getElementById("local").addEventListener("change", async function () {
-
             const idLocal = this.value;
             const tbody = document.getElementById("productosInventario");
 
             if (!idLocal) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-5">
+                        <td colspan="4" class="empty-row">
                             Selecciona un local para ver sus productos.
                         </td>
                     </tr>
@@ -106,9 +288,7 @@
 
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="4" class="text-center text-muted py-5">
-                        Cargando productos...
-                    </td>
+                    <td colspan="4" class="empty-row">Cargando productos...</td>
                 </tr>
             `;
 
@@ -117,228 +297,163 @@
                     `/Inventario/Productos/ProductosPorLocal?idLocal=${idLocal}`
                 );
 
-                if (!response.ok) {
-                    throw new Error("No se pudieron cargar los productos.");
-                }
+                if (!response.ok) throw new Error("No se pudieron cargar los productos.");
 
                 const productos = await response.json();
 
                 if (productos.length === 0) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-5">
+                            <td colspan="4" class="empty-row">
                                 No hay productos disponibles para este local.
                             </td>
                         </tr>
                     `;
                     return;
                 }
-                
 
-                    tbody.innerHTML = productos.map(producto => `
-                        <tr>
-                            <td>
-                                <span class="producto-nombre">${escapeHtml(producto.nombre)}</span>
-                            </td>
-                            <td>
-                                <span class="categoria-badge">
-                                    ${escapeHtml(producto.categoria || "-")}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="stock-badge">${producto.stock} unid.</span>
-                            </td>
-                            <td class="text-end">
-                                <button type="button"
-                                        class="btn-modificar-stock"
-                                        data-id-local="${idLocal}"
-                                        data-id-producto="${producto.id}">
-                                    <i class="bi bi-pencil-square me-1"></i>
-                                    Modificar cantidad
-                                </button>
-                            </td>
-                        </tr>
-                    `).join("");
+                tbody.innerHTML = productos.map(producto => `
+                    <tr>
+                        <td><span class="prod-name">${escapeHtml(producto.nombre)}</span></td>
+                        <td><span class="badge-categoria">${escapeHtml(producto.categoria || "-")}</span></td>
+                        <td><span class="stock-pill">${producto.stock} unid.</span></td>
+                        <td style="text-align:right;">
+                            <button type="button"
+                                    class="btn-tabla btn-modificar-stock"
+                                    data-id-local="${idLocal}"
+                                    data-id-producto="${producto.id}">
+                                <i class="bi bi-pencil-square"></i> Modificar cantidad
+                            </button>
+                        </td>
+                    </tr>
+                `).join("");
 
             } catch (error) {
                 console.error("Error al cargar productos:", error);
-
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="4" class="text-center text-danger py-5">
+                        <td colspan="4" class="empty-row" style="color:#ff3b30;">
                             Ocurrió un error al cargar los productos.
-                            Revisa la consola del navegador.
                         </td>
                     </tr>
                 `;
             }
         });
+
+        // ============ ABRIR MODAL MODIFICAR ============
         document.addEventListener("click", async function (event) {
+            const boton = event.target.closest(".btn-modificar-stock");
+            if (!boton) return;
 
-    const boton = event.target.closest(".btn-modificar-stock");
+            const idLocal = boton.dataset.idLocal;
+            const idProducto = boton.dataset.idProducto;
 
-    if (!boton) {
-        return;
-    }
-
-    const idLocal = boton.dataset.idLocal;
-    const idProducto = boton.dataset.idProducto;
-
-    try {
-        const response = await fetch(
-            `/Inventario/Productos/Modificar/${idLocal}/${idProducto}`
-        );
-
-        if (!response.ok) {
-            throw new Error("No se pudo cargar la ventana.");
-        }
-
-        const contenido = await response.text();
-
-        document.getElementById("contenidoModalStock").innerHTML = contenido;
-
-        const modalElement = document.getElementById("modalModificarStock");
-        const modal = new bootstrap.Modal(modalElement);
-
-        modal.show();
-
-    } catch (error) {
-        alert("No se pudo cargar la ventana de modificación.");
-    }
-});
-
-
-document.addEventListener("change", function (event) {
-
-    if (event.target.id !== "accionAumentar" &&
-        event.target.id !== "accionDescontar") {
-        return;
-    }
-
-    const accion = event.target.value;
-    const motivo = document.getElementById("motivo");
-
-    if (!motivo) {
-        return;
-    }
-
-    const motivos = {
-        Aumentar: [
-            "Producción",
-            "Devolución (de cliente)",
-            "Ajuste"
-        ],
-        Descontar: [
-            "Producto dañado/Merma",
-            "Pérdida",
-            "Ajuste"
-        ]
-    };
-
-    motivo.innerHTML = "";
-
-    motivos[accion].forEach(function (nombreMotivo) {
-
-        const option = document.createElement("option");
-
-        option.value = nombreMotivo;
-        option.textContent = nombreMotivo;
-
-        motivo.appendChild(option);
-    });
-
-    motivo.selectedIndex = 0;
-});
-document.addEventListener("submit", async function (event) {
-
-    if (event.target.id !== "formModificarStock") {
-        return;
-    }
-
-    event.preventDefault();
-
-    const form = event.target;
-    const botonGuardar = document.getElementById("btnGuardarStock");
-
-    botonGuardar.disabled = true;
-    botonGuardar.textContent = "Guardando...";
-
-    try {
-        const formData = new FormData(form);
-
-        const response = await fetch(
-            "/Inventario/Productos/Modificar",
-            {
-                method: "POST",
-                headers: {
-                    "X-Requested-With": "XMLHttpRequest"
-                },
-                body: formData
-            }
-        );
-
-        const contentType = response.headers.get("content-type") || "";
-
-        if (contentType.includes("application/json")) {
-            const resultado = await response.json();
-
-            if (!response.ok || !resultado.ok) {
-                throw new Error(
-                    resultado.mensaje || "No se pudo guardar el stock."
+            try {
+                const response = await fetch(
+                    `/Inventario/Productos/Modificar/${idLocal}/${idProducto}`
                 );
+
+                if (!response.ok) throw new Error("No se pudo cargar la ventana.");
+
+                const contenido = await response.text();
+                document.getElementById("contenidoModalStock").innerHTML = contenido;
+
+                const modalElement = document.getElementById("modalModificarStock");
+                const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                modal.show();
+
+            } catch (error) {
+                mostrarToast("No se pudo cargar la ventana de modificación.", "error");
+            }
+        });
+
+        // ============ CAMBIO DE ACCIÓN (motivos dinámicos) ============
+        document.addEventListener("change", function (event) {
+            if (event.target.id !== "accionAumentar" &&
+                event.target.id !== "accionDescontar") {
+                return;
             }
 
-            const modalElement = document.getElementById("modalModificarStock");
-            bootstrap.Modal.getInstance(modalElement)?.hide();
+            const accion = event.target.value;
+            const motivo = document.getElementById("motivo");
+            if (!motivo) return;
 
-            // Mostrar notificación de éxito.
-            const mensajeExito = document.createElement("div");
+            const motivos = {
+                Aumentar: ["Producción", "Devolución (de cliente)", "Ajuste"],
+                Descontar: ["Producto dañado/Merma", "Pérdida", "Ajuste"]
+            };
 
-            mensajeExito.className =
-                "alert alert-success position-fixed top-0 start-50 translate-middle-x mt-3 shadow";
+            motivo.innerHTML = "";
+            motivos[accion].forEach(function (nombreMotivo) {
+                const option = document.createElement("option");
+                option.value = nombreMotivo;
+                option.textContent = nombreMotivo;
+                motivo.appendChild(option);
+            });
+            motivo.selectedIndex = 0;
+        });
 
-            mensajeExito.style.zIndex = "9999";
+        // ============ SUBMIT DEL FORMULARIO ============
+        document.addEventListener("submit", async function (event) {
+            if (event.target.id !== "formModificarStock") return;
 
-            mensajeExito.innerHTML = `
-                <strong>✓ GUARDADO EXITOSAMENTE</strong>
-                <div class="small">
-                    La cantidad del producto se actualizó correctamente.
-                </div>
-            `;
+            event.preventDefault();
 
-            document.body.appendChild(mensajeExito);
+            const form = event.target;
+            const botonGuardar = document.getElementById("btnGuardarStock");
 
-            // Actualizar el listado del local seleccionado.
-            document.getElementById("local")
-                .dispatchEvent(new Event("change"));
+            botonGuardar.disabled = true;
+            botonGuardar.textContent = "Guardando...";
 
-            setTimeout(function () {
-                mensajeExito.remove();
-            }, 3000);
+            try {
+                const formData = new FormData(form);
 
-            return;
-        }
+                const response = await fetch("/Inventario/Productos/Modificar", {
+                    method: "POST",
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    body: formData
+                });
 
-        // Si hay errores de validación, conservar la ventana y mostrar los mensajes.
-        const contenido = await response.text();
+                const contentType = response.headers.get("content-type") || "";
 
-        if (!response.ok) {
-            throw new Error("No se pudo procesar la modificación.");
-        }
+                // Respuesta JSON → éxito
+                if (contentType.includes("application/json")) {
+                    const resultado = await response.json();
 
-        document.getElementById("contenidoModalStock").innerHTML = contenido;
+                    if (!response.ok || !resultado.ok) {
+                        throw new Error(resultado.mensaje || "No se pudo guardar el stock.");
+                    }
 
-    } catch (error) {
-        alert(error.message || "Ocurrió un error al guardar el stock.");
+                    const modalElement = document.getElementById("modalModificarStock");
+                    bootstrap.Modal.getInstance(modalElement)?.hide();
 
-    } finally {
-        const botonActual = document.getElementById("btnGuardarStock");
+                    // ✅ TOAST APPLE
+                    mostrarToast("GUARDADO EXITOSAMENTE", "success");
 
-        if (botonActual) {
-            botonActual.disabled = false;
-            botonActual.textContent = "Guardar";
-        }
-    }
-});
+                    // Recargar el listado del local seleccionado
+                    document.getElementById("local").dispatchEvent(new Event("change"));
+                    return;
+                }
+
+                // Respuesta HTML → errores de validación
+                const contenido = await response.text();
+
+                if (!response.ok) {
+                    throw new Error("No se pudo procesar la modificación.");
+                }
+
+                document.getElementById("contenidoModalStock").innerHTML = contenido;
+
+            } catch (error) {
+                mostrarToast(error.message || "Ocurrió un error al guardar el stock.", "error");
+
+            } finally {
+                const botonActual = document.getElementById("btnGuardarStock");
+                if (botonActual) {
+                    botonActual.disabled = false;
+                    botonActual.textContent = "Guardar";
+                }
+            }
+        });
     </script>
 }
