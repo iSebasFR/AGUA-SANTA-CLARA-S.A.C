@@ -718,7 +718,7 @@
                                                     Registrar Incidencia
                                                 </button>
                                             }
-                                            else if (pedido.Estado == "Entregado")
+                                            else if (pedido.Estado == "Entregado" || pedido.Estado == "Pago Parcial")
                                             {
                                                 <button type="button"
                                                         class="btn-tabla pedido-cobrar-pago"
@@ -737,28 +737,28 @@
                                                             }))">
                                                     Cobrar pago
                                                 </button>
-                                            }
-                                            else if (pedido.Estado == "Pago Parcial")
-                                            {
-                                                <button type="button"
-                                                        class="btn-tabla pedido-registrar-deuda"
-                                                        data-pedido-id="@pedido.Id"
-                                                        data-clientes="@System.Text.Json.JsonSerializer.Serialize(pedido.Clientes
-                                                            .Where(pc => pc.EstadoRegistro)
-                                                            .GroupBy(pc => new { pc.IdCliente, pc.Cliente.Nombre })
-                                                            .Select(grupo => new
-                                                            {
-                                                                idCliente = grupo.Key.IdCliente,
-                                                                nombre = grupo.Key.Nombre,
-                                                                montoPendiente = grupo.Sum(pc => pc.Subtotal) -
-                                                                    (Model.MontosPagadosPorPedidoCliente
-                                                                        .GetValueOrDefault(pedido.Id)?
-                                                                        .GetValueOrDefault(grupo.Key.IdCliente) ?? 0m)
-                                                            })
-                                                            .Where(cliente => cliente.montoPendiente > 0)
-                                                            )">
-                                                    Registrar deuda
-                                                </button>
+                                                @if (pedido.Estado == "Pago Parcial")
+                                                {
+                                                    <button type="button"
+                                                            class="btn-tabla pedido-registrar-deuda"
+                                                            data-pedido-id="@pedido.Id"
+                                                            data-clientes="@System.Text.Json.JsonSerializer.Serialize(pedido.Clientes
+                                                                .Where(pc => pc.EstadoRegistro)
+                                                                .GroupBy(pc => new { pc.IdCliente, pc.Cliente.Nombre })
+                                                                .Select(grupo => new
+                                                                {
+                                                                    idCliente = grupo.Key.IdCliente,
+                                                                    nombre = grupo.Key.Nombre,
+                                                                    montoPendiente = grupo.Sum(pc => pc.Subtotal) -
+                                                                        (Model.MontosPagadosPorPedidoCliente
+                                                                            .GetValueOrDefault(pedido.Id)?
+                                                                            .GetValueOrDefault(grupo.Key.IdCliente) ?? 0m)
+                                                                })
+                                                                .Where(cliente => cliente.montoPendiente > 0)
+                                                                )">
+                                                        Registrar deuda
+                                                    </button>
+                                                }
                                             }
                                             else if (pedido.Estado == "Con Incidencia")
                                             {

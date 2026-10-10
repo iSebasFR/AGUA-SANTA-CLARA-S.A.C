@@ -478,7 +478,7 @@ public class PedidoServiceTests
             Estado = EstadosDeuda.Pendiente
         };
         db.Deudas.Add(deuda);
-        cliente.DeudaTotal = 14m;
+        cliente.DeudaTotal = 0m;
         await db.SaveChangesAsync();
 
         var fechaVencimiento = new DateTime(2026, 12, 15);

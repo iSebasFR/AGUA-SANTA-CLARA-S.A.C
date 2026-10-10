@@ -154,6 +154,10 @@
                         <strong>@userName</strong>
                         <span>@roleName</span>
                     </div>
+                    @if (User.IsInRole("Vendedora"))
+                    {
+                        @await Component.InvokeAsync("NotificacionesDeudas")
+                    }
                     <form asp-controller="Account" asp-action="Logout" method="post" class="sidebar-logout">
                         <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión">
                             <i class="bi bi-box-arrow-right"></i>

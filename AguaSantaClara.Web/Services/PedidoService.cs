@@ -313,6 +313,23 @@ public class PedidoService : IPedidoService
         deuda.FechaVencimiento = modelo.FechaVencimiento.GetValueOrDefault().Date;
         deuda.Estado = EstadosDeuda.Pendiente;
 
+        var deudasActivasCliente = await _context.Deudas
+            .Where(d => d.EstadoRegistro
+                && d.IdCliente == modelo.IdCliente
+                && d.Estado != EstadosDeuda.Pagada)
+            .ToListAsync();
+        var montosPagadosPorPedido = await _context.Pagos
+            .Where(p => p.EstadoRegistro
+                && p.IdCliente == modelo.IdCliente
+                && deudasActivasCliente.Select(d => d.IdPedido).Contains(p.IdPedido))
+            .GroupBy(p => p.IdPedido)
+            .Select(grupo => new { IdPedido = grupo.Key, Monto = grupo.Sum(p => p.Monto) })
+            .ToDictionaryAsync(grupo => grupo.IdPedido, grupo => grupo.Monto);
+        cliente.DeudaTotal = deudasActivasCliente.Sum(deudaActiva => Math.Max(
+            0m,
+            deudaActiva.Monto + deudaActiva.MontoPagadoAlRegistrar
+                - montosPagadosPorPedido.GetValueOrDefault(deudaActiva.IdPedido)));
+
         await _context.SaveChangesAsync();
         resultado.Mensaje = "Deuda registrada correctamente.";
         return resultado;
