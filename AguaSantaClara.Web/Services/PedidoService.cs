@@ -288,6 +288,12 @@ public class PedidoService : IPedidoService
 
         var deuda = await _context.Deudas
             .FirstOrDefaultAsync(d => d.EstadoRegistro && d.IdPedido == idPedido && d.IdCliente == modelo.IdCliente);
+        if (deuda?.RegistradaFormalmente == true)
+        {
+            resultado.Errores.Add(new ErrorPedido("deuda", "La deuda de este cliente ya fue registrada para el pedido."));
+            return resultado;
+        }
+
         var cliente = await _context.Clientes
             .FirstOrDefaultAsync(c => c.Id == modelo.IdCliente && c.EstadoRegistro);
         if (cliente == null)
@@ -311,6 +317,7 @@ public class PedidoService : IPedidoService
         deuda.Monto = modelo.Monto;
         deuda.MontoPagadoAlRegistrar = montoPagado;
         deuda.FechaVencimiento = modelo.FechaVencimiento.GetValueOrDefault().Date;
+        deuda.RegistradaFormalmente = true;
         deuda.Estado = EstadosDeuda.Pendiente;
 
         var deudasActivasCliente = await _context.Deudas

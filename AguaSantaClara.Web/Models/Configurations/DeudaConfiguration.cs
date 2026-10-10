@@ -16,6 +16,7 @@ public class DeudaConfiguration : IEntityTypeConfiguration<Deuda>
         builder.Property(d => d.Monto).HasColumnName("monto").HasPrecision(12, 2);
         builder.Property(d => d.MontoPagadoAlRegistrar).HasColumnName("monto_pagado_al_registrar").HasPrecision(12, 2);
         builder.Property(d => d.FechaVencimiento).HasColumnName("fecha_vencimiento").HasColumnType("date");
+        builder.Property(d => d.RegistradaFormalmente).HasColumnName("registrada_formalmente");
         builder.Property(d => d.Estado).HasColumnName("estado").HasMaxLength(20);
         builder.Property(d => d.EstadoRegistro).HasColumnName("estado_registro");
         builder.Property(d => d.FechaCreacion).HasColumnName("fecha_creacion");

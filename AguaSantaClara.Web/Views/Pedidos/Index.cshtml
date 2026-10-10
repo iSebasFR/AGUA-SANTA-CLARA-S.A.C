@@ -194,6 +194,8 @@
     .status-badge.pendiente { background: #fff7e6; color: #b8860b; }
     .status-badge.enviado { background: #eaf4fb; color: #3a8ab8; }
     .status-badge.entregado { background: #e8f9ee; color: #1a8a3a; }
+    .status-badge.pago-parcial { background: #f1e8fb; color: #7e45b5; }
+    .status-badge.pagado { background: #eaf4fb; color: #2364a0; }
 
     .acciones-tabla {
         display: inline-flex;
@@ -645,6 +647,8 @@
                                 "Pendiente" => "pendiente",
                                 "Enviado" => "enviado",
                                 "Entregado" => "entregado",
+                                "Pago Parcial" => "pago-parcial",
+                                "Pagado" => "pagado",
                                 _ => ""
                             };
 
@@ -739,25 +743,33 @@
                                                 </button>
                                                 @if (pedido.Estado == "Pago Parcial")
                                                 {
-                                                    <button type="button"
-                                                            class="btn-tabla pedido-registrar-deuda"
-                                                            data-pedido-id="@pedido.Id"
-                                                            data-clientes="@System.Text.Json.JsonSerializer.Serialize(pedido.Clientes
-                                                                .Where(pc => pc.EstadoRegistro)
-                                                                .GroupBy(pc => new { pc.IdCliente, pc.Cliente.Nombre })
-                                                                .Select(grupo => new
-                                                                {
-                                                                    idCliente = grupo.Key.IdCliente,
-                                                                    nombre = grupo.Key.Nombre,
-                                                                    montoPendiente = grupo.Sum(pc => pc.Subtotal) -
-                                                                        (Model.MontosPagadosPorPedidoCliente
-                                                                            .GetValueOrDefault(pedido.Id)?
-                                                                            .GetValueOrDefault(grupo.Key.IdCliente) ?? 0m)
-                                                                })
-                                                                .Where(cliente => cliente.montoPendiente > 0)
-                                                                )">
-                                                        Registrar deuda
-                                                    </button>
+                                                    var clientesSinDeudaRegistrada = pedido.Clientes
+                                                        .Where(pc => pc.EstadoRegistro)
+                                                        .GroupBy(pc => new { pc.IdCliente, pc.Cliente.Nombre })
+                                                        .Select(grupo => new
+                                                        {
+                                                            idCliente = grupo.Key.IdCliente,
+                                                            nombre = grupo.Key.Nombre,
+                                                            montoPendiente = grupo.Sum(pc => pc.Subtotal) -
+                                                                (Model.MontosPagadosPorPedidoCliente
+                                                                    .GetValueOrDefault(pedido.Id)?
+                                                                    .GetValueOrDefault(grupo.Key.IdCliente) ?? 0m)
+                                                        })
+                                                        .Where(cliente => cliente.montoPendiente > 0
+                                                            && Model.ClientesConDeudaRegistradaPorPedido
+                                                                .GetValueOrDefault(pedido.Id)?
+                                                                .Contains(cliente.idCliente) != true)
+                                                        .ToList();
+
+                                                    if (clientesSinDeudaRegistrada.Count > 0)
+                                                    {
+                                                        <button type="button"
+                                                                class="btn-tabla pedido-registrar-deuda"
+                                                                data-pedido-id="@pedido.Id"
+                                                                data-clientes="@System.Text.Json.JsonSerializer.Serialize(clientesSinDeudaRegistrada)">
+                                                            Registrar deuda
+                                                        </button>
+                                                    }
                                                 }
                                             }
                                             else if (pedido.Estado == "Con Incidencia")

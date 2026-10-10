@@ -132,6 +132,18 @@ public class PedidosController : Controller
                 grupo => grupo.Key,
                 grupo => grupo.ToDictionary(p => p.IdCliente, p => p.Monto));
 
+        var deudasRegistradas = await _context.Deudas
+            .Where(deuda => deuda.EstadoRegistro
+                && deuda.RegistradaFormalmente
+                && idsPedidos.Contains(deuda.IdPedido))
+            .Select(deuda => new { deuda.IdPedido, deuda.IdCliente })
+            .ToListAsync();
+        modelo.ClientesConDeudaRegistradaPorPedido = deudasRegistradas
+            .GroupBy(deuda => deuda.IdPedido)
+            .ToDictionary(
+                grupo => grupo.Key,
+                grupo => grupo.Select(deuda => deuda.IdCliente).ToHashSet());
+
         return View(modelo);
     }
 

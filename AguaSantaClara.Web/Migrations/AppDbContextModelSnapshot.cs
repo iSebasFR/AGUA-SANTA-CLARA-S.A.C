@@ -206,6 +206,10 @@ namespace AguaSantaClara.Web.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id_pedido");
 
+                    b.Property<bool>("RegistradaFormalmente")
+                        .HasColumnType("boolean")
+                        .HasColumnName("registrada_formalmente");
+
                     b.Property<decimal>("Monto")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)")

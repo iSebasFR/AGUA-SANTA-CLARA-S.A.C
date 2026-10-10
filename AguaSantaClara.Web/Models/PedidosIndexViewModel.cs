@@ -12,6 +12,7 @@ public class PedidosIndexViewModel
     public List<Cliente> ClientesFiltro { get; set; } = new();
     public Dictionary<long, string> MotivosIncidenciaPorPedido { get; set; } = new();
     public Dictionary<long, Dictionary<long, decimal>> MontosPagadosPorPedidoCliente { get; set; } = new();
+    public Dictionary<long, HashSet<long>> ClientesConDeudaRegistradaPorPedido { get; set; } = new();
     public string? EstadoFiltro { get; set; }
     public long? IdClienteFiltro { get; set; }
     public long? IdRepartidorFiltro { get; set; }

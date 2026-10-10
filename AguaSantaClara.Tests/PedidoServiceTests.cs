@@ -494,7 +494,18 @@ public class PedidoServiceTests
         Assert.Equal(14m, deuda.Monto);
         Assert.Equal(6m, deuda.MontoPagadoAlRegistrar);
         Assert.Equal(fechaVencimiento, deuda.FechaVencimiento);
+        Assert.True(deuda.RegistradaFormalmente);
         Assert.Equal(14m, cliente.DeudaTotal);
+
+        var deudaDuplicada = await servicio.RegistrarDeudaAsync(pedido.Id, new RegistrarDeudaViewModel
+        {
+            IdCliente = cliente.Id,
+            Monto = 14m,
+            FechaVencimiento = fechaVencimiento
+        });
+        Assert.False(deudaDuplicada.Ok);
+        Assert.Contains(deudaDuplicada.Errores, error => error.Campo == "deuda");
+        Assert.Equal(1, await db.Deudas.CountAsync());
 
         var pagoFinal = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
         {

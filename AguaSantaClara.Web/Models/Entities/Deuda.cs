@@ -17,6 +17,7 @@ public class Deuda
     public decimal Monto { get; set; }
     public decimal MontoPagadoAlRegistrar { get; set; }
     public DateTime FechaVencimiento { get; set; }
+    public bool RegistradaFormalmente { get; set; }
     public string Estado { get; set; } = EstadosDeuda.Pendiente;
     public bool EstadoRegistro { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
