@@ -260,6 +260,18 @@ body.app-body {
   border-top: 1px solid var(--border);
 }
 
+.notification-widget { flex: 0 0 auto; }
+
+.notification-widget .icon-button { color: var(--text-secondary); }
+
+.notification-menu {
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+}
+
+.notification-item:last-child { border-bottom: 0 !important; }
+
 .account-copy {
   display: flex;
   min-width: 0;

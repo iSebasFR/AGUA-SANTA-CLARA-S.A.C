@@ -1,0 +1,5 @@
+@baseUrl = http://localhost:5135
+
+### Consultar notificaciones efímeras según el rol autenticado (Administradora o Vendedora)
+GET {{baseUrl}}/api/notificaciones
+Accept: application/json

@@ -1,4 +1,5 @@
 using AguaSantaClara.Web.Data;
+using AguaSantaClara.Web.Models.Alertas;
 using AguaSantaClara.Web.Models.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +42,16 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 });
 
 builder.Services.AddScoped<IPedidoService, PedidoService>();
-builder.Services.AddScoped<DeudaNotificacionService>();
+builder.Services.AddScoped<IAlertasService, AlertasService>();
+builder.Services.AddOptions<AlertasOptions>()
+    .BindConfiguration(AlertasOptions.SectionName)
+    .Validate(options => options.HoraEjecucion is >= 0 and <= 23, "Alertas:HoraEjecucion debe estar entre 0 y 23.")
+    .Validate(options => options.MinutoEjecucion is >= 0 and <= 59, "Alertas:MinutoEjecucion debe estar entre 0 y 59.")
+    .Validate(options => options.UtcOffsetHoras is >= -12 and <= 14, "Alertas:UtcOffsetHoras debe estar entre -12 y 14.")
+    .Validate(options => options.FrecuenciaDias > 0, "Alertas:FrecuenciaDias debe ser mayor que cero.")
+    .Validate(options => options.IntervaloRevisionSegundos > 0, "Alertas:IntervaloRevisionSegundos debe ser mayor que cero.")
+    .ValidateOnStart();
+builder.Services.AddHostedService<AlertasBackgroundService>();
 
 builder.Services.AddControllersWithViews();
 
@@ -102,6 +112,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapControllers();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");
