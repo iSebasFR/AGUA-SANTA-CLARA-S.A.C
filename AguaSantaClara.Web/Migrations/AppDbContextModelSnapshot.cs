@@ -211,6 +211,11 @@ namespace AguaSantaClara.Web.Migrations
                         .HasColumnType("numeric(12,2)")
                         .HasColumnName("monto");
 
+                    b.Property<decimal>("MontoPagadoAlRegistrar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("monto_pagado_al_registrar");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Estado")
@@ -227,6 +232,8 @@ namespace AguaSantaClara.Web.Migrations
                     b.ToTable("deuda", null, t =>
                         {
                             t.HasCheckConstraint("chk_deuda_estado", "estado IN ('Pendiente', 'Pagada', 'Vencida')");
+
+                            t.HasCheckConstraint("chk_deuda_monto_pagado_no_negativo", "monto_pagado_al_registrar >= 0");
 
                             t.HasCheckConstraint("chk_deuda_monto_positivo", "monto > 0");
                         });

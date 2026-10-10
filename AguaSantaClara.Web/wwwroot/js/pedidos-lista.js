@@ -24,6 +24,112 @@
 
     let repartidorSeleccionado = null;
 
+    // ============ REGISTRAR DEUDA ============
+    const registrarDeudaModal = $("registrarDeudaModal");
+    const registrarDeudaPedido = $("registrarDeudaPedido");
+    const registrarDeudaIdPedido = $("registrarDeudaIdPedido");
+    const registrarDeudaIdCliente = $("registrarDeudaIdCliente");
+    const registrarDeudaMonto = $("registrarDeudaMonto");
+    const registrarDeudaFechaVencimiento = $("registrarDeudaFechaVencimiento");
+    const registrarDeudaError = $("registrarDeudaError");
+    const registrarDeudaGuardar = $("registrarDeudaGuardar");
+    const montoEnCentavos = valor => {
+        const coincidencia = String(valor).trim().match(/^(\d+)(?:[.,](\d{0,2}))?$/);
+        if (!coincidencia)
+            return null;
+
+        return Number(coincidencia[1]) * 100
+            + Number((coincidencia[2] ?? "").padEnd(2, "0"));
+    };
+    const actualizarFormularioDeuda = () => {
+        const montoPendiente = montoEnCentavos(
+            registrarDeudaIdCliente.selectedOptions[0]?.dataset.montoPendiente ?? "");
+        const monto = montoEnCentavos(registrarDeudaMonto.value);
+        registrarDeudaMonto.max = montoPendiente !== null
+            ? (montoPendiente / 100).toFixed(2)
+            : "";
+        registrarDeudaGuardar.disabled = montoPendiente === null
+            || monto === null
+            || monto <= 0
+            || monto !== montoPendiente
+            || !registrarDeudaMonto.validity.valid
+            || !registrarDeudaFechaVencimiento.value;
+    };
+
+    document.querySelectorAll(".pedido-registrar-deuda").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const clientes = JSON.parse(btn.dataset.clientes);
+            registrarDeudaIdPedido.value = btn.dataset.pedidoId;
+            registrarDeudaPedido.textContent = `Pedido N° ${btn.dataset.pedidoId}`;
+            registrarDeudaIdCliente.replaceChildren();
+            registrarDeudaError.classList.add("d-none");
+            registrarDeudaMonto.value = "";
+            registrarDeudaFechaVencimiento.value = "";
+
+            clientes.forEach(cliente => {
+                const opcion = document.createElement("option");
+                opcion.value = cliente.idCliente;
+                opcion.textContent = cliente.nombre;
+                opcion.dataset.montoPendiente = Number(cliente.montoPendiente).toFixed(2);
+                registrarDeudaIdCliente.append(opcion);
+            });
+
+            registrarDeudaMonto.value = registrarDeudaIdCliente.selectedOptions[0]?.dataset.montoPendiente ?? "";
+            actualizarFormularioDeuda();
+            bootstrap.Modal.getOrCreateInstance(registrarDeudaModal).show();
+        });
+    });
+    registrarDeudaIdCliente.addEventListener("change", () => {
+        const montoPendiente = registrarDeudaIdCliente.selectedOptions[0]?.dataset.montoPendiente;
+        registrarDeudaMonto.value = montoPendiente ?? "";
+        actualizarFormularioDeuda();
+    });
+    ["input", "change"].forEach(evento => {
+        registrarDeudaMonto.addEventListener(evento, actualizarFormularioDeuda);
+        registrarDeudaFechaVencimiento.addEventListener(evento, actualizarFormularioDeuda);
+    });
+    registrarDeudaGuardar.addEventListener("click", async () => {
+        if (registrarDeudaGuardar.disabled)
+            return;
+
+        registrarDeudaGuardar.disabled = true;
+        registrarDeudaError.classList.add("d-none");
+        try {
+            const respuesta = await fetch(
+                `/Pedidos/RegistrarDeuda?idPedido=${encodeURIComponent(registrarDeudaIdPedido.value)}`,
+                {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": token
+                    },
+                    body: JSON.stringify({
+                        idCliente: Number(registrarDeudaIdCliente.value),
+                        monto: Number(registrarDeudaMonto.value),
+                        fechaVencimiento: registrarDeudaFechaVencimiento.value
+                    })
+                });
+            const datos = await respuesta.json();
+            if (!respuesta.ok) {
+                const mensaje = datos?.errores?.map(error => error.mensaje).filter(Boolean).join(" ")
+                    || `No se pudo registrar la deuda (HTTP ${respuesta.status}).`;
+                registrarDeudaError.textContent = mensaje;
+                registrarDeudaError.classList.remove("d-none");
+                registrarDeudaGuardar.disabled = false;
+                return;
+            }
+
+            sessionStorage.setItem("pedidoToast", datos?.mensaje || "Deuda registrada correctamente.");
+            bootstrap.Modal.getOrCreateInstance(registrarDeudaModal).hide();
+            window.location.reload();
+        } catch {
+            registrarDeudaError.textContent = "Ocurrió un error al registrar la deuda. Inténtalo nuevamente.";
+            registrarDeudaError.classList.remove("d-none");
+            registrarDeudaGuardar.disabled = false;
+        }
+    });
+
     // ============ DETALLE DE COBRO ============
     const cobrarPagoModal = $("cobrarPagoModal");
     const cobrarPagoTitulo = $("cobrarPagoTitulo");

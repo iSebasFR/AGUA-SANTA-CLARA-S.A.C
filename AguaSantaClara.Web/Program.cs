@@ -41,6 +41,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 });
 
 builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddScoped<DeudaNotificacionService>();
 
 builder.Services.AddControllersWithViews();
 

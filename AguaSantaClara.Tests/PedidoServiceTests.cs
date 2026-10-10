@@ -438,6 +438,130 @@ public class PedidoServiceTests
     }
 
     [Fact]
+    public async Task RegistrarDeudaAsync_RegistraSaldoPendienteSinDuplicarDeudaYPermitePagarloEnPartes()
+    {
+        var (db, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
+        var metodoPago = new MetodoPago { Nombre = "Efectivo" };
+        var pedido = new Pedido
+        {
+            Estado = EstadosPedido.PagoParcial,
+            Total = 20m,
+            Clientes =
+            {
+                new PedidoCliente
+                {
+                    Cliente = cliente,
+                    IdCliente = cliente.Id,
+                    Direccion = direccion,
+                    IdDireccion = direccion.Id,
+                    Subtotal = 20m
+                }
+            }
+        };
+        db.MetodosPago.Add(metodoPago);
+        db.Pedidos.Add(pedido);
+        await db.SaveChangesAsync();
+
+        db.Pagos.Add(new Pago
+        {
+            IdPedido = pedido.Id,
+            IdCliente = cliente.Id,
+            IdMetodoPago = metodoPago.Id,
+            Monto = 6m
+        });
+        var deuda = new Deuda
+        {
+            IdPedido = pedido.Id,
+            IdCliente = cliente.Id,
+            Monto = 20m,
+            FechaVencimiento = DateTime.UtcNow.Date,
+            Estado = EstadosDeuda.Pendiente
+        };
+        db.Deudas.Add(deuda);
+        cliente.DeudaTotal = 0m;
+        await db.SaveChangesAsync();
+
+        var fechaVencimiento = new DateTime(2026, 12, 15);
+        var resultado = await servicio.RegistrarDeudaAsync(pedido.Id, new RegistrarDeudaViewModel
+        {
+            IdCliente = cliente.Id,
+            Monto = 14m,
+            FechaVencimiento = fechaVencimiento
+        });
+
+        Assert.True(resultado.Ok);
+        Assert.Equal(1, await db.Deudas.CountAsync());
+        Assert.Equal(14m, deuda.Monto);
+        Assert.Equal(6m, deuda.MontoPagadoAlRegistrar);
+        Assert.Equal(fechaVencimiento, deuda.FechaVencimiento);
+        Assert.Equal(14m, cliente.DeudaTotal);
+
+        var pagoFinal = await servicio.RegistrarPagosAsync(pedido.Id, new RegistrarPagosPedidoViewModel
+        {
+            Pagos =
+            {
+                new PagoClientePedidoViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdMetodoPago = metodoPago.Id,
+                    Monto = 14m
+                }
+            }
+        });
+
+        Assert.True(pagoFinal.Ok);
+        Assert.Equal(EstadosDeuda.Pagada, deuda.Estado);
+        Assert.Equal(EstadosPedido.Pagado, pedido.Estado);
+        Assert.Equal(0m, cliente.DeudaTotal);
+    }
+
+    [Fact]
+    public async Task RegistrarDeudaAsync_ExigeMontoPositivoFechaYSaldoPendienteExacto()
+    {
+        var (db, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
+        var pedido = new Pedido
+        {
+            Estado = EstadosPedido.PagoParcial,
+            Total = 20m,
+            Clientes =
+            {
+                new PedidoCliente
+                {
+                    Cliente = cliente,
+                    IdCliente = cliente.Id,
+                    Direccion = direccion,
+                    IdDireccion = direccion.Id,
+                    Subtotal = 20m
+                }
+            }
+        };
+        db.Pedidos.Add(pedido);
+        await db.SaveChangesAsync();
+
+        var sinDatosValidos = await servicio.RegistrarDeudaAsync(pedido.Id, new RegistrarDeudaViewModel
+        {
+            IdCliente = cliente.Id,
+            Monto = 0m
+        });
+
+        Assert.False(sinDatosValidos.Ok);
+        Assert.Contains(sinDatosValidos.Errores, error => error.Campo == "monto");
+        Assert.Contains(sinDatosValidos.Errores, error => error.Campo == "fechaVencimiento");
+        Assert.Empty(await db.Deudas.ToListAsync());
+
+        var montoDistintoAlSaldo = await servicio.RegistrarDeudaAsync(pedido.Id, new RegistrarDeudaViewModel
+        {
+            IdCliente = cliente.Id,
+            Monto = 19m,
+            FechaVencimiento = new DateTime(2026, 12, 15)
+        });
+
+        Assert.False(montoDistintoAlSaldo.Ok);
+        Assert.Contains(montoDistintoAlSaldo.Errores, error => error.Campo == "monto");
+        Assert.Empty(await db.Deudas.ToListAsync());
+    }
+
+    [Fact]
     public void ModeloPedido_AceptaEstadosGeneradosPorElRegistroDePagos()
     {
         using var db = CrearContexto();

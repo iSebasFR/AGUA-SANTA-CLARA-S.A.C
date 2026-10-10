@@ -25,6 +25,13 @@ public class RegistrarPagosPedidoViewModel
     public List<PagoClientePedidoViewModel> Pagos { get; set; } = new();
 }
 
+public class RegistrarDeudaViewModel
+{
+    public long IdCliente { get; set; }
+    public decimal Monto { get; set; }
+    public DateTime? FechaVencimiento { get; set; }
+}
+
 public class PagoClientePedidoViewModel
 {
     public long IdCliente { get; set; }
