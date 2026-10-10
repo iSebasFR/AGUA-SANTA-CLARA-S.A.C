@@ -738,6 +738,22 @@
                                                     Cobrar pago
                                                 </button>
                                             }
+                                            else if (pedido.Estado == "Pago Parcial")
+                                            {
+                                                <button type="button"
+                                                        class="btn-tabla pedido-registrar-deuda"
+                                                        data-pedido-id="@pedido.Id"
+                                                        data-clientes="@System.Text.Json.JsonSerializer.Serialize(pedido.Clientes
+                                                            .Where(pc => pc.EstadoRegistro)
+                                                            .GroupBy(pc => new { pc.IdCliente, pc.Cliente.Nombre })
+                                                            .Select(grupo => new
+                                                            {
+                                                                idCliente = grupo.Key.IdCliente,
+                                                                nombre = grupo.Key.Nombre
+                                                            }))">
+                                                    Registrar deuda
+                                                </button>
+                                            }
                                             else if (pedido.Estado == "Con Incidencia")
                                             {
                                                 <button type="button"
@@ -802,6 +818,46 @@
                 </button>
                 <button type="button" id="cobrarPagoGuardar" class="btn-apple success">
                     Registrar pagos
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL REGISTRAR DEUDA -->
+<div class="modal fade" id="registrarDeudaModal" tabindex="-1" aria-labelledby="registrarDeudaTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="border-bottom:1px solid #e5e5ea;">
+                <div>
+                    <h5 class="modal-title" id="registrarDeudaTitulo" style="font-size:15px;font-weight:600;color:#1d1d1f;">
+                        Registrar deuda
+                    </h5>
+                    <p id="registrarDeudaPedido" style="font-size:12.5px;color:#6e6e73;margin:3px 0 0;"></p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:20px;">
+                <input type="hidden" id="registrarDeudaIdPedido" />
+                <div class="mb-3">
+                    <label for="registrarDeudaIdCliente" class="form-label">Cliente deudor</label>
+                    <select id="registrarDeudaIdCliente" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                    <label for="registrarDeudaMonto" class="form-label">Monto de la deuda</label>
+                    <input type="number" id="registrarDeudaMonto" class="form-control" step="0.01" />
+                </div>
+                <div>
+                    <label for="registrarDeudaFechaVencimiento" class="form-label">Fecha de vencimiento</label>
+                    <input type="date" id="registrarDeudaFechaVencimiento" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #e5e5ea;padding:14px 20px;">
+                <button type="button" class="btn-apple" style="background:#f2f2f4;color:#1d1d1f;box-shadow:none;" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" id="registrarDeudaGuardar" class="btn-apple success" disabled>
+                    Guardar
                 </button>
             </div>
         </div>

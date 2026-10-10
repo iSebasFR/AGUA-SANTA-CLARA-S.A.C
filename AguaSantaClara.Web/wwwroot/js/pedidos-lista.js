@@ -24,6 +24,29 @@
 
     let repartidorSeleccionado = null;
 
+    // ============ REGISTRAR DEUDA ============
+    const registrarDeudaModal = $("registrarDeudaModal");
+    const registrarDeudaPedido = $("registrarDeudaPedido");
+    const registrarDeudaIdPedido = $("registrarDeudaIdPedido");
+    const registrarDeudaIdCliente = $("registrarDeudaIdCliente");
+    document.querySelectorAll(".pedido-registrar-deuda").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const clientes = JSON.parse(btn.dataset.clientes);
+            registrarDeudaIdPedido.value = btn.dataset.pedidoId;
+            registrarDeudaPedido.textContent = `Pedido N° ${btn.dataset.pedidoId}`;
+            registrarDeudaIdCliente.replaceChildren();
+
+            clientes.forEach(cliente => {
+                const opcion = document.createElement("option");
+                opcion.value = cliente.idCliente;
+                opcion.textContent = cliente.nombre;
+                registrarDeudaIdCliente.append(opcion);
+            });
+
+            bootstrap.Modal.getOrCreateInstance(registrarDeudaModal).show();
+        });
+    });
+
     // ============ DETALLE DE COBRO ============
     const cobrarPagoModal = $("cobrarPagoModal");
     const cobrarPagoTitulo = $("cobrarPagoTitulo");
