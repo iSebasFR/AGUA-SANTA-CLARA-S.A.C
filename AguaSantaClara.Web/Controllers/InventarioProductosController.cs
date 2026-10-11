@@ -1,5 +1,6 @@
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models;
+using AguaSantaClara.Web.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -84,7 +85,7 @@ public class InventarioProductosController : Controller
         if (productoLocal == null)
             return NotFound();
 
-        var model = new AguaSantaClara.Web.Models.ModificarStockProductoViewModel
+        var model = new ModificarStockProductoViewModel
         {
             IdProducto = productoLocal.IdProducto,
             IdLocal = productoLocal.IdLocal,
@@ -186,6 +187,175 @@ public class InventarioProductosController : Controller
             mensaje = "GUARDADO EXITOSAMENTE",
             stockFinal = productoLocal.Stock,
             cambiosGuardados = cambios
+        });
+    }
+
+    // ==================== T23: MOSTRAR VENTANA BALANCEAR BIDONES ====================
+    [HttpGet("Balancear/{idLocal:long}/{idProducto:long}")]
+    public async Task<IActionResult> Balancear(long idLocal, long idProducto)
+    {
+        var productoLocal = await _context.ProductosLocal
+            .AsNoTracking()
+            .Include(pl => pl.Producto)
+            .FirstOrDefaultAsync(pl =>
+                pl.IdLocal == idLocal &&
+                pl.IdProducto == idProducto &&
+                pl.Estado &&
+                pl.EstadoRegistro &&
+                pl.Producto.Estado &&
+                pl.Producto.EstadoRegistro);
+
+        if (productoLocal == null)
+            return NotFound();
+
+        if (!string.Equals(productoLocal.Producto.Categoria, "Bidón", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { mensaje = "Solo se pueden balancear productos de categoría Bidón." });
+
+        var model = new BalancearBidonesViewModel
+        {
+            IdProducto = productoLocal.IdProducto,
+            IdLocal = productoLocal.IdLocal,
+            NombreProducto = productoLocal.Producto.Nombre,
+            StockActual = productoLocal.Stock,
+            TipoMovimiento = "Entrega",
+            AccionProduccion = "Aumentar",
+            Motivo = "Entrega a cliente"
+        };
+
+        return PartialView("_Balancear", model);
+    }
+
+    // ==================== T24: BUSCAR CLIENTES (auto-completado) ====================
+    [HttpGet("BuscarClientes")]
+    public async Task<IActionResult> BuscarClientes(string q, int limite = 8)
+    {
+        var valor = q?.Trim();
+        if (string.IsNullOrWhiteSpace(valor) || valor.Length < 2)
+            return Json(Array.Empty<object>());
+
+        var clientes = await _context.Clientes
+            .AsNoTracking()
+            .Where(c => c.Estado && c.EstadoRegistro)
+            .Where(c =>
+                EF.Functions.ILike(c.Nombre, $"%{valor}%") ||
+                EF.Functions.ILike(c.Telefono, $"%{valor}%") ||
+                (c.Dni != null && EF.Functions.ILike(c.Dni, $"%{valor}%")))
+            .OrderBy(c => c.Nombre)
+            .Take(Math.Clamp(limite, 1, 20))
+            .Select(c => new
+            {
+                id = c.Id,
+                nombre = c.Nombre,
+                telefono = c.Telefono,
+                dni = c.Dni,
+                saldoBidones = c.SaldoBidones
+            })
+            .ToListAsync();
+
+        return Json(clientes);
+    }
+
+    // ==================== T25: GUARDAR BALANCE ====================
+    [HttpPost("Balancear")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Balancear(BalancearBidonesViewModel model)
+    {
+        // 1. Verificar productoLocal
+        var productoLocal = await _context.ProductosLocal
+            .Include(pl => pl.Producto)
+            .FirstOrDefaultAsync(pl =>
+                pl.IdLocal == model.IdLocal &&
+                pl.IdProducto == model.IdProducto &&
+                pl.Estado &&
+                pl.EstadoRegistro);
+
+        if (productoLocal == null)
+            return NotFound();
+
+        if (!string.Equals(productoLocal.Producto.Categoria, "Bidón", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { ok = false, mensaje = "Solo se pueden balancear productos de categoría Bidón." });
+
+        // ============ MODO PRODUCCIÓN (Aumentar / Descontar) ============
+        if (string.Equals(model.TipoMovimiento, "Produccion", StringComparison.OrdinalIgnoreCase))
+        {
+            var cantidad = model.CantidadProduccion ?? 0;
+            var accion = model.AccionProduccion ?? "Aumentar";
+
+            if (cantidad <= 0)
+                return BadRequest(new { ok = false, mensaje = "Ingresa una cantidad mayor a cero." });
+
+            if (accion == "Aumentar")
+            {
+                productoLocal.Stock += cantidad;
+            }
+            else if (accion == "Descontar")
+            {
+                if (cantidad > productoLocal.Stock)
+                    return BadRequest(new { ok = false, mensaje = $"No se puede descontar más del stock disponible ({productoLocal.Stock} unid.)." });
+
+                productoLocal.Stock -= cantidad;
+            }
+            else
+            {
+                return BadRequest(new { ok = false, mensaje = "Acción de producción inválida." });
+            }
+
+            await _context.SaveChangesAsync();
+
+            var signo = accion == "Aumentar" ? "+" : "-";
+
+            return Json(new
+            {
+                ok = true,
+                mensaje = $"PRODUCCIÓN ACTUALIZADA ({signo}{cantidad} unid.)",
+                stockFinal = productoLocal.Stock
+            });
+        }
+
+        // ============ MODO ENTREGA (solo afecta saldo del cliente, no toca stock) ============
+        var cliente = await _context.Clientes
+            .FirstOrDefaultAsync(c => c.Id == model.IdCliente && c.Estado && c.EstadoRegistro);
+
+        if (cliente == null)
+            return BadRequest(new { ok = false, mensaje = "Seleccione un cliente válido." });
+
+        var entregados = model.BidonesLlenosEntregados ?? 0;
+        var devueltos = model.BidonesVaciosDevueltos ?? 0;
+
+        if (entregados < 0 || devueltos < 0)
+            return BadRequest(new { ok = false, mensaje = "Las cantidades no pueden ser negativas." });
+
+        if (entregados == 0 && devueltos == 0)
+            return BadRequest(new { ok = false, mensaje = "Ingresa al menos una cantidad mayor a cero." });
+
+        // Actualizar solo el saldo del cliente (sin tocar stock)
+        cliente.SaldoBidones += (entregados - devueltos);
+
+        // Registrar movimiento (sin tocar stock)
+        _context.MovimientosBidones.Add(new MovimientoBidones
+        {
+            IdCliente = cliente.Id,
+            BidonesEntregados = entregados,
+            BidonesDevueltos = devueltos,
+            Saldo = cliente.SaldoBidones,
+            FechaCreacion = DateTime.UtcNow,
+            EstadoRegistro = true
+        });
+
+        await _context.SaveChangesAsync();
+
+        var saldoTexto = cliente.SaldoBidones > 0
+            ? $"Pendiente de devolver: {cliente.SaldoBidones}"
+            : cliente.SaldoBidones < 0
+                ? $"Bidones a favor: {Math.Abs(cliente.SaldoBidones)}"
+                : "Sin bidones pendientes";
+
+        return Json(new
+        {
+            ok = true,
+            mensaje = "BALANCE GUARDADO CORRECTAMENTE",
+            saldoFinal = cliente.SaldoBidones,
+            saldoTexto
         });
     }
 }

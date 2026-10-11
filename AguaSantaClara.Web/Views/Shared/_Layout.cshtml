@@ -27,7 +27,7 @@
         {
             <aside class="app-sidebar" id="appSidebar" aria-label="Navegación principal">
 
-                <!-- ===== LOGO (sin ícono circular) ===== -->
+                <!-- ===== LOGO ===== -->
                 <div class="sidebar-brand-row">
                     <a asp-controller="Home" asp-action="Index" class="sidebar-brand">
                         <span class="sidebar-label">Agua Santa Clara</span>
@@ -81,10 +81,9 @@
                             </a>
                         </div>
 
+                        <!-- ✅ Repartidores eliminado para Administradora -->
+
                         <div class="sidebar-section-title sidebar-label">Operaciones</div>
-                        <a asp-controller="Repartidores" asp-action="Index" class="sidebar-link">
-                            <i class="bi bi-truck"></i><span class="sidebar-label">Repartidores</span>
-                        </a>
                         <a asp-controller="Pagos" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-cash-coin"></i><span class="sidebar-label">Pagos / Finanzas</span>
                         </a>
@@ -102,6 +101,14 @@
                         </a>
                         <a asp-controller="Pedidos" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-cart-check"></i><span class="sidebar-label">Pedidos</span>
+                        </a>
+
+                        <!-- ✅ Nuevos módulos para Vendedora -->
+                        <a asp-controller="Repartidores" asp-action="Index" class="sidebar-link">
+                            <i class="bi bi-truck"></i><span class="sidebar-label">Repartidores</span>
+                        </a>
+                        <a asp-controller="CierreCaja" asp-action="Index" class="sidebar-link">
+                            <i class="bi bi-cash-stack"></i><span class="sidebar-label">Cierre de Caja</span>
                         </a>
 
                         <!-- Inventario desplegable para Vendedora -->
@@ -132,7 +139,7 @@
                     }
                 </nav>
 
-                <!-- ===== CUENTA (sin ícono de avatar, sin notificaciones) ===== -->
+                <!-- ===== CUENTA ===== -->
                 <div class="sidebar-account">
                     <div class="account-copy sidebar-label">
                         <strong>@userName</strong>
