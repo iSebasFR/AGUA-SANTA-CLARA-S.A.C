@@ -6,7 +6,7 @@ namespace AguaSantaClara.Web.Data;
 
 public static class SeedData
 {
-    public static async Task InitializeAsync(IServiceProvider services)
+    public static async Task InitializeAsync(IServiceProvider services, IConfiguration configuration)
     {
         var roleManager = services.GetRequiredService<RoleManager<Rol>>();
         var userManager = services.GetRequiredService<UserManager<Usuario>>();
@@ -21,14 +21,14 @@ public static class SeedData
             new { Codigo = "GERENTE",       Nombre = "Gerente" }
         };
 
-        foreach (var r in roles)
+        foreach (var role in roles)
         {
-            if (!await roleManager.RoleExistsAsync(r.Nombre))
+            if (!await roleManager.RoleExistsAsync(role.Nombre))
             {
                 await roleManager.CreateAsync(new Rol
                 {
-                    Name = r.Nombre,
-                    Codigo = r.Codigo,
+                    Name = role.Nombre,
+                    Codigo = role.Codigo,
                     Estado = true,
                     EstadoRegistro = true,
                     FechaCreacion = DateTime.UtcNow
@@ -36,70 +36,44 @@ public static class SeedData
             }
         }
 
-        // ============================================================
-        // 2. USUARIOS
-        // ============================================================
-        var usuariosSeed = new[]
-        {
-            new { User = "Surabhi",  Nombre = "Surabhi",            Apellido = "Torrejon Alvites", Password = "Surabhi123",  Rol = "Vendedora",      Email = "surabhi@aguasantaclara.pe" },
-            new { User = "Kelly",    Nombre = "Kelly",              Apellido = "Yauri Leiva",      Password = "Kelly123",    Rol = "Vendedora",      Email = "kelly@aguasantaclara.pe" },
-            new { User = "Karina",   Nombre = "Karina Higinia",     Apellido = "Ramos Cadillo",    Password = "Karina123",   Rol = "Vendedora",      Email = "karina@aguasantaclara.pe" },
-            new { User = "Maryorie", Nombre = "Maryorie Titziana",  Apellido = "Alarcon Casihui",  Password = "Maryorie123", Rol = "Administradora", Email = "maryorie@aguasantaclara.pe" },
-            new { User = "Renzo",    Nombre = "Renzo",              Apellido = "Aguilar Moreno",   Password = "Renzo123",    Rol = "Gerente",        Email = "renzo@aguasantaclara.pe" }
-        };
+        var adminUserName = configuration["SeedData:InitialAdmin:Username"];
+        var adminPassword = configuration["SeedData:InitialAdmin:Password"];
 
-        foreach (var u in usuariosSeed)
+        if (!string.IsNullOrWhiteSpace(adminUserName) && !string.IsNullOrWhiteSpace(adminPassword))
         {
-            var existente = await userManager.FindByNameAsync(u.User);
-            var rol = await roleManager.FindByNameAsync(u.Rol);
-            if (rol == null) continue;
+            var adminRole = await roleManager.FindByNameAsync("Administradora");
+            var admin = await userManager.FindByNameAsync(adminUserName);
 
-            if (existente == null)
+            if (admin == null)
             {
-                // ✅ Crear usuario nuevo
-                var nuevo = new Usuario
+                admin = new Usuario
                 {
-                    UserName = u.User,
-                    Email = u.Email,
-                    EmailConfirmed = true,
-                    Nombres = u.Nombre,
-                    Apellidos = u.Apellido,
+                    UserName = adminUserName,
+                    Nombres = adminUserName,
+                    Apellidos = "Administración",
                     Estado = true,
                     EstadoRegistro = true,
                     FechaCreacion = DateTime.UtcNow,
                     SecurityStamp = Guid.NewGuid().ToString("D"),
-                    IdRol = rol.Id
+                    IdRol = adminRole!.Id
                 };
 
-                var result = await userManager.CreateAsync(nuevo, u.Password);
-                if (result.Succeeded)
-                    await userManager.AddToRoleAsync(nuevo, u.Rol);
-                else
-                    Console.WriteLine($"❌ Error creando usuario {u.User}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                var createResult = await userManager.CreateAsync(admin, adminPassword);
+                if (!createResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"No se pudo crear el administrador inicial: {string.Join("; ", createResult.Errors.Select(error => error.Description))}");
+                }
             }
-            else
+
+            if (!await userManager.IsInRoleAsync(admin, "Administradora"))
             {
-                // ✅ Usuario ya existe → forzar actualización de password y datos
-                existente.Nombres = u.Nombre;
-                existente.Apellidos = u.Apellido;
-                existente.Email = u.Email;
-                existente.EmailConfirmed = true;
-                existente.Estado = true;
-                existente.EstadoRegistro = true;
-                existente.IdRol = rol.Id;
-
-                // Regenerar hash de contraseña
-                existente.PasswordHash = userManager.PasswordHasher.HashPassword(existente, u.Password);
-                existente.SecurityStamp = Guid.NewGuid().ToString("D");
-
-                var update = await userManager.UpdateAsync(existente);
-                if (!update.Succeeded)
-                    Console.WriteLine($"❌ Error actualizando usuario {u.User}: {string.Join(", ", update.Errors.Select(e => e.Description))}");
-
-                // Asegurar que tenga el rol asignado
-                var rolesActuales = await userManager.GetRolesAsync(existente);
-                if (!rolesActuales.Contains(u.Rol))
-                    await userManager.AddToRoleAsync(existente, u.Rol);
+                var roleResult = await userManager.AddToRoleAsync(admin, "Administradora");
+                if (!roleResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"No se pudo asignar el rol de administradora: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
+                }
             }
         }
 

@@ -8,9 +8,33 @@ using AguaSantaClara.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? builder.Configuration["DATABASE_URL"];
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Configura ConnectionStrings__DefaultConnection o DATABASE_URL antes de iniciar la aplicación.");
+}
+
+if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri)
+    && (databaseUri.Scheme == "postgres" || databaseUri.Scheme == "postgresql"))
+{
+    var credentials = databaseUri.UserInfo.Split(':', 2);
+    connectionString = new Npgsql.NpgsqlConnectionStringBuilder
+    {
+        Host = databaseUri.Host,
+        Port = databaseUri.IsDefaultPort ? 5432 : databaseUri.Port,
+        Database = Uri.UnescapeDataString(databaseUri.AbsolutePath.TrimStart('/')),
+        Username = Uri.UnescapeDataString(credentials[0]),
+        Password = credentials.Length > 1 ? Uri.UnescapeDataString(credentials[1]) : string.Empty,
+        SslMode = Npgsql.SslMode.Require
+    }.ConnectionString;
+}
+
 // 1. EF Core + PostgreSQL (con convención snake_case para PostgreSQL)
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(connectionString)
 );
 
 // 2. ASP.NET Core Identity con entidades personalizadas
@@ -79,12 +103,13 @@ using (var scope = app.Services.CreateScope())
         var db = services.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
 
-        await SeedData.InitializeAsync(services);
+        await SeedData.InitializeAsync(services, builder.Configuration);
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Ocurrió un error al aplicar las migraciones o sembrar la base de datos.");
+        throw;
     }
 }
 
