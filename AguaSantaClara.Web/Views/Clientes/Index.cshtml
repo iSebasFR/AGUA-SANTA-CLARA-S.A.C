@@ -791,7 +791,24 @@
                         </div>
                         <div class="info-item">
                             <span class="info-label">Saldo bidones</span>
-                            <span class="info-value">@sel.SaldoBidones</span>
+                            <span class="info-value">
+                                @if (sel.SaldoBidones > 0)
+                                {
+                                    <span style="color:#b8860b;font-weight:600;">
+                                        Pendiente de devolver: @sel.SaldoBidones
+                                    </span>
+                                }
+                                else if (sel.SaldoBidones < 0)
+                                {
+                                    <span style="color:#1a8a3a;font-weight:600;">
+                                        Bidones a favor: @Math.Abs(sel.SaldoBidones)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color:#6e6e73;">Sin bidones pendientes</span>
+                                }
+                            </span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Deuda total</span>

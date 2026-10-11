@@ -217,7 +217,7 @@
 
 </div>
 
-<!-- Modal de modificación -->
+<!-- Modal -->
 <div class="modal fade"
      id="modalModificarStock"
      tabindex="-1"
@@ -227,7 +227,7 @@
     </div>
 </div>
 
-<!-- Contenedor de toasts -->
+<!-- Toasts -->
 <div class="toast-container" id="toastContainer"></div>
 
 @section Scripts {
@@ -268,6 +268,17 @@
                 toast.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+
+        // ============ HELPER: SALDO FORMATEADO ============
+        function formatearSaldo(saldo) {
+            if (saldo > 0) {
+                return { texto: `Pendiente de devolver: ${saldo}`, color: "#b8860b" };
+            } else if (saldo < 0) {
+                return { texto: `Bidones a favor: ${Math.abs(saldo)}`, color: "#1a8a3a" };
+            } else {
+                return { texto: "Sin bidones pendientes", color: "#6e6e73" };
+            }
         }
 
         // ============ CARGAR PRODUCTOS POR LOCAL ============
@@ -312,21 +323,33 @@
                     return;
                 }
 
-                tbody.innerHTML = productos.map(producto => `
-                    <tr>
-                        <td><span class="prod-name">${escapeHtml(producto.nombre)}</span></td>
-                        <td><span class="badge-categoria">${escapeHtml(producto.categoria || "-")}</span></td>
-                        <td><span class="stock-pill">${producto.stock} unid.</span></td>
-                        <td style="text-align:right;">
-                            <button type="button"
+                tbody.innerHTML = productos.map(producto => {
+                    const esBidon = (producto.categoria || "").toLowerCase() === "bidón"
+                                || (producto.categoria || "").toLowerCase() === "bidon";
+
+                    const boton = esBidon
+                        ? `<button type="button"
+                                    class="btn-tabla btn-balancear-bidones"
+                                    data-id-local="${idLocal}"
+                                    data-id-producto="${producto.id}">
+                                <i class="bi bi-arrow-left-right"></i> Balancear bidones
+                        </button>`
+                        : `<button type="button"
                                     class="btn-tabla btn-modificar-stock"
                                     data-id-local="${idLocal}"
                                     data-id-producto="${producto.id}">
                                 <i class="bi bi-pencil-square"></i> Modificar cantidad
-                            </button>
-                        </td>
-                    </tr>
-                `).join("");
+                        </button>`;
+
+                    return `
+                        <tr>
+                            <td><span class="prod-name">${escapeHtml(producto.nombre)}</span></td>
+                            <td><span class="badge-categoria">${escapeHtml(producto.categoria || "-")}</span></td>
+                            <td><span class="stock-pill">${producto.stock} unid.</span></td>
+                            <td style="text-align:right;">${boton}</td>
+                        </tr>
+                    `;
+                }).join("");
 
             } catch (error) {
                 console.error("Error al cargar productos:", error);
@@ -367,7 +390,7 @@
             }
         });
 
-        // ============ CAMBIO DE ACCIÓN (motivos dinámicos) ============
+        // ============ CAMBIO DE ACCIÓN (Modificar) ============
         document.addEventListener("change", function (event) {
             if (event.target.id !== "accionAumentar" &&
                 event.target.id !== "accionDescontar") {
@@ -393,7 +416,7 @@
             motivo.selectedIndex = 0;
         });
 
-        // ============ SUBMIT DEL FORMULARIO ============
+        // ============ SUBMIT MODIFICAR ============
         document.addEventListener("submit", async function (event) {
             if (event.target.id !== "formModificarStock") return;
 
@@ -416,39 +439,261 @@
 
                 const contentType = response.headers.get("content-type") || "";
 
-                // Respuesta JSON → éxito
                 if (contentType.includes("application/json")) {
                     const resultado = await response.json();
-
                     if (!response.ok || !resultado.ok) {
                         throw new Error(resultado.mensaje || "No se pudo guardar el stock.");
                     }
 
-                    const modalElement = document.getElementById("modalModificarStock");
-                    bootstrap.Modal.getInstance(modalElement)?.hide();
-
-                    // ✅ TOAST APPLE
+                    bootstrap.Modal.getInstance(document.getElementById("modalModificarStock"))?.hide();
                     mostrarToast("GUARDADO EXITOSAMENTE", "success");
 
-                    // Recargar el listado del local seleccionado
                     document.getElementById("local").dispatchEvent(new Event("change"));
                     return;
                 }
 
-                // Respuesta HTML → errores de validación
                 const contenido = await response.text();
-
-                if (!response.ok) {
-                    throw new Error("No se pudo procesar la modificación.");
-                }
-
+                if (!response.ok) throw new Error("No se pudo procesar la modificación.");
                 document.getElementById("contenidoModalStock").innerHTML = contenido;
 
             } catch (error) {
                 mostrarToast(error.message || "Ocurrió un error al guardar el stock.", "error");
-
             } finally {
                 const botonActual = document.getElementById("btnGuardarStock");
+                if (botonActual) {
+                    botonActual.disabled = false;
+                    botonActual.textContent = "Guardar";
+                }
+            }
+        });
+
+        // ============ ABRIR MODAL BALANCEAR ============
+        document.addEventListener("click", async function (event) {
+            const boton = event.target.closest(".btn-balancear-bidones");
+            if (!boton) return;
+
+            const idLocal = boton.dataset.idLocal;
+            const idProducto = boton.dataset.idProducto;
+
+            try {
+                const response = await fetch(
+                    `/Inventario/Productos/Balancear/${idLocal}/${idProducto}`
+                );
+
+                if (!response.ok) throw new Error("No se pudo cargar la ventana.");
+
+                const contenido = await response.text();
+                document.getElementById("contenidoModalStock").innerHTML = contenido;
+
+                const modalElement = document.getElementById("modalModificarStock");
+                const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                modal.show();
+
+            } catch (error) {
+                mostrarToast("No se pudo cargar la ventana de balanceo.", "error");
+            }
+        });
+
+        // ============ CAMBIO TIPO MOVIMIENTO ============
+        document.addEventListener("change", function (event) {
+            if (event.target.name !== "TipoMovimientoRadio") return;
+
+            const tipo = event.target.value;
+            const seccionEntrega = document.getElementById("seccionEntrega");
+            const seccionProduccion = document.getElementById("seccionProduccion");
+            const motivo = document.getElementById("motivo");
+            const hiddenTipo = document.getElementById("TipoMovimientoHidden");
+
+            if (!seccionEntrega || !seccionProduccion) return;
+
+            if (hiddenTipo) hiddenTipo.value = tipo;
+
+            if (tipo === "Produccion") {
+                seccionEntrega.style.display = "none";
+                seccionProduccion.style.display = "block";
+                if (motivo) motivo.value = "Ajuste de inventario";
+            } else {
+                seccionEntrega.style.display = "block";
+                seccionProduccion.style.display = "none";
+                if (motivo) motivo.value = "Entrega a cliente";
+            }
+        });
+
+        // ============ CAMBIO ACCIÓN PRODUCCIÓN ============
+        document.addEventListener("change", function (event) {
+            if (event.target.name !== "AccionProduccionRadio") return;
+
+            const accion = event.target.value;
+            const hiddenAccion = document.getElementById("AccionProduccionHidden");
+
+            if (hiddenAccion) hiddenAccion.value = accion;
+        });
+
+        // ============ AUTOCOMPLETADO CLIENTE ============
+        let debounceCliente = null;
+
+        document.addEventListener("input", function (event) {
+            if (event.target.id !== "inputBuscarCliente") return;
+
+            clearTimeout(debounceCliente);
+            const q = event.target.value.trim();
+
+            debounceCliente = setTimeout(async () => {
+                const dropdown = document.getElementById("dropdownClientes");
+                if (!dropdown) return;
+
+                if (q.length < 2) {
+                    dropdown.style.display = "none";
+                    return;
+                }
+
+                try {
+                    const resp = await fetch(`/Inventario/Productos/BuscarClientes?q=${encodeURIComponent(q)}`);
+                    if (!resp.ok) { dropdown.style.display = "none"; return; }
+
+                    const clientes = await resp.json();
+                    if (!clientes.length) {
+                        dropdown.innerHTML = '<div style="padding:12px;font-size:12.5px;color:#6e6e73;text-align:center;">Sin resultados</div>';
+                        dropdown.style.display = "block";
+                        return;
+                    }
+
+                    dropdown.innerHTML = clientes.map(c => `
+                        <button type="button"
+                                class="dropdown-cliente-item"
+                                data-id="${c.id}"
+                                data-nombre="${escapeHtml(c.nombre)}"
+                                data-telefono="${escapeHtml(c.telefono)}"
+                                data-dni="${escapeHtml(c.dni || "")}"
+                                data-saldo="${c.saldoBidones}"
+                                style="display:block;width:100%;padding:10px 14px;background:transparent;border:none;text-align:left;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f2;">
+                            <div style="font-weight:600;color:#1d1d1f;">${escapeHtml(c.nombre)}</div>
+                            <div style="font-size:11.5px;color:#6e6e73;margin-top:2px;">
+                                ${escapeHtml(c.telefono)}${c.dni ? " · DNI " + escapeHtml(c.dni) : ""}
+                            </div>
+                        </button>
+                    `).join("");
+                    dropdown.style.display = "block";
+
+                } catch {
+                    dropdown.style.display = "none";
+                }
+            }, 300);
+        });
+
+        // ============ SELECCIONAR CLIENTE ============
+        document.addEventListener("click", function (event) {
+            const item = event.target.closest(".dropdown-cliente-item");
+            if (!item) return;
+
+            const id = item.dataset.id;
+            const nombre = item.dataset.nombre;
+            const telefono = item.dataset.telefono;
+            const dni = item.dataset.dni;
+            const saldo = Number(item.dataset.saldo || 0);
+
+            document.getElementById("IdCliente").value = id;
+            document.getElementById("clienteNombre").textContent = nombre;
+            document.getElementById("clienteMeta").textContent =
+                [telefono, dni ? `DNI ${dni}` : null].filter(Boolean).join(" · ");
+
+            const info = formatearSaldo(saldo);
+            document.getElementById("clienteSaldo").innerHTML =
+                `<span style="color:${info.color};font-weight:600;">${info.texto}</span>`;
+
+            document.getElementById("clienteSeleccionado").style.display = "block";
+            document.getElementById("buscadorCliente").style.display = "none";
+            document.getElementById("dropdownClientes").style.display = "none";
+        });
+
+        // ============ CAMBIAR CLIENTE ============
+        document.addEventListener("click", function (event) {
+            if (event.target.id !== "btnCambiarCliente") return;
+
+            document.getElementById("IdCliente").value = "";
+            document.getElementById("clienteSeleccionado").style.display = "none";
+            document.getElementById("buscadorCliente").style.display = "block";
+            document.getElementById("inputBuscarCliente").value = "";
+            document.getElementById("inputBuscarCliente").focus();
+        });
+
+        // Cerrar dropdown al hacer click fuera
+        document.addEventListener("click", function (event) {
+            const dropdown = document.getElementById("dropdownClientes");
+            if (!dropdown) return;
+            if (!event.target.closest("#buscadorCliente")) {
+                dropdown.style.display = "none";
+            }
+        });
+
+        // ============ SUBMIT BALANCEAR ============
+        document.addEventListener("submit", async function (event) {
+            if (event.target.id !== "formBalancearBidones") return;
+
+            event.preventDefault();
+
+            const form = event.target;
+            const boton = document.getElementById("btnGuardarBalance");
+            const tipo = document.getElementById("TipoMovimientoHidden")?.value || "Entrega";
+
+            // Validaciones según tipo
+            if (tipo === "Entrega") {
+                if (!document.getElementById("IdCliente").value) {
+                    mostrarToast("Selecciona un cliente.", "error");
+                    return;
+                }
+            } else {
+                const producidos = Number(document.getElementById("bidonesProducidos").value || 0);
+                if (producidos <= 0) {
+                    mostrarToast("Ingresa una cantidad mayor a cero.", "error");
+                    return;
+                }
+            }
+
+            boton.disabled = true;
+            boton.textContent = "Guardando...";
+
+            try {
+                const formData = new FormData(form);
+                formData.set("TipoMovimiento", tipo);
+
+                if (tipo === "Produccion") {
+                    formData.set("BidonesLlenosEntregados", "0");
+                    formData.set("BidonesVaciosDevueltos", "0");
+                    formData.set("CantidadProduccion", document.getElementById("bidonesProducidos").value);
+                    formData.set("AccionProduccion", document.getElementById("AccionProduccionHidden").value);
+                    formData.set("IdCliente", "0");
+                }
+
+                const response = await fetch("/Inventario/Productos/Balancear", {
+                    method: "POST",
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    body: formData
+                });
+
+                const contentType = response.headers.get("content-type") || "";
+
+                if (contentType.includes("application/json")) {
+                    const resultado = await response.json();
+                    if (!response.ok || !resultado.ok) {
+                        throw new Error(resultado.mensaje || "No se pudo guardar el balance.");
+                    }
+
+                    bootstrap.Modal.getInstance(document.getElementById("modalModificarStock"))?.hide();
+                    mostrarToast(resultado.mensaje || "BALANCE GUARDADO CORRECTAMENTE", "success");
+
+                    document.getElementById("local").dispatchEvent(new Event("change"));
+                    return;
+                }
+
+                const contenido = await response.text();
+                if (!response.ok) throw new Error("No se pudo procesar el balance.");
+                document.getElementById("contenidoModalStock").innerHTML = contenido;
+
+            } catch (error) {
+                mostrarToast(error.message || "Ocurrió un error al guardar el balance.", "error");
+            } finally {
+                const botonActual = document.getElementById("btnGuardarBalance");
                 if (botonActual) {
                     botonActual.disabled = false;
                     botonActual.textContent = "Guardar";

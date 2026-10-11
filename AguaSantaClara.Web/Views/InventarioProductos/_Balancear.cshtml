@@ -1,0 +1,193 @@
+@using AguaSantaClara.Web.Models
+@model BalancearBidonesViewModel
+
+<div class="modal-header border-0 pb-1">
+    <div>
+        <h5 class="modal-title fw-semibold mb-1">Balancear bidones</h5>
+        <div class="small text-muted">
+            <strong class="text-dark">@Model.NombreProducto</strong>
+            · Stock actual: <span id="stockActualTexto">@Model.StockActual</span> unid.
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form id="formBalancearBidones">
+    @Html.AntiForgeryToken()
+
+    <input type="hidden" name="IdProducto" value="@Model.IdProducto" />
+    <input type="hidden" name="IdLocal" value="@Model.IdLocal" />
+    <input type="hidden" name="NombreProducto" value="@Model.NombreProducto" />
+    <input type="hidden" name="StockActual" value="@Model.StockActual" />
+    <input type="hidden" name="IdCliente" id="IdCliente" value="@Model.IdCliente" />
+    <input type="hidden" name="SaldoClienteActual" value="@Model.SaldoClienteActual" />
+
+    <!-- Hidden que sincroniza el tipo de movimiento -->
+    <input type="hidden" name="TipoMovimiento" id="TipoMovimientoHidden" value="Entrega" />
+    <!-- Hidden para la acción de producción -->
+    <input type="hidden" name="AccionProduccion" id="AccionProduccionHidden" value="Aumentar" />
+
+    <div class="modal-body pt-2">
+
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+        <!-- ============ TIPO DE MOVIMIENTO ============ -->
+        <div class="mb-3">
+            <label class="form-label small fw-semibold text-uppercase">Tipo de movimiento</label>
+            <div class="stock-action-group">
+                <input type="radio"
+                       class="btn-check"
+                       name="TipoMovimientoRadio"
+                       id="tipoEntrega"
+                       value="Entrega"
+                       checked>
+                <label class="stock-action decrease" for="tipoEntrega">
+                    <span class="stock-action-icon">↓</span>
+                    Entregar a cliente
+                </label>
+
+                <input type="radio"
+                       class="btn-check"
+                       name="TipoMovimientoRadio"
+                       id="tipoProduccion"
+                       value="Produccion">
+                <label class="stock-action increase" for="tipoProduccion">
+                    <span class="stock-action-icon">↑</span>
+                    Cargar producción
+                </label>
+            </div>
+        </div>
+
+        <!-- ============ SECCIÓN ENTREGA (solo saldo, no toca stock) ============ -->
+        <div id="seccionEntrega">
+
+            <!-- Buscador -->
+            <div class="mb-3" id="buscadorCliente">
+                <label class="form-label small fw-semibold text-uppercase">Cliente</label>
+                <div style="position:relative;">
+                    <input type="text"
+                           id="inputBuscarCliente"
+                           class="form-control stock-input"
+                           autocomplete="off"
+                           placeholder="Nombre, teléfono o DNI..." />
+                    <div id="dropdownClientes"
+                         style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e5ea;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.10);margin-top:4px;max-height:220px;overflow-y:auto;display:none;z-index:1050;">
+                    </div>
+                </div>
+                <span asp-validation-for="IdCliente" class="text-danger small"></span>
+            </div>
+
+            <!-- Cliente seleccionado -->
+            <div id="clienteSeleccionado"
+                 style="display:none; margin-bottom:16px; padding:14px 16px; background:#fbfcfd; border:1px solid #e5e5ea; border-radius:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <div>
+                        <strong id="clienteNombre" style="font-size:13.5px;color:#1d1d1f;"></strong>
+                        <div id="clienteMeta" style="font-size:12px;color:#6e6e73;margin-top:2px;"></div>
+                        <div id="clienteSaldo" style="font-size:12px;margin-top:6px;"></div>
+                    </div>
+                    <button type="button" id="btnCambiarCliente"
+                            class="btn-apple"
+                            style="background:#f2f2f4;color:#1d1d1f;height:30px;font-size:12px;padding:0 12px;">
+                        Cambiar cliente
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cantidades -->
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <label class="form-label small fw-semibold text-uppercase">
+                        Bidones llenos entregados
+                    </label>
+                    <input type="number"
+                           id="bidonesLlenosEntregados"
+                           name="BidonesLlenosEntregados"
+                           class="form-control stock-input"
+                           min="0"
+                           step="1"
+                           value="0" />
+                    <span asp-validation-for="BidonesLlenosEntregados" class="text-danger small"></span>
+                </div>
+
+                <div class="col-6">
+                    <label class="form-label small fw-semibold text-uppercase">
+                        Bidones vacíos devueltos
+                    </label>
+                    <input type="number"
+                           id="bidonesVaciosDevueltos"
+                           name="BidonesVaciosDevueltos"
+                           class="form-control stock-input"
+                           min="0"
+                           step="1"
+                           value="0" />
+                    <span asp-validation-for="BidonesVaciosDevueltos" class="text-danger small"></span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============ SECCIÓN PRODUCCIÓN (Aumentar / Descontar) ============ -->
+        <div id="seccionProduccion" style="display:none;">
+
+            <!-- Acción -->
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-uppercase">Acción</label>
+                <div class="stock-action-group">
+                    <input type="radio"
+                           class="btn-check"
+                           name="AccionProduccionRadio"
+                           id="accionAumentar"
+                           value="Aumentar"
+                           checked>
+                    <label class="stock-action increase" for="accionAumentar">
+                        <span class="stock-action-icon">↑</span>
+                        Aumentar
+                    </label>
+
+                    <input type="radio"
+                           class="btn-check"
+                           name="AccionProduccionRadio"
+                           id="accionDescontar"
+                           value="Descontar">
+                    <label class="stock-action decrease" for="accionDescontar">
+                        <span class="stock-action-icon">↓</span>
+                        Descontar
+                    </label>
+                </div>
+            </div>
+
+            <!-- Cantidad -->
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-uppercase">
+                    Cantidad
+                </label>
+                <input type="number"
+                       id="bidonesProducidos"
+                       class="form-control stock-input"
+                       min="1"
+                       step="1"
+                       value="1"
+                       placeholder="Cantidad" />
+            </div>
+
+        </div>
+
+        <!-- ============ MOTIVO ============ -->
+        <div class="mb-2">
+            <label for="motivo" class="form-label small fw-semibold text-uppercase">Motivo</label>
+            <select id="motivo" name="Motivo" class="form-select stock-input">
+                <option value="Entrega a cliente">Entrega a cliente</option>
+                <option value="Devolución de cliente">Devolución de cliente</option>
+                <option value="Ajuste de inventario">Ajuste de inventario</option>
+            </select>
+            <span asp-validation-for="Motivo" class="text-danger small"></span>
+        </div>
+
+    </div>
+
+    <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light stock-btn-cancel" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn stock-btn-save" id="btnGuardarBalance">Guardar</button>
+    </div>
+</form>
