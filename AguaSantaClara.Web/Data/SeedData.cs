@@ -371,15 +371,15 @@ public static class SeedData
             new {
                 Nombre = "María Elena Quispe Huamán",
                 Telefono = "987654321",
-                Dni = "45781236",
+                Dni = (string?)"45781236",
                 Direcciones = new[] {
-                    new { Direccion = "Av. Los Álamos 145, Dpto. 302", Ciudad = "Lima", Referencia = "Frente al parque central", Url = "https://maps.google.com/?q=-12.0464,-77.0428" }
+                    new { Direccion = "Av. Los Álamos 145, Dpto. 302", Ciudad = "Lima", Referencia = "Frente al parque central", Url = (string?)"https://maps.google.com/?q=-12.0464,-77.0428" }
                 }
             },
             new {
                 Nombre = "Carlos Alberto Mendoza Ríos",
                 Telefono = "912345678",
-                Dni = "41258796",
+                Dni = (string?)"41258796",
                 Direcciones = new[] {
                     new { Direccion = "Calle Las Begonias 220", Ciudad = "Lima", Referencia = "Portón negro al lado de la bodega", Url = (string?)null },
                     new { Direccion = "Jr. Puno 155, Int. 4", Ciudad = "Lima", Referencia = "Edificio azul", Url = (string?)null }
@@ -388,7 +388,7 @@ public static class SeedData
             new {
                 Nombre = "Rosa Amelia Fernández Castro",
                 Telefono = "998877665",
-                Dni = "09876543",
+                Dni = (string?)"09876543",
                 Direcciones = new[]
                 {
                     new { Direccion = "Av. Arequipa 2340, Dpto. 801", Ciudad = "Lima", Referencia = "Edificio Miraflores", Url = (string?)null },
@@ -407,7 +407,7 @@ public static class SeedData
             new {
                 Nombre = "Lucía Beatriz Salazar Vega",
                 Telefono = "944332211",
-                Dni = "48756231",
+                Dni = (string?)"48756231",
                 Direcciones = new[] {
                     new { Direccion = "Calle Los Nogales 78", Ciudad = "Lima", Referencia = "Casa blanca con jardín", Url = (string?)null },
                     new { Direccion = "Av. La Marina 2300, Tienda 12", Ciudad = "Lima", Referencia = "Mercado central", Url = (string?)null }
@@ -416,7 +416,7 @@ public static class SeedData
             new {
                 Nombre = "Pedro Pablo Gutiérrez Sánchez",
                 Telefono = "933221100",
-                Dni = "41234567",
+                Dni = (string?)"41234567",
                 Direcciones = new[] {
                     new { Direccion = "Jr. Cusco 560, Piso 3", Ciudad = "Lima", Referencia = "Edificio amarillo", Url = (string?)null }
                 }
@@ -424,7 +424,7 @@ public static class SeedData
             new {
                 Nombre = "Ana Sofía Rojas Paredes",
                 Telefono = "966778899",
-                Dni = "47851236",
+                Dni = (string?)"47851236",
                 Direcciones = new[]
                 {
                     new { Direccion = "Av. Ejército 1230, Dpto. 502", Ciudad = "Lima", Referencia = "Frente al banco BCP", Url = (string?)null },
@@ -442,7 +442,7 @@ public static class SeedData
             new {
                 Nombre = "Elena Margarita Chávez Lozano",
                 Telefono = "988990011",
-                Dni = "41258963",
+                Dni = (string?)"41258963",
                 Direcciones = new[]
                 {
                     new { Direccion = "Av. Venezuela 2150, Dpto. 203", Ciudad = "Lima", Referencia = "Edificio San Felipe", Url = (string?)null },
@@ -453,7 +453,7 @@ public static class SeedData
             new {
                 Nombre = "Ricardo Martín Espinoza Aguilar",
                 Telefono = "922334455",
-                Dni = "45678912",
+                Dni = (string?)"45678912",
                 Direcciones = new[] {
                     new { Direccion = "Calle Manco Cápac 512", Ciudad = "Lima", Referencia = "Al lado de la farmacia", Url = (string?)null }
                 }
