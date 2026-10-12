@@ -7,7 +7,7 @@ namespace AguaSantaClara.Web.Controllers.Api;
 
 [ApiController]
 [Route("api/notificaciones")]
-[Authorize(Roles = "Administradora,Vendedora")]
+[Authorize(Roles = "Administradora,Vendedora,Gerente")]
 public sealed class NotificacionesController(
     IAlertasService alertasService,
     IConfiguration configuration) : ControllerBase

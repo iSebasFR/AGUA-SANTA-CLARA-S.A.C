@@ -739,25 +739,52 @@
                                                 </button>
                                                 @if (pedido.Estado == "Pago Parcial")
                                                 {
-                                                    <button type="button"
-                                                            class="btn-tabla pedido-registrar-deuda"
-                                                            data-pedido-id="@pedido.Id"
-                                                            data-clientes="@System.Text.Json.JsonSerializer.Serialize(pedido.Clientes
-                                                                .Where(pc => pc.EstadoRegistro)
-                                                                .GroupBy(pc => new { pc.IdCliente, pc.Cliente.Nombre })
-                                                                .Select(grupo => new
-                                                                {
-                                                                    idCliente = grupo.Key.IdCliente,
-                                                                    nombre = grupo.Key.Nombre,
-                                                                    montoPendiente = grupo.Sum(pc => pc.Subtotal) -
-                                                                        (Model.MontosPagadosPorPedidoCliente
-                                                                            .GetValueOrDefault(pedido.Id)?
-                                                                            .GetValueOrDefault(grupo.Key.IdCliente) ?? 0m)
-                                                                })
-                                                                .Where(cliente => cliente.montoPendiente > 0)
-                                                                )">
-                                                        Registrar deuda
-                                                    </button>
+                                                    var deudasDelPedido = Model.DeudasPorPedidoCliente
+                                                        .GetValueOrDefault(pedido.Id) ?? new Dictionary<long, DeudaPedidoResumen>();
+                                                    var nombresClientes = pedido.Clientes
+                                                        .Where(pc => pc.EstadoRegistro)
+                                                        .GroupBy(pc => pc.IdCliente)
+                                                        .ToDictionary(grupo => grupo.Key, grupo => grupo.First().Cliente.Nombre);
+                                                    var deudasParaVer = deudasDelPedido.Select(par => new
+                                                    {
+                                                        nombre = nombresClientes.GetValueOrDefault(par.Key) ?? $"Cliente {par.Key}",
+                                                        monto = par.Value.Monto,
+                                                        fechaVencimiento = par.Value.FechaVencimiento.ToString("yyyy-MM-dd"),
+                                                        estado = par.Value.Estado
+                                                    }).ToList();
+                                                    var clientesParaRegistrar = pedido.Clientes
+                                                        .Where(pc => pc.EstadoRegistro)
+                                                        .GroupBy(pc => new { pc.IdCliente, pc.Cliente.Nombre })
+                                                        .Select(grupo => new
+                                                        {
+                                                            idCliente = grupo.Key.IdCliente,
+                                                            nombre = grupo.Key.Nombre,
+                                                            montoPendiente = grupo.Sum(pc => pc.Subtotal) -
+                                                                (Model.MontosPagadosPorPedidoCliente
+                                                                    .GetValueOrDefault(pedido.Id)?
+                                                                    .GetValueOrDefault(grupo.Key.IdCliente) ?? 0m)
+                                                        })
+                                                        .Where(cliente => cliente.montoPendiente > 0
+                                                            && !deudasDelPedido.ContainsKey(cliente.idCliente))
+                                                        .ToList();
+                                                    @if (deudasParaVer.Count > 0)
+                                                    {
+                                                        <button type="button"
+                                                                class="btn-tabla pedido-ver-deuda"
+                                                                data-pedido-id="@pedido.Id"
+                                                                data-deudas="@System.Text.Json.JsonSerializer.Serialize(deudasParaVer)">
+                                                            Ver deuda
+                                                        </button>
+                                                    }
+                                                    @if (clientesParaRegistrar.Count > 0)
+                                                    {
+                                                        <button type="button"
+                                                                class="btn-tabla pedido-registrar-deuda"
+                                                                data-pedido-id="@pedido.Id"
+                                                                data-clientes="@System.Text.Json.JsonSerializer.Serialize(clientesParaRegistrar)">
+                                                            Registrar deuda
+                                                        </button>
+                                                    }
                                                 }
                                             }
                                             else if (pedido.Estado == "Con Incidencia")
@@ -866,6 +893,31 @@
                 </button>
                 <button type="button" id="registrarDeudaGuardar" class="btn-apple success" disabled>
                     Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL VER DEUDA -->
+<div class="modal fade" id="verDeudaModal" tabindex="-1" aria-labelledby="verDeudaTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="border-bottom:1px solid #e5e5ea;">
+                <div>
+                    <h5 class="modal-title" id="verDeudaTitulo" style="font-size:15px;font-weight:600;color:#1d1d1f;">
+                        Deuda registrada
+                    </h5>
+                    <p id="verDeudaPedido" style="font-size:12.5px;color:#6e6e73;margin:3px 0 0;"></p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:20px;">
+                <div id="verDeudaLista" class="d-flex flex-column gap-2"></div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #e5e5ea;padding:14px 20px;">
+                <button type="button" class="btn-apple" style="background:#f2f2f4;color:#1d1d1f;box-shadow:none;" data-bs-dismiss="modal">
+                    Cerrar
                 </button>
             </div>
         </div>

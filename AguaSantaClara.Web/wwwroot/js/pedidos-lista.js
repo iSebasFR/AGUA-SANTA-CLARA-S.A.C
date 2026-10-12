@@ -33,6 +33,13 @@
     const registrarDeudaFechaVencimiento = $("registrarDeudaFechaVencimiento");
     const registrarDeudaError = $("registrarDeudaError");
     const registrarDeudaGuardar = $("registrarDeudaGuardar");
+    const verDeudaModal = $("verDeudaModal");
+    const verDeudaPedido = $("verDeudaPedido");
+    const verDeudaLista = $("verDeudaLista");
+    const formatoMonedaDeuda = new Intl.NumberFormat("es-PE", {
+        style: "currency",
+        currency: "PEN"
+    });
     const montoEnCentavos = valor => {
         const coincidencia = String(valor).trim().match(/^(\d+)(?:[.,](\d{0,2}))?$/);
         if (!coincidencia)
@@ -77,6 +84,36 @@
             registrarDeudaMonto.value = registrarDeudaIdCliente.selectedOptions[0]?.dataset.montoPendiente ?? "";
             actualizarFormularioDeuda();
             bootstrap.Modal.getOrCreateInstance(registrarDeudaModal).show();
+        });
+    });
+    document.querySelectorAll(".pedido-ver-deuda").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const deudas = JSON.parse(btn.dataset.deudas);
+            verDeudaPedido.textContent = `Pedido N° ${btn.dataset.pedidoId}`;
+            verDeudaLista.replaceChildren();
+
+            deudas.forEach(deuda => {
+                const detalle = document.createElement("div");
+                detalle.className = "border rounded-3 p-3";
+
+                const nombre = document.createElement("div");
+                nombre.className = "fw-semibold";
+                nombre.textContent = deuda.nombre;
+
+                const montoYFecha = document.createElement("div");
+                montoYFecha.className = "small text-secondary mt-1";
+                const vencimiento = new Date(`${deuda.fechaVencimiento}T00:00:00`).toLocaleDateString("es-PE");
+                montoYFecha.textContent = `${formatoMonedaDeuda.format(deuda.monto)} · Vence ${vencimiento}`;
+
+                const estado = document.createElement("div");
+                estado.className = "small mt-1";
+                estado.textContent = `Estado: ${deuda.estado}`;
+
+                detalle.append(nombre, montoYFecha, estado);
+                verDeudaLista.append(detalle);
+            });
+
+            bootstrap.Modal.getOrCreateInstance(verDeudaModal).show();
         });
     });
     registrarDeudaIdCliente.addEventListener("change", () => {

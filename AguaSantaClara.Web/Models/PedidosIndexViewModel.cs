@@ -2,6 +2,8 @@ using AguaSantaClara.Web.Models.Entities;
 
 namespace AguaSantaClara.Web.Models;
 
+public sealed record DeudaPedidoResumen(decimal Monto, DateTime FechaVencimiento, string Estado);
+
 public class PedidosIndexViewModel
 {
     public List<Pedido> Pedidos { get; set; } = new();
@@ -12,6 +14,7 @@ public class PedidosIndexViewModel
     public List<Cliente> ClientesFiltro { get; set; } = new();
     public Dictionary<long, string> MotivosIncidenciaPorPedido { get; set; } = new();
     public Dictionary<long, Dictionary<long, decimal>> MontosPagadosPorPedidoCliente { get; set; } = new();
+    public Dictionary<long, Dictionary<long, DeudaPedidoResumen>> DeudasPorPedidoCliente { get; set; } = new();
     public string? EstadoFiltro { get; set; }
     public long? IdClienteFiltro { get; set; }
     public long? IdRepartidorFiltro { get; set; }
