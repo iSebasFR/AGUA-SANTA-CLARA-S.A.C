@@ -36,54 +36,76 @@ public static class SeedData
             }
         }
 
-        var managerUserName = configuration["SeedData:InitialManager:Username"];
-        var managerPassword = configuration["SeedData:InitialManager:Password"];
-        var resetManagerPassword = configuration.GetValue<bool>("SeedData:InitialManager:ResetPassword");
+        var initialUsers = configuration
+            .GetSection("SeedData:InitialUsers")
+            .Get<List<InitialUserSeedOptions>>() ?? [];
+        var resetInitialUserPasswords = configuration.GetValue<bool>("SeedData:ResetInitialUserPasswords");
 
-        if (!string.IsNullOrWhiteSpace(managerUserName) && !string.IsNullOrWhiteSpace(managerPassword))
+        foreach (var initialUser in initialUsers)
         {
-            var managerRole = await roleManager.FindByNameAsync("Gerente");
-            var manager = await userManager.FindByNameAsync(managerUserName);
-
-            if (manager == null)
+            if (string.IsNullOrWhiteSpace(initialUser.Username)
+                || string.IsNullOrWhiteSpace(initialUser.Password)
+                || string.IsNullOrWhiteSpace(initialUser.Role))
             {
-                manager = new Usuario
+                throw new InvalidOperationException(
+                    "Cada usuario inicial debe tener Username, Password y Role configurados.");
+            }
+
+            var roleName = initialUser.Role.Trim();
+            var role = await roleManager.FindByNameAsync(roleName)
+                ?? throw new InvalidOperationException($"No existe el rol configurado para el usuario {initialUser.Username}.");
+            var user = await userManager.FindByNameAsync(initialUser.Username);
+
+            if (user == null)
+            {
+                user = new Usuario
                 {
-                    UserName = managerUserName,
-                    Nombres = managerUserName,
-                    Apellidos = "Gerente",
+                    UserName = initialUser.Username,
+                    Nombres = initialUser.FirstName ?? initialUser.Username,
+                    Apellidos = initialUser.LastName ?? string.Empty,
                     Estado = true,
                     EstadoRegistro = true,
                     FechaCreacion = DateTime.UtcNow,
                     SecurityStamp = Guid.NewGuid().ToString("D"),
-                    IdRol = managerRole!.Id
+                    IdRol = role.Id
                 };
 
-                var createResult = await userManager.CreateAsync(manager, managerPassword);
+                var createResult = await userManager.CreateAsync(user, initialUser.Password);
                 if (!createResult.Succeeded)
                 {
                     throw new InvalidOperationException(
-                        $"No se pudo crear el gerente inicial: {string.Join("; ", createResult.Errors.Select(error => error.Description))}");
+                        $"No se pudo crear el usuario inicial {initialUser.Username}: {string.Join("; ", createResult.Errors.Select(error => error.Description))}");
                 }
             }
-            else if (resetManagerPassword)
+            else if (resetInitialUserPasswords)
             {
-                var resetToken = await userManager.GeneratePasswordResetTokenAsync(manager);
-                var resetResult = await userManager.ResetPasswordAsync(manager, resetToken, managerPassword);
+                var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+                var resetResult = await userManager.ResetPasswordAsync(user, resetToken, initialUser.Password);
                 if (!resetResult.Succeeded)
                 {
                     throw new InvalidOperationException(
-                        $"No se pudo restablecer la contraseña del gerente: {string.Join("; ", resetResult.Errors.Select(error => error.Description))}");
+                        $"No se pudo restablecer la contraseña de {initialUser.Username}: {string.Join("; ", resetResult.Errors.Select(error => error.Description))}");
                 }
             }
 
-            if (!await userManager.IsInRoleAsync(manager, "Gerente"))
+            if (!await userManager.IsInRoleAsync(user, roleName))
             {
-                var roleResult = await userManager.AddToRoleAsync(manager, "Gerente");
+                var roleResult = await userManager.AddToRoleAsync(user, roleName);
                 if (!roleResult.Succeeded)
                 {
                     throw new InvalidOperationException(
-                        $"No se pudo asignar el rol de gerente: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
+                        $"No se pudo asignar el rol {roleName} a {initialUser.Username}: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
+                }
+            }
+
+            if (user.IdRol != role.Id)
+            {
+                user.IdRol = role.Id;
+                var updateResult = await userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"No se pudo actualizar el rol principal de {initialUser.Username}: {string.Join("; ", updateResult.Errors.Select(error => error.Description))}");
                 }
             }
         }
@@ -99,6 +121,15 @@ public static class SeedData
         await SeedProductosAsync(db);
         await SeedInsumosAsync(db);
         await SeedClientesAsync(db);
+    }
+
+    private sealed class InitialUserSeedOptions
+    {
+        public string? Username { get; set; }
+        public string? Password { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? Role { get; set; }
     }
 
     // ============================================================
