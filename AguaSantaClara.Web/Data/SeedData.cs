@@ -38,6 +38,7 @@ public static class SeedData
 
         var managerUserName = configuration["SeedData:InitialManager:Username"];
         var managerPassword = configuration["SeedData:InitialManager:Password"];
+        var resetManagerPassword = configuration.GetValue<bool>("SeedData:InitialManager:ResetPassword");
 
         if (!string.IsNullOrWhiteSpace(managerUserName) && !string.IsNullOrWhiteSpace(managerPassword))
         {
@@ -63,6 +64,16 @@ public static class SeedData
                 {
                     throw new InvalidOperationException(
                         $"No se pudo crear el gerente inicial: {string.Join("; ", createResult.Errors.Select(error => error.Description))}");
+                }
+            }
+            else if (resetManagerPassword)
+            {
+                var resetToken = await userManager.GeneratePasswordResetTokenAsync(manager);
+                var resetResult = await userManager.ResetPasswordAsync(manager, resetToken, managerPassword);
+                if (!resetResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"No se pudo restablecer la contraseña del gerente: {string.Join("; ", resetResult.Errors.Select(error => error.Description))}");
                 }
             }
 
