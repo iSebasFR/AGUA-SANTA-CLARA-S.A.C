@@ -36,43 +36,43 @@ public static class SeedData
             }
         }
 
-        var adminUserName = configuration["SeedData:InitialAdmin:Username"];
-        var adminPassword = configuration["SeedData:InitialAdmin:Password"];
+        var managerUserName = configuration["SeedData:InitialManager:Username"];
+        var managerPassword = configuration["SeedData:InitialManager:Password"];
 
-        if (!string.IsNullOrWhiteSpace(adminUserName) && !string.IsNullOrWhiteSpace(adminPassword))
+        if (!string.IsNullOrWhiteSpace(managerUserName) && !string.IsNullOrWhiteSpace(managerPassword))
         {
-            var adminRole = await roleManager.FindByNameAsync("Administradora");
-            var admin = await userManager.FindByNameAsync(adminUserName);
+            var managerRole = await roleManager.FindByNameAsync("Gerente");
+            var manager = await userManager.FindByNameAsync(managerUserName);
 
-            if (admin == null)
+            if (manager == null)
             {
-                admin = new Usuario
+                manager = new Usuario
                 {
-                    UserName = adminUserName,
-                    Nombres = adminUserName,
-                    Apellidos = "Administración",
+                    UserName = managerUserName,
+                    Nombres = managerUserName,
+                    Apellidos = "Gerente",
                     Estado = true,
                     EstadoRegistro = true,
                     FechaCreacion = DateTime.UtcNow,
                     SecurityStamp = Guid.NewGuid().ToString("D"),
-                    IdRol = adminRole!.Id
+                    IdRol = managerRole!.Id
                 };
 
-                var createResult = await userManager.CreateAsync(admin, adminPassword);
+                var createResult = await userManager.CreateAsync(manager, managerPassword);
                 if (!createResult.Succeeded)
                 {
                     throw new InvalidOperationException(
-                        $"No se pudo crear el administrador inicial: {string.Join("; ", createResult.Errors.Select(error => error.Description))}");
+                        $"No se pudo crear el gerente inicial: {string.Join("; ", createResult.Errors.Select(error => error.Description))}");
                 }
             }
 
-            if (!await userManager.IsInRoleAsync(admin, "Administradora"))
+            if (!await userManager.IsInRoleAsync(manager, "Gerente"))
             {
-                var roleResult = await userManager.AddToRoleAsync(admin, "Administradora");
+                var roleResult = await userManager.AddToRoleAsync(manager, "Gerente");
                 if (!roleResult.Succeeded)
                 {
                     throw new InvalidOperationException(
-                        $"No se pudo asignar el rol de administradora: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
+                        $"No se pudo asignar el rol de gerente: {string.Join("; ", roleResult.Errors.Select(error => error.Description))}");
                 }
             }
         }
