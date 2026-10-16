@@ -15,6 +15,7 @@ public class PedidoConfiguration : IEntityTypeConfiguration<Pedido>
         builder.Property(p => p.IdRepartidor).HasColumnName("id_repartidor");
         builder.Property(p => p.Estado).HasColumnName("estado").HasMaxLength(20).IsRequired();
         builder.Property(p => p.Total).HasColumnName("total").HasPrecision(12, 2);
+        builder.Property(p => p.EsAutoventa).HasColumnName("es_autoventa").HasDefaultValue(false);  // 👈 NUEVO
         builder.Property(p => p.EstadoRegistro).HasColumnName("estado_registro");
         builder.Property(p => p.FechaCreacion).HasColumnName("fecha_creacion");
         builder.Property(p => p.FechaActualizacion).HasColumnName("fecha_actualizacion");
@@ -33,5 +34,6 @@ public class PedidoConfiguration : IEntityTypeConfiguration<Pedido>
                .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(p => p.Estado).HasDatabaseName("idx_pedido_estado");
+        builder.HasIndex(p => p.EsAutoventa).HasDatabaseName("idx_pedido_es_autoventa");  // 👈 NUEVO
     }
 }

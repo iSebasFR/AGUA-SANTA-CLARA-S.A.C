@@ -24,4 +24,5 @@ public class Deuda
 
     public Pedido Pedido { get; set; } = null!;
     public Cliente Cliente { get; set; } = null!;
+    public ICollection<AutorizacionPlazo> Autorizaciones { get; set; } = new List<AutorizacionPlazo>();
 }

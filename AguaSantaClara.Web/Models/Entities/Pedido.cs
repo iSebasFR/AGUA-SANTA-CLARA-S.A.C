@@ -37,6 +37,7 @@ public class Pedido
     public long? IdRepartidor { get; set; }
     public string Estado { get; set; } = EstadosPedido.Pendiente;
     public decimal Total { get; set; }
+    public bool EsAutoventa { get; set; }   // 👈 NUEVO
     public bool EstadoRegistro { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaActualizacion { get; set; }

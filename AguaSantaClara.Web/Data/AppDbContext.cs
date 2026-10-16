@@ -27,6 +27,11 @@ public class AppDbContext : IdentityDbContext<Usuario, Rol, long>
     public DbSet<Deuda> Deudas => Set<Deuda>();
     public DbSet<MovimientoBidones> MovimientosBidones => Set<MovimientoBidones>();
 
+    // ===== Sprint 3 =====
+    public DbSet<GastoRuta> GastosRuta => Set<GastoRuta>();
+    public DbSet<CierreCaja> CierresCaja => Set<CierreCaja>();
+    public DbSet<AutorizacionPlazo> AutorizacionesPlazo => Set<AutorizacionPlazo>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

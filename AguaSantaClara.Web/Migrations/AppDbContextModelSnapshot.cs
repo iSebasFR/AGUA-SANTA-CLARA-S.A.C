@@ -22,6 +22,169 @@ namespace AguaSantaClara.Web.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.AutorizacionPlazo", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_autorizacion");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("EstadoRegistro")
+                        .HasColumnType("boolean")
+                        .HasColumnName("estado_registro");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<DateOnly>("FechaVencimientoAnterior")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_vencimiento_anterior");
+
+                    b.Property<DateOnly>("FechaVencimientoNueva")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_vencimiento_nueva");
+
+                    b.Property<long>("IdDeuda")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_deuda");
+
+                    b.Property<long>("IdUsuarioAutoriza")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_usuario_autoriza");
+
+                    b.Property<decimal>("MontoAnterior")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("monto_anterior");
+
+                    b.Property<decimal>("MontoNuevo")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("monto_nuevo");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("observacion");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdDeuda")
+                        .HasDatabaseName("idx_autorizacion_deuda");
+
+                    b.HasIndex("IdUsuarioAutoriza")
+                        .HasDatabaseName("idx_autorizacion_usuario");
+
+                    b.ToTable("autorizacion_plazo", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_autorizacion_monto_anterior_positivo", "monto_anterior > 0");
+
+                            t.HasCheckConstraint("chk_autorizacion_monto_nuevo_positivo", "monto_nuevo > 0");
+                        });
+                });
+
+            modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.CierreCaja", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_cierre");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Diferencia")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("diferencia");
+
+                    b.Property<decimal>("EfectivoEsperado")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("efectivo_esperado");
+
+                    b.Property<decimal>("EfectivoRecibido")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("efectivo_recibido");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("estado");
+
+                    b.Property<bool>("EstadoRegistro")
+                        .HasColumnType("boolean")
+                        .HasColumnName("estado_registro");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<decimal>("GastosDelDia")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("gastos_del_dia");
+
+                    b.Property<long>("IdVendedora")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_vendedora");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("observacion");
+
+                    b.Property<decimal>("YapeEsperado")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("yape_esperado");
+
+                    b.Property<decimal>("YapeRecibido")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("yape_recibido");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fecha")
+                        .HasDatabaseName("idx_cierre_caja_fecha");
+
+                    b.HasIndex("IdVendedora")
+                        .HasDatabaseName("idx_cierre_caja_vendedora");
+
+                    b.HasIndex("IdVendedora", "Fecha")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cierre_caja_vendedora_fecha")
+                        .HasFilter("estado_registro = true");
+
+                    b.ToTable("cierre_caja", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_cierre_efectivo_no_negativo", "efectivo_recibido >= 0");
+
+                            t.HasCheckConstraint("chk_cierre_estado", "estado IN ('Cuadrado', 'Con diferencia')");
+
+                            t.HasCheckConstraint("chk_cierre_gastos_no_negativo", "gastos_del_dia >= 0");
+
+                            t.HasCheckConstraint("chk_cierre_yape_no_negativo", "yape_recibido >= 0");
+                        });
+                });
+
             modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.Cliente", b =>
                 {
                     b.Property<long>("Id")
@@ -299,6 +462,67 @@ namespace AguaSantaClara.Web.Migrations
                         .HasDatabaseName("idx_direccion_cliente");
 
                     b.ToTable("direccion_cliente", (string)null);
+                });
+
+            modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.GastoRuta", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_gasto");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("EstadoRegistro")
+                        .HasColumnType("boolean")
+                        .HasColumnName("estado_registro");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<long>("IdRepartidor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_repartidor");
+
+                    b.Property<decimal>("Monto")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("monto");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("observacion");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fecha")
+                        .HasDatabaseName("idx_gasto_ruta_fecha");
+
+                    b.HasIndex("IdRepartidor")
+                        .HasDatabaseName("idx_gasto_ruta_repartidor");
+
+                    b.ToTable("gasto_ruta", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_gasto_ruta_monto_positivo", "monto > 0");
+
+                            t.HasCheckConstraint("chk_gasto_ruta_tipo", "tipo IN ('Gasolina', 'Peajes', 'Cochera', 'Otros')");
+                        });
                 });
 
             modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.Incidencia", b =>
@@ -617,6 +841,12 @@ namespace AguaSantaClara.Web.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<bool>("EsAutoventa")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_autoventa");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -645,6 +875,9 @@ namespace AguaSantaClara.Web.Migrations
                         .HasColumnName("total");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EsAutoventa")
+                        .HasDatabaseName("idx_pedido_es_autoventa");
 
                     b.HasIndex("Estado")
                         .HasDatabaseName("idx_pedido_estado");
@@ -1237,6 +1470,36 @@ namespace AguaSantaClara.Web.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.AutorizacionPlazo", b =>
+                {
+                    b.HasOne("AguaSantaClara.Web.Models.Entities.Deuda", "Deuda")
+                        .WithMany("Autorizaciones")
+                        .HasForeignKey("IdDeuda")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AguaSantaClara.Web.Models.Entities.Usuario", "UsuarioAutoriza")
+                        .WithMany()
+                        .HasForeignKey("IdUsuarioAutoriza")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Deuda");
+
+                    b.Navigation("UsuarioAutoriza");
+                });
+
+            modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.CierreCaja", b =>
+                {
+                    b.HasOne("AguaSantaClara.Web.Models.Entities.Usuario", "Vendedora")
+                        .WithMany()
+                        .HasForeignKey("IdVendedora")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Vendedora");
+                });
+
             modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.DetallePedido", b =>
                 {
                     b.HasOne("AguaSantaClara.Web.Models.Entities.Local", "Local")
@@ -1292,6 +1555,17 @@ namespace AguaSantaClara.Web.Migrations
                         .IsRequired();
 
                     b.Navigation("Cliente");
+                });
+
+            modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.GastoRuta", b =>
+                {
+                    b.HasOne("AguaSantaClara.Web.Models.Entities.Repartidor", "Repartidor")
+                        .WithMany()
+                        .HasForeignKey("IdRepartidor")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Repartidor");
                 });
 
             modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.Incidencia", b =>
@@ -1490,6 +1764,11 @@ namespace AguaSantaClara.Web.Migrations
             modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.Cliente", b =>
                 {
                     b.Navigation("Direcciones");
+                });
+
+            modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.Deuda", b =>
+                {
+                    b.Navigation("Autorizaciones");
                 });
 
             modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.Local", b =>
