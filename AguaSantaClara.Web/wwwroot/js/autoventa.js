@@ -425,6 +425,7 @@
 
     const MSG_CANTIDAD = "La cantidad debe ser un número entero mayor a cero.";
     const MSG_PRODUCTO = "Selecciona un producto en cada fila o quita la fila vacía.";
+    const MSG_DESCUENTO = "El descuento debe ser un monto mayor o igual a cero, con máximo 2 decimales."; // T07
 
     const obtenerFilas = () =>
         contenedorFilas ? [...contenedorFilas.querySelectorAll(".av-fila")] : [];
@@ -441,10 +442,53 @@
         return valida;
     };
 
-    // Deja el mensaje solo si todavía hay alguna cantidad inválida
+    // ============ PRODUCTOS: DESCUENTOS (T07) ============
+    // Producto + local elegido en una fila (undefined si todavía no eligió)
+    const productoElegido = fila =>
+        catalogo.find(p => p.clave === fila.querySelector(".av-fila-producto").value);
+
+    // Devuelve el mensaje de error del descuento de una fila, o "" si es válido
+    const descuentoMensaje = fila => {
+        const texto = fila.querySelector(".av-fila-descuento").value.trim();
+        if (texto === "") return ""; // vacío se toma como 0
+
+        // No negativo y máximo 2 decimales
+        if (!/^(\d+|\d*\.\d{1,2})$/.test(texto)) return MSG_DESCUENTO;
+
+        // No puede superar cantidad × precio (solo se compara si ya se puede calcular)
+        const elegido = productoElegido(fila);
+        const cantidad = fila.querySelector(".av-fila-cantidad").value.trim();
+        if (!elegido || !/^\d+$/.test(cantidad) || Number(cantidad) < 1) return "";
+
+        const brutoCentimos = Math.round(elegido.precio * 100) * Number(cantidad);
+        if (Math.round(Number(texto) * 100) > brutoCentimos) {
+            return `El descuento no puede superar el monto del producto (${moneda(brutoCentimos / 100)}).`;
+        }
+        return "";
+    };
+
+    // Marca o limpia el borde rojo del descuento. Devuelve el mensaje ("" si es válido)
+    const marcarDescuento = fila => {
+        const input = fila.querySelector(".av-fila-descuento");
+        const mensaje = descuentoMensaje(fila);
+        input.classList.toggle("is-invalid", mensaje !== "");
+        input.dataset.mensaje = mensaje;
+        return mensaje;
+    };
+
+    // Deja el mensaje solo si todavía hay algo inválido (la cantidad tiene prioridad)
     const refrescarMensajeProductos = () => {
-        const hayInvalida = contenedorFilas?.querySelector(".av-fila-cantidad.is-invalid");
-        msgProductos.textContent = hayInvalida ? MSG_CANTIDAD : "";
+        if (!contenedorFilas) return;
+
+        if (contenedorFilas.querySelector(".av-fila-cantidad.is-invalid")) {
+            msgProductos.textContent = MSG_CANTIDAD;
+            return;
+        }
+
+        const descuentoInvalido = contenedorFilas.querySelector(".av-fila-descuento.is-invalid");
+        msgProductos.textContent = descuentoInvalido
+            ? (descuentoInvalido.dataset.mensaje || MSG_DESCUENTO)
+            : "";
     };
 
     const agregarFila = () => {
@@ -479,24 +523,29 @@
 
             if (!marcarCantidad(cantidad)) mensaje = MSG_CANTIDAD;
             if (!select.value && !mensaje) mensaje = MSG_PRODUCTO;
+
+            const errorDescuento = marcarDescuento(fila); // T07
+            if (errorDescuento && !mensaje) mensaje = errorDescuento;
         });
 
         msgProductos.textContent = mensaje;
         return mensaje === "";
     };
 
-    // Productos elegidos listos para el guardado (T10): idLocal, idProducto y cantidad
+    // Productos elegidos listos para el guardado (T10): idLocal, idProducto, cantidad y descuento
     const obtenerProductos = () =>
         obtenerFilas()
             .map(fila => {
-                const elegido = catalogo.find(
-                    p => p.clave === fila.querySelector(".av-fila-producto").value);
+                const elegido = productoElegido(fila);
                 if (!elegido) return null;
+
+                const descuento = Number(fila.querySelector(".av-fila-descuento").value) || 0;
 
                 return {
                     idLocal: elegido.idLocal,
                     idProducto: elegido.idProducto,
-                    cantidad: Number(fila.querySelector(".av-fila-cantidad").value)
+                    cantidad: Number(fila.querySelector(".av-fila-cantidad").value),
+                    descuentoMonto: Math.round(descuento * 100) / 100 // T07
                 };
             })
             .filter(Boolean);
@@ -510,8 +559,15 @@
     });
 
     contenedorFilas?.addEventListener("focusout", e => {
+        const fila = e.target.closest(".av-fila");
+        if (!fila) return;
+
         if (e.target.classList.contains("av-fila-cantidad")) {
             marcarCantidad(e.target);
+            marcarDescuento(fila); // T07: el límite del descuento depende de la cantidad
+            refrescarMensajeProductos();
+        } else if (e.target.classList.contains("av-fila-descuento")) {
+            marcarDescuento(fila); // T07
             refrescarMensajeProductos();
         }
     });
@@ -519,6 +575,19 @@
     contenedorFilas?.addEventListener("input", e => {
         if (e.target.classList.contains("av-fila-cantidad")) {
             e.target.classList.remove("is-invalid");
+            refrescarMensajeProductos();
+        } else if (e.target.classList.contains("av-fila-descuento")) {
+            // T07: quitar el error mientras se corrige
+            e.target.classList.remove("is-invalid");
+            e.target.dataset.mensaje = "";
+            refrescarMensajeProductos();
+        }
+    });
+
+    // T07: al cambiar de producto, el límite del descuento cambia
+    contenedorFilas?.addEventListener("change", e => {
+        if (e.target.classList.contains("av-fila-producto")) {
+            marcarDescuento(e.target.closest(".av-fila"));
             refrescarMensajeProductos();
         }
     });
