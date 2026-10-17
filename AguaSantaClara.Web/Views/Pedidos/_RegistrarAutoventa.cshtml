@@ -20,6 +20,12 @@
         box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
     }
 
+    #autoventaModal .form-control:disabled {
+        background-color: #f2f2f4;
+        color: #a1a1a6;
+        cursor: not-allowed;
+    }
+
     #autoventaModal .av-label {
         display: block;
         font-size: 12.5px;
@@ -68,6 +74,102 @@
         margin-bottom: 20px;
     }
 
+    #autoventaModal .av-nuevo-encabezado {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    #autoventaModal .av-nuevo-titulo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #3a8ab8;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 0;
+    }
+
+    #autoventaModal .av-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    #autoventaModal .av-span-2 { grid-column: span 2; }
+
+    #autoventaModal .av-cliente-fila {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    #autoventaModal .av-cliente-fila .form-control { flex: 1; }
+
+    #autoventaModal .av-btn-nuevo {
+        height: 42px;
+        padding: 0 16px;
+        background: #ffffff;
+        color: #3a8ab8;
+        border: 1px solid #e5e5ea;
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #autoventaModal .av-btn-nuevo:hover {
+        background: #eaf4fb;
+        border-color: #b8d9ef;
+    }
+
+    #autoventaModal .av-fila,
+    #autoventaModal .av-fila-encabezado {
+        display: grid;
+        grid-template-columns: 1fr 110px 130px 34px;
+        gap: 8px;
+        align-items: center;
+    }
+
+    #autoventaModal .av-fila-encabezado {
+        margin-bottom: 6px;
+        padding: 0 2px;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    #autoventaModal #autoventaFilas {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    #autoventaModal .av-icon-btn {
+        width: 30px;
+        height: 30px;
+        border: none;
+        background: transparent;
+        color: #6e6e73;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+    }
+
+    #autoventaModal .av-icon-btn:hover {
+        background: #ffebea;
+        color: #ff3b30;
+    }
+
     #autoventaModal .av-total-box {
         background: #eaf4fb;
         border-radius: 12px;
@@ -104,12 +206,124 @@
                 <div id="autoventaErrores" class="alert alert-danger d-none" role="alert" style="border-radius:10px;"></div>
 
                 <div id="autoventaFormulario">
+
+                    @* HU-14 T02: Repartidor *@
+                    <div class="av-campo">
+                        <label class="av-label" for="autoventaRepartidor">Repartidor</label>
+                        <select id="autoventaRepartidor" class="form-select">
+                            <option value="">Seleccione un repartidor</option>
+                            @foreach (var repartidor in Model.Repartidores)
+                            {
+                                <option value="@repartidor.Id">@repartidor.Nombre</option>
+                            }
+                        </select>
+                    </div>
+
+                    @* HU-14 T02: Cliente (buscador + botón Nuevo) *@
+                    <div class="av-campo" style="margin-bottom:12px;">
+                        <label class="av-label" for="autoventaBuscarCliente">Cliente</label>
+                        <div class="av-cliente-fila">
+                            <input id="autoventaBuscarCliente" type="text" class="form-control"
+                                   autocomplete="off" placeholder="Buscar por nombre, DNI o teléfono..." />
+                            <button type="button" id="btnAutoventaNuevo" class="av-btn-nuevo">+ Nuevo</button>
+                        </div>
+                    </div>
+
+                    @* HU-14 T02: bloque Cliente nuevo (oculto por defecto) *@
+                    <div id="autoventaClienteNuevo" class="av-nuevo d-none">
+                        <div class="av-nuevo-encabezado">
+                            <p class="av-nuevo-titulo">Cliente nuevo</p>
+                            <button type="button" id="btnAutoventaNuevoCerrar" class="av-icon-btn" aria-label="Cerrar cliente nuevo">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 6 6 18M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="av-grid-2">
+                            <div class="av-span-2">
+                                <label class="av-label" for="autoventaNuevoNombre">Nombre / Razón social *</label>
+                                <input id="autoventaNuevoNombre" type="text" class="form-control" maxlength="150" placeholder="Ej: Rosa Quispe" />
+                            </div>
+                            <div>
+                                <label class="av-label" for="autoventaNuevoTelefono">Teléfono *</label>
+                                <input id="autoventaNuevoTelefono" type="text" class="form-control" maxlength="20" placeholder="Ej: 987654321" />
+                            </div>
+                            <div>
+                                <label class="av-label" for="autoventaNuevoDni">DNI</label>
+                                <input id="autoventaNuevoDni" type="text" class="form-control" maxlength="8" inputmode="numeric" placeholder="Ej: 12345678" />
+                            </div>
+                            <div class="av-span-2">
+                                <label class="av-label" for="autoventaNuevoDireccion">Dirección *</label>
+                                <input id="autoventaNuevoDireccion" type="text" class="form-control" maxlength="255" placeholder="Ej: Av. Los Álamos 123" />
+                            </div>
+                            <div>
+                                <label class="av-label" for="autoventaNuevoCiudad">Ciudad</label>
+                                <input id="autoventaNuevoCiudad" type="text" class="form-control" maxlength="100" placeholder="Ej: Lima" />
+                            </div>
+                            <div>
+                                <label class="av-label" for="autoventaNuevoReferencia">Referencia</label>
+                                <input id="autoventaNuevoReferencia" type="text" class="form-control" maxlength="255" placeholder="Ej: Frente al parque" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* HU-14 T02: Productos vendidos *@
+                    <div class="av-campo">
+                        <p class="av-section-title">Productos vendidos</p>
+                        <div class="av-fila-encabezado">
+                            <div>Producto</div>
+                            <div style="text-align:center;">Cantidad</div>
+                            <div style="text-align:right;">Descuento (S/)</div>
+                            <div></div>
+                        </div>
+                        <div id="autoventaFilas"></div>
+                        <button type="button" id="btnAutoventaAgregar" class="av-btn-dashed">+ Agregar producto</button>
+                    </div>
+
+                    @* HU-14 T02: Método de pago *@
+                    <div class="av-campo">
+                        <label class="av-section-title" for="autoventaMetodoPago" style="display:block;">Método de pago</label>
+                        <select id="autoventaMetodoPago" class="form-select">
+                            <option value="">Seleccione un método de pago</option>
+                            @foreach (var metodo in Model.MetodosPago)
+                            {
+                                <option value="@metodo.Id">@metodo.Nombre</option>
+                            }
+                        </select>
+                    </div>
+
+                    @* HU-14 T02: Total a cobrar (solo lectura, se calcula en T08) *@
+                    <div class="av-total-box">
+                        <span>Total a cobrar</span>
+                        <strong id="autoventaTotal">S/ 0.00</strong>
+                    </div>
+
                 </div>
             </div>
 
             <div class="modal-footer" id="autoventaPie" style="border-top:1px solid #e5e5ea;justify-content:flex-end;gap:8px;">
+                @* HU-14 T02: botones del pie (sin funcionalidad todavía) *@
+                <button type="button" id="btnAutoventaCancelar" class="btn-apple"
+                        style="background:#f2f2f4;color:#1d1d1f;box-shadow:none;">Cancelar</button>
+                <button type="button" id="btnAutoventaGuardar" class="btn-apple">Guardar autoventa</button>
             </div>
 
         </div>
     </div>
 </div>
+
+@* HU-14 T02: plantilla de fila de producto (se clona desde autoventa.js) *@
+<template id="autoventaFilaTemplate">
+    <div class="av-fila">
+        <select class="form-select av-fila-producto">
+            <option value="">Producto...</option>
+        </select>
+        <input type="number" class="form-control av-fila-cantidad" min="1" step="1" value="1" style="text-align:center;" />
+        <input type="number" class="form-control av-fila-descuento" min="0" step="0.01" value="0.00" style="text-align:right;" />
+        <button type="button" class="av-icon-btn av-fila-quitar" aria-label="Quitar producto">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+</template>
