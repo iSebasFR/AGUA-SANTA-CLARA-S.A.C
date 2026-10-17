@@ -15,6 +15,7 @@
     const bloqueClienteNuevo = $("autoventaClienteNuevo");
     const contenedorFilas = $("autoventaFilas");
     const plantillaFila = $("autoventaFilaTemplate");
+    const btnAgregarProducto = $("btnAutoventaAgregar"); // T06
 
     const PLACEHOLDER_BUSCADOR = "Buscar por nombre, DNI o teléfono...";
     const PLACEHOLDER_NUEVO = "Oculto: registrando cliente nuevo";
@@ -415,10 +416,118 @@
         llenarSelectsProducto();
     };
 
+    // ============ PRODUCTOS: FILAS Y CANTIDADES (T06) ============
+    // Mensaje de error de la sección de productos (se crea aquí, bajo la lista de filas)
+    const msgProductos = document.createElement("div");
+    msgProductos.id = "autoventaProductosError";
+    msgProductos.className = "av-msg-error";
+    contenedorFilas?.insertAdjacentElement("afterend", msgProductos);
+
+    const MSG_CANTIDAD = "La cantidad debe ser un número entero mayor a cero.";
+    const MSG_PRODUCTO = "Selecciona un producto en cada fila o quita la fila vacía.";
+
+    const obtenerFilas = () =>
+        contenedorFilas ? [...contenedorFilas.querySelectorAll(".av-fila")] : [];
+
+    const cantidadValida = input => {
+        const valor = input.value.trim();
+        return /^\d+$/.test(valor) && Number(valor) >= 1;
+    };
+
+    // Marca o limpia el borde rojo de una cantidad. Devuelve true si es válida.
+    const marcarCantidad = input => {
+        const valida = cantidadValida(input);
+        input.classList.toggle("is-invalid", !valida);
+        return valida;
+    };
+
+    // Deja el mensaje solo si todavía hay alguna cantidad inválida
+    const refrescarMensajeProductos = () => {
+        const hayInvalida = contenedorFilas?.querySelector(".av-fila-cantidad.is-invalid");
+        msgProductos.textContent = hayInvalida ? MSG_CANTIDAD : "";
+    };
+
+    const agregarFila = () => {
+        if (!plantillaFila || !contenedorFilas) return;
+        contenedorFilas.append(plantillaFila.content.cloneNode(true));
+
+        const select = contenedorFilas.lastElementChild.querySelector(".av-fila-producto");
+        llenarSelectProducto(select);
+        select.focus();
+    };
+
+    const quitarFila = fila => {
+        if (obtenerFilas().length > 1) {
+            fila.remove();
+        } else {
+            // Siempre queda al menos una fila: la última solo se vacía
+            fila.querySelector(".av-fila-producto").value = "";
+            fila.querySelector(".av-fila-cantidad").value = "1";
+            fila.querySelector(".av-fila-descuento").value = "0.00";
+            fila.querySelectorAll(".is-invalid").forEach(n => n.classList.remove("is-invalid"));
+        }
+        refrescarMensajeProductos();
+    };
+
+    // Valida todas las filas. La usará T10 antes de guardar.
+    const validarProductos = () => {
+        let mensaje = "";
+
+        obtenerFilas().forEach(fila => {
+            const select = fila.querySelector(".av-fila-producto");
+            const cantidad = fila.querySelector(".av-fila-cantidad");
+
+            if (!marcarCantidad(cantidad)) mensaje = MSG_CANTIDAD;
+            if (!select.value && !mensaje) mensaje = MSG_PRODUCTO;
+        });
+
+        msgProductos.textContent = mensaje;
+        return mensaje === "";
+    };
+
+    // Productos elegidos listos para el guardado (T10): idLocal, idProducto y cantidad
+    const obtenerProductos = () =>
+        obtenerFilas()
+            .map(fila => {
+                const elegido = catalogo.find(
+                    p => p.clave === fila.querySelector(".av-fila-producto").value);
+                if (!elegido) return null;
+
+                return {
+                    idLocal: elegido.idLocal,
+                    idProducto: elegido.idProducto,
+                    cantidad: Number(fila.querySelector(".av-fila-cantidad").value)
+                };
+            })
+            .filter(Boolean);
+
+    btnAgregarProducto?.addEventListener("click", agregarFila);
+
+    // Eventos delegados: valen para la primera fila y para las que se agreguen después
+    contenedorFilas?.addEventListener("click", e => {
+        const botonQuitar = e.target.closest(".av-fila-quitar");
+        if (botonQuitar) quitarFila(botonQuitar.closest(".av-fila"));
+    });
+
+    contenedorFilas?.addEventListener("focusout", e => {
+        if (e.target.classList.contains("av-fila-cantidad")) {
+            marcarCantidad(e.target);
+            refrescarMensajeProductos();
+        }
+    });
+
+    contenedorFilas?.addEventListener("input", e => {
+        if (e.target.classList.contains("av-fila-cantidad")) {
+            e.target.classList.remove("is-invalid");
+            refrescarMensajeProductos();
+        }
+    });
+
     // ============ PRIMERA FILA DE PRODUCTO (T02) ============
     const dibujarPrimeraFila = () => {
         if (!plantillaFila || !contenedorFilas) return;
         contenedorFilas.replaceChildren(plantillaFila.content.cloneNode(true));
+        msgProductos.textContent = ""; // T06
         llenarSelectsProducto(); // T05
     };
 
