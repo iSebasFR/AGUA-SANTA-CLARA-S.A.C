@@ -20,6 +20,8 @@
     const PLACEHOLDER_NUEVO = "Oculto: registrando cliente nuevo";
     const PLACEHOLDER_SELECCIONADO = "Cliente seleccionado";
 
+    const moneda = v => "S/ " + Number(v || 0).toFixed(2); // T05
+
     // ============ REFERENCIAS DE LA BÚSQUEDA DE CLIENTE (T03) ============
     const dropdown = $("autoventaDropdown");
     const msgBuscar = $("autoventaBuscarMensaje");
@@ -323,15 +325,107 @@
 
     btnNuevoCerrar?.addEventListener("click", ocultarClienteNuevo);
 
+    // ============ PRODUCTOS: CATÁLOGO PRODUCTO + LOCAL (T05) ============
+    const localesDisponibles = window.__pedidosData?.locales ?? [];
+
+    // Cada elemento: { clave, idLocal, localNombre, idProducto, nombre, precio, stock }
+    let catalogo = [];
+    let estadoCatalogo = "cargando"; // "cargando" | "listo" | "error"
+    let numeroCargaCatalogo = 0;     // descarta respuestas viejas al reabrir el modal
+
+    const claveProducto = (idLocal, idProducto) => `${idLocal}:${idProducto}`;
+
+    const textoOpcionProducto = p =>
+        `${p.nombre} · ${p.localNombre} (stock ${p.stock}) · ${moneda(p.precio)}`;
+
+    const textoPlaceholderProducto = () => {
+        if (estadoCatalogo === "cargando") return "Cargando productos...";
+        if (estadoCatalogo === "error") return "No se pudieron cargar los productos";
+        if (!catalogo.length) return "No hay productos disponibles";
+        return "Producto...";
+    };
+
+    // Llena un desplegable de producto conservando la opción elegida (si sigue existiendo)
+    const llenarSelectProducto = select => {
+        const valorActual = select.value;
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = textoPlaceholderProducto();
+
+        const opciones = catalogo.map(p => {
+            const opcion = document.createElement("option");
+            opcion.value = p.clave;
+            opcion.textContent = textoOpcionProducto(p);
+            return opcion;
+        });
+
+        select.replaceChildren(placeholder, ...opciones);
+
+        if (valorActual && catalogo.some(p => p.clave === valorActual)) {
+            select.value = valorActual;
+        }
+        select.disabled = estadoCatalogo !== "listo" || !catalogo.length;
+    };
+
+    // Llena todos los desplegables de producto que hay en pantalla
+    const llenarSelectsProducto = () => {
+        contenedorFilas?.querySelectorAll(".av-fila-producto").forEach(llenarSelectProducto);
+    };
+
+    // Consulta los productos de cada local activo (una vez por apertura del modal)
+    const cargarCatalogo = async () => {
+        const miCarga = ++numeroCargaCatalogo;
+        estadoCatalogo = "cargando";
+        catalogo = [];
+        llenarSelectsProducto();
+
+        try {
+            const respuestas = await Promise.all(localesDisponibles.map(async local => {
+                const resp = await fetch(
+                    `/Pedidos/ProductosPorLocal?idLocal=${encodeURIComponent(local.id)}`,
+                    { credentials: "same-origin" });
+                if (!resp.ok) throw new Error("Error al cargar productos");
+                return { local, productos: await resp.json() };
+            }));
+
+            if (miCarga !== numeroCargaCatalogo) return;
+
+            catalogo = respuestas
+                .flatMap(({ local, productos }) => productos.map(p => ({
+                    clave: claveProducto(local.id, p.idProducto),
+                    idLocal: local.id,
+                    localNombre: local.nombre,
+                    idProducto: p.idProducto,
+                    nombre: p.nombre,
+                    precio: Number(p.precio),
+                    stock: Number(p.stock)
+                })))
+                .sort((a, b) =>
+                    a.nombre.localeCompare(b.nombre, "es") ||
+                    a.localNombre.localeCompare(b.localNombre, "es"));
+
+            estadoCatalogo = "listo";
+        } catch {
+            if (miCarga !== numeroCargaCatalogo) return;
+            catalogo = [];
+            estadoCatalogo = "error";
+        }
+
+        llenarSelectsProducto();
+    };
+
     // ============ PRIMERA FILA DE PRODUCTO (T02) ============
     const dibujarPrimeraFila = () => {
         if (!plantillaFila || !contenedorFilas) return;
         contenedorFilas.replaceChildren(plantillaFila.content.cloneNode(true));
+        llenarSelectsProducto(); // T05
     };
 
     modalEl.addEventListener("show.bs.modal", () => {
         limpiarClienteSeleccionado(); // T03: buscador limpio al abrir
         ocultarClienteNuevo();        // T02 + T04: bloque oculto y vacío
         dibujarPrimeraFila();
+        cargarCatalogo();             // T05: productos al día cada vez que se abre
     });
 })();
