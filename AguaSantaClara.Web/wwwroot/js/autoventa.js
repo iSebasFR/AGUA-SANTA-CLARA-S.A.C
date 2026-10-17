@@ -16,6 +16,7 @@
     const contenedorFilas = $("autoventaFilas");
     const plantillaFila = $("autoventaFilaTemplate");
     const btnAgregarProducto = $("btnAutoventaAgregar"); // T06
+    const lblTotal = $("autoventaTotal");                // T08
 
     const PLACEHOLDER_BUSCADOR = "Buscar por nombre, DNI o teléfono...";
     const PLACEHOLDER_NUEVO = "Oculto: registrando cliente nuevo";
@@ -414,6 +415,7 @@
         }
 
         llenarSelectsProducto();
+        actualizarTotal(); // T08: los precios del catálogo recién cargado pueden cambiar el total
     };
 
     // ============ PRODUCTOS: FILAS Y CANTIDADES (T06) ============
@@ -491,12 +493,44 @@
             : "";
     };
 
+    // ============ TOTAL DE LA AUTOVENTA (T08) ============
+    // Subtotal de una fila en céntimos: (cantidad × precio) − descuento.
+    // Sin producto o con cantidad inválida no suma. Un descuento vacío o inválido cuenta como 0.
+    const subtotalFilaCentimos = fila => {
+        const elegido = productoElegido(fila);
+        const cantidadTexto = fila.querySelector(".av-fila-cantidad").value.trim();
+        if (!elegido || !/^\d+$/.test(cantidadTexto) || Number(cantidadTexto) < 1) return 0;
+
+        const brutoCentimos = Math.round(elegido.precio * 100) * Number(cantidadTexto);
+
+        const descuentoTexto = fila.querySelector(".av-fila-descuento").value.trim();
+        let descuentoCentimos = 0;
+        if (descuentoTexto !== "" && /^(\d+|\d*\.\d{1,2})$/.test(descuentoTexto)) {
+            descuentoCentimos = Math.round(Number(descuentoTexto) * 100);
+        }
+        if (descuentoCentimos > brutoCentimos) descuentoCentimos = 0;
+
+        return brutoCentimos - descuentoCentimos;
+    };
+
+    const calcularTotalCentimos = () =>
+        obtenerFilas().reduce((suma, fila) => suma + subtotalFilaCentimos(fila), 0);
+
+    // Total como número (la T10 lo usará; el servidor lo recalcula y ese valor es el que vale)
+    const totalAutoventa = () => calcularTotalCentimos() / 100;
+
+    // Escribe el total en la caja azul (solo lectura)
+    const actualizarTotal = () => {
+        if (lblTotal) lblTotal.textContent = moneda(totalAutoventa());
+    };
+
     const agregarFila = () => {
         if (!plantillaFila || !contenedorFilas) return;
         contenedorFilas.append(plantillaFila.content.cloneNode(true));
 
         const select = contenedorFilas.lastElementChild.querySelector(".av-fila-producto");
         llenarSelectProducto(select);
+        actualizarTotal(); // T08
         select.focus();
     };
 
@@ -511,6 +545,7 @@
             fila.querySelectorAll(".is-invalid").forEach(n => n.classList.remove("is-invalid"));
         }
         refrescarMensajeProductos();
+        actualizarTotal(); // T08
     };
 
     // Valida todas las filas. La usará T10 antes de guardar.
@@ -576,11 +611,13 @@
         if (e.target.classList.contains("av-fila-cantidad")) {
             e.target.classList.remove("is-invalid");
             refrescarMensajeProductos();
+            actualizarTotal(); // T08
         } else if (e.target.classList.contains("av-fila-descuento")) {
             // T07: quitar el error mientras se corrige
             e.target.classList.remove("is-invalid");
             e.target.dataset.mensaje = "";
             refrescarMensajeProductos();
+            actualizarTotal(); // T08
         }
     });
 
@@ -589,6 +626,7 @@
         if (e.target.classList.contains("av-fila-producto")) {
             marcarDescuento(e.target.closest(".av-fila"));
             refrescarMensajeProductos();
+            actualizarTotal(); // T08
         }
     });
 
@@ -598,6 +636,7 @@
         contenedorFilas.replaceChildren(plantillaFila.content.cloneNode(true));
         msgProductos.textContent = ""; // T06
         llenarSelectsProducto(); // T05
+        actualizarTotal();       // T08: vuelve a S/ 0.00
     };
 
     modalEl.addEventListener("show.bs.modal", () => {
