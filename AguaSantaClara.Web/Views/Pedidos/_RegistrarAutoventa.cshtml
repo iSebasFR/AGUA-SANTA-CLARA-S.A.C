@@ -165,6 +165,18 @@
         min-height: 0;
     }
 
+    /* HU-14 T04: campo con error (el borde rojo gana al estilo base del modal) */
+    #autoventaModal .form-control.is-invalid {
+        border-color: #ff3b30;
+        background-image: none;
+        padding-right: 0.75rem;
+    }
+
+    #autoventaModal .form-control.is-invalid:focus {
+        border-color: #ff3b30;
+        box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.12);
+    }
+
     /* HU-14 T03: tarjeta del cliente seleccionado */
     #autoventaModal .av-cliente-sel {
         display: flex;
@@ -357,18 +369,23 @@
                             <div class="av-span-2">
                                 <label class="av-label" for="autoventaNuevoNombre">Nombre / Razón social *</label>
                                 <input id="autoventaNuevoNombre" type="text" class="form-control" maxlength="150" placeholder="Ej: Rosa Quispe" />
+                                @* HU-14 T04: error del campo *@
+                                <div id="autoventaNuevoNombreError" class="av-msg-error"></div>
                             </div>
                             <div>
                                 <label class="av-label" for="autoventaNuevoTelefono">Teléfono *</label>
                                 <input id="autoventaNuevoTelefono" type="text" class="form-control" maxlength="20" placeholder="Ej: 987654321" />
+                                <div id="autoventaNuevoTelefonoError" class="av-msg-error"></div>
                             </div>
                             <div>
                                 <label class="av-label" for="autoventaNuevoDni">DNI</label>
                                 <input id="autoventaNuevoDni" type="text" class="form-control" maxlength="8" inputmode="numeric" placeholder="Ej: 12345678" />
+                                <div id="autoventaNuevoDniError" class="av-msg-error"></div>
                             </div>
                             <div class="av-span-2">
                                 <label class="av-label" for="autoventaNuevoDireccion">Dirección *</label>
                                 <input id="autoventaNuevoDireccion" type="text" class="form-control" maxlength="255" placeholder="Ej: Av. Los Álamos 123" />
+                                <div id="autoventaNuevoDireccionError" class="av-msg-error"></div>
                             </div>
                             <div>
                                 <label class="av-label" for="autoventaNuevoCiudad">Ciudad</label>

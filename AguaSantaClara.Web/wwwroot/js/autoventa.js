@@ -31,6 +31,21 @@
     // Cliente existente elegido en el buscador (null si no hay ninguno)
     let clienteActual = null;
 
+    // ============ REFERENCIAS DEL CLIENTE NUEVO (T04) ============
+    const inpNuevoNombre = $("autoventaNuevoNombre");
+    const inpNuevoTelefono = $("autoventaNuevoTelefono");
+    const inpNuevoDni = $("autoventaNuevoDni");
+    const inpNuevoDireccion = $("autoventaNuevoDireccion");
+    const inpNuevoCiudad = $("autoventaNuevoCiudad");
+    const inpNuevoReferencia = $("autoventaNuevoReferencia");
+
+    const errNuevoNombre = $("autoventaNuevoNombreError");
+    const errNuevoTelefono = $("autoventaNuevoTelefonoError");
+    const errNuevoDni = $("autoventaNuevoDniError");
+    const errNuevoDireccion = $("autoventaNuevoDireccionError");
+
+    const MSG_DNI_DUPLICADO = "Ya existe un cliente con ese dni";
+
     // ============ CLIENTE EXISTENTE: BUSCAR Y SELECCIONAR (T03) ============
     const cerrarDropdown = () => {
         dropdown.classList.remove("show");
@@ -161,11 +176,131 @@
         inpBuscarCliente.focus();
     });
 
+    // ============ CLIENTE NUEVO: VALIDACIONES (T04) ============
+    const setError = (input, etiqueta, mensaje) => {
+        etiqueta.textContent = mensaje;
+        input.classList.toggle("is-invalid", Boolean(mensaje));
+    };
+
+    const validarObligatorio = (input, etiqueta, mensaje) => {
+        const valido = input.value.trim().length > 0;
+        setError(input, etiqueta, valido ? "" : mensaje);
+        return valido;
+    };
+
+    const validarNombre = () =>
+        validarObligatorio(inpNuevoNombre, errNuevoNombre, "Ingresa el nombre o la razón social.");
+
+    const validarTelefono = () =>
+        validarObligatorio(inpNuevoTelefono, errNuevoTelefono, "Ingresa el teléfono.");
+
+    const validarDireccion = () =>
+        validarObligatorio(inpNuevoDireccion, errNuevoDireccion, "Ingresa la dirección.");
+
+    let numeroValidacionDni = 0; // descarta respuestas viejas del servidor
+
+    // DNI opcional: si se ingresa, 8 dígitos y único. Devuelve true si es válido.
+    const validarDni = async () => {
+        const valor = inpNuevoDni.value.trim();
+        const miValidacion = ++numeroValidacionDni;
+
+        if (!valor) {
+            setError(inpNuevoDni, errNuevoDni, "");
+            return true;
+        }
+
+        if (!/^\d{8}$/.test(valor)) {
+            setError(inpNuevoDni, errNuevoDni, "El DNI debe tener 8 dígitos.");
+            return false;
+        }
+
+        try {
+            const resp = await fetch(
+                `/Pedidos/ValidarDniCliente?dni=${encodeURIComponent(valor)}`,
+                { credentials: "same-origin" });
+
+            // Si el servidor no responde bien, no bloqueamos: la T10 revalida al guardar
+            if (!resp.ok) return true;
+
+            const { existe } = await resp.json();
+            if (miValidacion === numeroValidacionDni) {
+                setError(inpNuevoDni, errNuevoDni, existe ? MSG_DNI_DUPLICADO : "");
+            }
+            return !existe;
+        } catch {
+            return true;
+        }
+    };
+
+    // Valida todo el bloque. La usará T10 antes de guardar.
+    const validarClienteNuevo = async () => {
+        const nombreOk = validarNombre();
+        const telefonoOk = validarTelefono();
+        const direccionOk = validarDireccion();
+        const dniOk = await validarDni();
+
+        if (!nombreOk) inpNuevoNombre.focus();
+        else if (!telefonoOk) inpNuevoTelefono.focus();
+        else if (!dniOk) inpNuevoDni.focus();
+        else if (!direccionOk) inpNuevoDireccion.focus();
+
+        return nombreOk && telefonoOk && direccionOk && dniOk;
+    };
+
+    // Datos limpios del cliente nuevo para el guardado (T10). null si el bloque está oculto.
+    const obtenerClienteNuevo = () => {
+        if (bloqueClienteNuevo.classList.contains("d-none")) return null;
+
+        const opcional = input => input.value.trim() || null;
+
+        return {
+            nombre: inpNuevoNombre.value.trim(),
+            telefono: inpNuevoTelefono.value.trim(),
+            dni: opcional(inpNuevoDni),
+            direccion: inpNuevoDireccion.value.trim(),
+            ciudad: opcional(inpNuevoCiudad),
+            referencia: opcional(inpNuevoReferencia)
+        };
+    };
+
+    // Vacía los campos y quita los errores del bloque Cliente nuevo
+    const limpiarClienteNuevo = () => {
+        numeroValidacionDni++;
+
+        [inpNuevoNombre, inpNuevoTelefono, inpNuevoDni, inpNuevoDireccion,
+            inpNuevoCiudad, inpNuevoReferencia].forEach(input => {
+            input.value = "";
+            input.classList.remove("is-invalid");
+        });
+
+        [errNuevoNombre, errNuevoTelefono, errNuevoDni, errNuevoDireccion]
+            .forEach(etiqueta => { etiqueta.textContent = ""; });
+    };
+
+    // Validar al salir del campo y quitar el error al volver a escribir
+    inpNuevoNombre?.addEventListener("blur", validarNombre);
+    inpNuevoNombre?.addEventListener("input", () => setError(inpNuevoNombre, errNuevoNombre, ""));
+
+    inpNuevoTelefono?.addEventListener("blur", validarTelefono);
+    inpNuevoTelefono?.addEventListener("input", () => setError(inpNuevoTelefono, errNuevoTelefono, ""));
+
+    inpNuevoDireccion?.addEventListener("blur", validarDireccion);
+    inpNuevoDireccion?.addEventListener("input", () => setError(inpNuevoDireccion, errNuevoDireccion, ""));
+
+    inpNuevoDni?.addEventListener("input", () => {
+        // Solo dígitos
+        inpNuevoDni.value = inpNuevoDni.value.replace(/\D/g, "");
+        numeroValidacionDni++;
+        setError(inpNuevoDni, errNuevoDni, "");
+    });
+    inpNuevoDni?.addEventListener("blur", validarDni);
+
     // ============ CLIENTE NUEVO: MOSTRAR / OCULTAR (T02) ============
     const mostrarClienteNuevo = () => {
         // T03: cliente existente y cliente nuevo son excluyentes
         limpiarClienteSeleccionado();
 
+        limpiarClienteNuevo(); // T04
         bloqueClienteNuevo.classList.remove("d-none");
         inpBuscarCliente.value = "";
         inpBuscarCliente.disabled = true;
@@ -174,6 +309,7 @@
     };
 
     const ocultarClienteNuevo = () => {
+        limpiarClienteNuevo(); // T04: Cancelar descarta lo escrito
         bloqueClienteNuevo.classList.add("d-none");
         inpBuscarCliente.disabled = false;
         inpBuscarCliente.placeholder = PLACEHOLDER_BUSCADOR;
@@ -195,7 +331,7 @@
 
     modalEl.addEventListener("show.bs.modal", () => {
         limpiarClienteSeleccionado(); // T03: buscador limpio al abrir
-        ocultarClienteNuevo();
+        ocultarClienteNuevo();        // T02 + T04: bloque oculto y vacío
         dibujarPrimeraFila();
     });
 })();

@@ -282,6 +282,19 @@ public class PedidosController : Controller
         });
     }
 
+    // ==================== VALIDAR DNI DE CLIENTE NUEVO (HU-14 T04) ====================
+    [HttpGet]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> ValidarDniCliente(string? dni)
+    {
+        var valor = dni?.Trim();
+        if (string.IsNullOrEmpty(valor))
+            return Json(new { existe = false });
+
+        var existe = await _context.Clientes.AnyAsync(c => c.Dni == valor);
+        return Json(new { existe });
+    }
+
     // ==================== PRODUCTOS POR LOCAL ====================
     [HttpGet]
     [Authorize(Roles = "Vendedora")]
