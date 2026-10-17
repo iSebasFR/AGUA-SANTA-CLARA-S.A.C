@@ -17,6 +17,8 @@
     const plantillaFila = $("autoventaFilaTemplate");
     const btnAgregarProducto = $("btnAutoventaAgregar"); // T06
     const lblTotal = $("autoventaTotal");                // T08
+    const selMetodoPago = $("autoventaMetodoPago");      // T09
+    const errMetodoPago = $("autoventaMetodoPagoError"); // T09
 
     const PLACEHOLDER_BUSCADOR = "Buscar por nombre, DNI o teléfono...";
     const PLACEHOLDER_NUEVO = "Oculto: registrando cliente nuevo";
@@ -630,6 +632,31 @@
         }
     });
 
+    // ============ MÉTODO DE PAGO (T09) ============
+    const MSG_METODO_PAGO = "Selecciona un método de pago.";
+
+    // Obligatorio: marca el desplegable en rojo si no hay método elegido. Devuelve true si es válido.
+    const validarMetodoPago = () => {
+        const valido = selMetodoPago.value !== "";
+        setError(selMetodoPago, errMetodoPago, valido ? "" : MSG_METODO_PAGO);
+        return valido;
+    };
+
+    // Id del método elegido para el guardado (T10). null si no eligió ninguno.
+    const obtenerMetodoPago = () => {
+        const valor = selMetodoPago.value;
+        return valor === "" ? null : Number(valor);
+    };
+
+    // Vuelve a "Seleccione un método de pago" y quita el error
+    const limpiarMetodoPago = () => {
+        selMetodoPago.value = "";
+        setError(selMetodoPago, errMetodoPago, "");
+    };
+
+    selMetodoPago?.addEventListener("blur", validarMetodoPago);
+    selMetodoPago?.addEventListener("change", () => setError(selMetodoPago, errMetodoPago, ""));
+
     // ============ PRIMERA FILA DE PRODUCTO (T02) ============
     const dibujarPrimeraFila = () => {
         if (!plantillaFila || !contenedorFilas) return;
@@ -643,6 +670,7 @@
         limpiarClienteSeleccionado(); // T03: buscador limpio al abrir
         ocultarClienteNuevo();        // T02 + T04: bloque oculto y vacío
         dibujarPrimeraFila();
+        limpiarMetodoPago();          // T09: método de pago sin elegir y sin error
         cargarCatalogo();             // T05: productos al día cada vez que se abre
     });
 })();
