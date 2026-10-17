@@ -1,0 +1,115 @@
+@model AguaSantaClara.Web.Models.PedidosIndexViewModel
+
+<style>
+    /* Estilos del modal de autoventa (alcance: solo #autoventaModal) */
+    #autoventaModal .form-control,
+    #autoventaModal .form-select {
+        height: 42px;
+        border-radius: 10px;
+        border: 1px solid #e5e5ea;
+        background-color: #ffffff;
+        font-size: 13px;
+        color: #1d1d1f;
+    }
+
+    #autoventaModal .form-control::placeholder { color: #a1a1a6; }
+
+    #autoventaModal .form-control:focus,
+    #autoventaModal .form-select:focus {
+        border-color: #1d1d1f;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    #autoventaModal .av-label {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: #6e6e73;
+        margin-bottom: 6px;
+    }
+
+    #autoventaModal .av-section-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 0 0 10px;
+    }
+
+    #autoventaModal .av-campo { margin-bottom: 20px; }
+
+    #autoventaModal .av-btn-dashed {
+        width: 100%;
+        height: 42px;
+        border: 1px dashed #d2d2d7;
+        border-radius: 10px;
+        background: #fbfcfd;
+        color: #6e6e73;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #autoventaModal .av-btn-dashed:hover {
+        border-color: #1d1d1f;
+        color: #1d1d1f;
+        background: #ffffff;
+    }
+
+    #autoventaModal .av-nuevo {
+        border: 1px dashed #d2d2d7;
+        border-radius: 12px;
+        background: #fbfcfd;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+
+    #autoventaModal .av-total-box {
+        background: #eaf4fb;
+        border-radius: 12px;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        color: #6e6e73;
+    }
+
+    #autoventaModal .av-total-box strong {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 22px;
+        font-weight: 600;
+        color: #1d1d1f;
+    }
+</style>
+
+<div class="modal fade" id="autoventaModal" tabindex="-1" aria-labelledby="autoventaModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px; border:none;">
+
+            <div class="modal-header" style="border-bottom:1px solid #e5e5ea;">
+                <div>
+                    <h5 class="modal-title" id="autoventaModalLabel" style="font-size:16px;font-weight:600;">Registrar autoventa</h5>
+                    <p style="font-size:12.5px;color:#6e6e73;margin:2px 0 0;">Registra la venta que el repartidor realizó en ruta.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body" style="padding:20px 24px;">
+                @Html.AntiForgeryToken()
+                <div id="autoventaErrores" class="alert alert-danger d-none" role="alert" style="border-radius:10px;"></div>
+
+                <div id="autoventaFormulario">
+                </div>
+            </div>
+
+            <div class="modal-footer" id="autoventaPie" style="border-top:1px solid #e5e5ea;justify-content:flex-end;gap:8px;">
+            </div>
+
+        </div>
+    </div>
+</div>

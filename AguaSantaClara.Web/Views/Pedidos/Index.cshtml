@@ -493,6 +493,16 @@
         </div>
         @if (esVendedora)
         {
+            @* HU-14 T01: botón Registrar autoventa *@
+            <button type="button" class="btn-apple" id="btnAutoventa"
+                    style="margin-left:auto;background:#ffffff;color:#1d1d1f;border:1px solid #e5e5ea;box-shadow:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                    <path d="M3 6h18"/>
+                    <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                Registrar autoventa
+            </button>
             <button type="button" class="btn-apple" id="btnNuevoPedido">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 5v14M5 12h14"/>
@@ -822,6 +832,8 @@
 @if (esVendedora)
 {
     <partial name="_CrearPedido" model="Model" />
+    @* HU-14 T01: modal de autoventa *@
+    <partial name="_RegistrarAutoventa" model="Model" />
 }
 
 <!-- MODAL DETALLE DE COBRO -->
@@ -1156,6 +1168,8 @@
         </script>
         <script src="~/js/pedidos.js" asp-append-version="true"></script>
         <script src="~/js/pedidos-lista.js" asp-append-version="true"></script>
+        @* HU-14 T01: script del modal de autoventa *@
+        <script src="~/js/autoventa.js" asp-append-version="true"></script>
     }
     <partial name="_ValidationScriptsPartial" />
 }
