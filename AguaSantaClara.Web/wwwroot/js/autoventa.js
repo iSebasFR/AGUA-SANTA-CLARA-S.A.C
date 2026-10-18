@@ -19,6 +19,10 @@
     const lblTotal = $("autoventaTotal");                // T08
     const selMetodoPago = $("autoventaMetodoPago");      // T09
     const errMetodoPago = $("autoventaMetodoPagoError"); // T09
+    const alertaErrores = $("autoventaErrores");         // T10
+    const btnGuardar = $("btnAutoventaGuardar");         // T10
+    const tokenAntiforgery =
+        modalEl.querySelector("input[name='__RequestVerificationToken']")?.value ?? ""; // T10
 
     const PLACEHOLDER_BUSCADOR = "Buscar por nombre, DNI o teléfono...";
     const PLACEHOLDER_NUEVO = "Oculto: registrando cliente nuevo";
@@ -657,6 +661,121 @@
     selMetodoPago?.addEventListener("blur", validarMetodoPago);
     selMetodoPago?.addEventListener("change", () => setError(selMetodoPago, errMetodoPago, ""));
 
+    // ============ GUARDAR AUTOVENTA (T10) ============
+    const MSG_SIN_CLIENTE = "Selecciona un cliente existente o registra uno nuevo.";
+    const MSG_ERROR_GENERAL = "No se pudo registrar la autoventa.";
+    const MSG_SIN_CONEXION = "No se pudo conectar con el servidor.";
+
+    let guardando = false;           // evita doble clic mientras se envía
+    let autoventaRegistrada = false; // al ocultarse el modal, recarga la lista
+
+    const bloqueNuevoVisible = () => !bloqueClienteNuevo.classList.contains("d-none");
+
+    const limpiarAlertaErrores = () => {
+        alertaErrores.classList.add("d-none");
+        alertaErrores.replaceChildren();
+    };
+
+    const mostrarAlertaErrores = mensajes => {
+        const lista = document.createElement("ul");
+        lista.className = "mb-0";
+        mensajes.forEach(mensaje => {
+            const item = document.createElement("li");
+            item.textContent = mensaje;
+            lista.append(item);
+        });
+        alertaErrores.replaceChildren(lista);
+        alertaErrores.classList.remove("d-none");
+        alertaErrores.scrollIntoView({ block: "nearest" });
+    };
+
+    // Muestra los errores del servidor y marca el DNI duplicado en el campo del cliente nuevo
+    const mostrarErroresServidor = errores => {
+        const lista = Array.isArray(errores) ? errores : [];
+        const mensajes = lista.map(e => e?.mensaje).filter(Boolean);
+
+        mostrarAlertaErrores(mensajes.length ? mensajes : [MSG_ERROR_GENERAL]);
+
+        const errorDni = lista.find(e => e?.campo === "clienteNuevo.dni");
+        if (errorDni && bloqueNuevoVisible()) {
+            setError(inpNuevoDni, errNuevoDni, errorDni.mensaje || MSG_DNI_DUPLICADO);
+            inpNuevoDni.focus();
+        }
+    };
+
+    // Cliente existente elegido O bloque de cliente nuevo válido
+    const validarClienteParaGuardar = async () => {
+        if (clienteActual) return true;
+        if (bloqueNuevoVisible()) return await validarClienteNuevo();
+
+        msgBuscar.textContent = MSG_SIN_CLIENTE;
+        inpBuscarCliente.focus();
+        return false;
+    };
+
+    // Se envía idCliente O clienteNuevo, nunca ambos. El total no viaja: lo calcula el servidor.
+    const armarCuerpoAutoventa = () => {
+        const cuerpo = {
+            idMetodoPago: obtenerMetodoPago(),
+            detalles: obtenerProductos()
+        };
+
+        if (clienteActual) cuerpo.idCliente = clienteActual.id;
+        else cuerpo.clienteNuevo = obtenerClienteNuevo();
+
+        return cuerpo;
+    };
+
+    const guardarAutoventa = async () => {
+        if (guardando) return;
+        guardando = true;
+        btnGuardar.disabled = true;
+        limpiarAlertaErrores();
+
+        try {
+            // Se validan las tres partes para mostrar todos los errores a la vez
+            const clienteOk = await validarClienteParaGuardar();
+            const productosOk = validarProductos();
+            const pagoOk = validarMetodoPago();
+
+            if (!clienteOk || !productosOk || !pagoOk) return;
+
+            const resp = await fetch("/Pedidos/GuardarAutoventa", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "RequestVerificationToken": tokenAntiforgery
+                },
+                body: JSON.stringify(armarCuerpoAutoventa())
+            });
+            const datos = await resp.json().catch(() => null);
+
+            if (!resp.ok || !datos) {
+                mostrarErroresServidor(datos?.errores);
+                return;
+            }
+
+            // Mismo patrón de pedidos.js: toast tras recargar la lista
+            sessionStorage.setItem("pedidoToast", datos.mensaje || "Autoventa registrada correctamente");
+            autoventaRegistrada = true;
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } catch {
+            mostrarAlertaErrores([MSG_SIN_CONEXION]);
+        } finally {
+            guardando = false;
+            // Si se registró, el botón queda deshabilitado hasta que la página se recargue
+            if (!autoventaRegistrada) btnGuardar.disabled = false;
+        }
+    };
+
+    btnGuardar?.addEventListener("click", guardarAutoventa);
+
+    // Tras cerrarse el modal por un guardado exitoso, se recarga para ver el pedido "Pagado" en la lista
+    modalEl.addEventListener("hidden.bs.modal", e => {
+        if (e.target === modalEl && autoventaRegistrada) window.location.reload();
+    });
+
     // ============ PRIMERA FILA DE PRODUCTO (T02) ============
     const dibujarPrimeraFila = () => {
         if (!plantillaFila || !contenedorFilas) return;
@@ -672,5 +791,9 @@
         dibujarPrimeraFila();
         limpiarMetodoPago();          // T09: método de pago sin elegir y sin error
         cargarCatalogo();             // T05: productos al día cada vez que se abre
+        limpiarAlertaErrores();       // T10: sin errores del servidor al abrir
+        autoventaRegistrada = false;  // T10
+        guardando = false;            // T10
+        btnGuardar.disabled = false;  // T10
     });
 })();

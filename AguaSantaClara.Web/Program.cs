@@ -66,6 +66,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 });
 
 builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddScoped<IAutoventaService, AutoventaService>(); // HU-14 T10
 builder.Services.AddScoped<IAlertasService, AlertasService>();
 builder.Services.AddOptions<AlertasOptions>()
     .BindConfiguration(AlertasOptions.SectionName)

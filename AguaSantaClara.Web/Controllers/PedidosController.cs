@@ -493,4 +493,16 @@ public class PedidosController : Controller
         var resultado = await _pedidoService.PreviewCrearAsync(modelo ?? new CrearPedidoViewModel());
         return resultado.Ok ? Json(resultado) : BadRequest(resultado);
     }
+
+    // ==================== GUARDAR AUTOVENTA (HU-14 T10) ====================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> GuardarAutoventa(
+        [FromBody] GuardarAutoventaViewModel? modelo,
+        [FromServices] IAutoventaService autoventaService)
+    {
+        var resultado = await autoventaService.GuardarAsync(modelo ?? new GuardarAutoventaViewModel());
+        return resultado.Ok ? Json(resultado) : BadRequest(resultado);
+    }
 }
