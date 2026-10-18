@@ -25,6 +25,11 @@ public class PedidosController : Controller
         long? idCliente,
         long? idRepartidor)
     {
+        // HU-14 T13: "Autoventa" es un filtro adicional, no un estado real de EstadosPedido.
+        // Se separa aquí para que el resto del método (validación y filtro por Estado) lo ignore.
+        var esFiltroAutoventa = string.Equals(estado?.Trim(), "Autoventa", StringComparison.OrdinalIgnoreCase);
+        if (esFiltroAutoventa) estado = null;
+
         var filtrosActivos = (!string.IsNullOrWhiteSpace(estado) ? 1 : 0)
             + (idCliente.HasValue ? 1 : 0)
             + (idRepartidor.HasValue ? 1 : 0);
@@ -44,6 +49,10 @@ public class PedidosController : Controller
             if (idRepartidor.HasValue)
                 consultaPedidos = consultaPedidos.Where(p => p.IdRepartidor == idRepartidor.Value);
         }
+
+        // HU-14 T13: solo las autoventas en ruta (se filtra por EsAutoventa, no por Estado: están "Pagado")
+        if (esFiltroAutoventa)
+            consultaPedidos = consultaPedidos.Where(p => p.EsAutoventa);
 
         var repartidoresActivos = await _context.Repartidores
             .Where(r => r.Estado && r.EstadoRegistro)
@@ -111,6 +120,45 @@ public class PedidosController : Controller
             ErrorFiltros = errorFiltros,
             TieneFiltrosAplicados = filtrosActivos > 0 && errorFiltros == null
         };
+
+        // HU-14 T13: el filtro "Autoventa" se muestra seleccionado y cuenta como filtro aplicado
+        if (esFiltroAutoventa)
+        {
+            modelo.EstadoFiltro = "Autoventa";
+            modelo.TieneFiltrosAplicados = true;
+        }
+
+        // HU-14 T13: resumen de ventas de hoy (sin pedidos Pendiente ni Con Incidencia)
+        var inicioHoyUtc = InicioDelDiaUtc(DateOnly.FromDateTime(DateTime.Now));
+        var finHoyUtc = inicioHoyUtc.AddDays(1);
+
+        var ventasHoy = await _context.Pedidos
+            .Where(p => p.EstadoRegistro
+                && p.FechaCreacion >= inicioHoyUtc && p.FechaCreacion < finHoyUtc
+                && p.Estado != EstadosPedido.Pendiente && p.Estado != EstadosPedido.ConIncidencia)
+            .GroupBy(p => p.EsAutoventa)
+            .Select(g => new { EsAutoventa = g.Key, Cantidad = g.Count(), Monto = g.Sum(p => p.Total) })
+            .ToListAsync();
+
+        var normalesHoy = ventasHoy.FirstOrDefault(v => !v.EsAutoventa);
+        var autoventasHoy = ventasHoy.FirstOrDefault(v => v.EsAutoventa);
+        modelo.PedidosNormalesHoy = normalesHoy?.Cantidad ?? 0;
+        modelo.MontoPedidosNormalesHoy = normalesHoy?.Monto ?? 0m;
+        modelo.AutoventasHoy = autoventasHoy?.Cantidad ?? 0;
+        modelo.MontoAutoventasHoy = autoventasHoy?.Monto ?? 0m;
+
+        var cobradoAutoventas = await _context.Pagos
+            .Where(pg => pg.EstadoRegistro
+                && pg.Pedido.EstadoRegistro && pg.Pedido.EsAutoventa
+                && pg.Pedido.FechaCreacion >= inicioHoyUtc && pg.Pedido.FechaCreacion < finHoyUtc)
+            .GroupBy(pg => pg.IdMetodoPago)
+            .Select(g => new { IdMetodoPago = g.Key, Monto = g.Sum(pg => pg.Monto) })
+            .ToListAsync();
+
+        var nombresMetodos = await _context.MetodosPago.ToDictionaryAsync(m => m.Id, m => m.Nombre);
+        modelo.CobradoAutoventasPorMetodoHoy = cobradoAutoventas
+            .GroupBy(c => nombresMetodos.GetValueOrDefault(c.IdMetodoPago, "Otro"))
+            .ToDictionary(g => g.Key, g => g.Sum(c => c.Monto));
 
         var idsPedidos = modelo.Pedidos
             .Where(p => p.Estado is EstadosPedido.Entregado or EstadosPedido.PagoParcial)
@@ -280,6 +328,19 @@ public class PedidosController : Controller
                 })
                 .ToList()
         });
+    }
+
+    // ==================== VALIDAR DNI DE CLIENTE NUEVO (HU-14 T04) ====================
+    [HttpGet]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> ValidarDniCliente(string? dni)
+    {
+        var valor = dni?.Trim();
+        if (string.IsNullOrEmpty(valor))
+            return Json(new { existe = false });
+
+        var existe = await _context.Clientes.AnyAsync(c => c.Dni == valor);
+        return Json(new { existe });
     }
 
     // ==================== PRODUCTOS POR LOCAL ====================
@@ -478,6 +539,18 @@ public class PedidosController : Controller
     public async Task<IActionResult> PreviewEnviar([FromBody] CrearPedidoViewModel modelo)
     {
         var resultado = await _pedidoService.PreviewCrearAsync(modelo ?? new CrearPedidoViewModel());
+        return resultado.Ok ? Json(resultado) : BadRequest(resultado);
+    }
+
+    // ==================== GUARDAR AUTOVENTA (HU-14 T10) ====================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> GuardarAutoventa(
+        [FromBody] GuardarAutoventaViewModel? modelo,
+        [FromServices] IAutoventaService autoventaService)
+    {
+        var resultado = await autoventaService.GuardarAsync(modelo ?? new GuardarAutoventaViewModel());
         return resultado.Ok ? Json(resultado) : BadRequest(resultado);
     }
 }

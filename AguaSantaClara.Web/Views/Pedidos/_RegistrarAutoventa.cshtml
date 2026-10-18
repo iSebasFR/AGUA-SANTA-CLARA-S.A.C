@@ -1,0 +1,496 @@
+@model AguaSantaClara.Web.Models.PedidosIndexViewModel
+
+<style>
+    /* Estilos del modal de autoventa (alcance: solo #autoventaModal) */
+    #autoventaModal .form-control,
+    #autoventaModal .form-select {
+        height: 42px;
+        border-radius: 10px;
+        border: 1px solid #e5e5ea;
+        background-color: #ffffff;
+        font-size: 13px;
+        color: #1d1d1f;
+    }
+
+    #autoventaModal .form-control::placeholder { color: #a1a1a6; }
+
+    #autoventaModal .form-control:focus,
+    #autoventaModal .form-select:focus {
+        border-color: #1d1d1f;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+    }
+
+    #autoventaModal .form-control:disabled {
+        background-color: #f2f2f4;
+        color: #a1a1a6;
+        cursor: not-allowed;
+    }
+
+    #autoventaModal .av-label {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: #6e6e73;
+        margin-bottom: 6px;
+    }
+
+    #autoventaModal .av-section-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 0 0 10px;
+    }
+
+    #autoventaModal .av-campo { margin-bottom: 20px; }
+
+    #autoventaModal .av-btn-dashed {
+        width: 100%;
+        height: 42px;
+        border: 1px dashed #d2d2d7;
+        border-radius: 10px;
+        background: #fbfcfd;
+        color: #6e6e73;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #autoventaModal .av-btn-dashed:hover {
+        border-color: #1d1d1f;
+        color: #1d1d1f;
+        background: #ffffff;
+    }
+
+    #autoventaModal .av-nuevo {
+        border: 1px dashed #d2d2d7;
+        border-radius: 12px;
+        background: #fbfcfd;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+
+    #autoventaModal .av-nuevo-encabezado {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    #autoventaModal .av-nuevo-titulo {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #3a8ab8;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 0;
+    }
+
+    #autoventaModal .av-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    #autoventaModal .av-span-2 { grid-column: span 2; }
+
+    #autoventaModal .av-cliente-fila {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    #autoventaModal .av-cliente-fila .form-control { flex: 1; }
+
+    /* HU-14 T03: contenedor del buscador (para posicionar el desplegable) */
+    #autoventaModal .av-cliente-busqueda {
+        position: relative;
+        flex: 1;
+    }
+
+    #autoventaModal .av-cliente-busqueda .form-control { width: 100%; }
+
+    /* HU-14 T03: desplegable de resultados */
+    #autoventaModal .av-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 4px;
+        max-height: 240px;
+        overflow-y: auto;
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 10px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
+        z-index: 1060;
+        display: none;
+    }
+
+    #autoventaModal .av-dropdown.show { display: block; }
+
+    #autoventaModal .av-dropdown-item {
+        display: block;
+        width: 100%;
+        padding: 10px 14px;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid #f0f0f2;
+        text-align: left;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 13px;
+    }
+
+    #autoventaModal .av-dropdown-item:last-child { border-bottom: none; }
+    #autoventaModal .av-dropdown-item:hover { background: #fbfcfd; }
+
+    #autoventaModal .av-dropdown-vacio {
+        padding: 14px;
+        font-size: 12.5px;
+        color: #6e6e73;
+        text-align: center;
+    }
+
+    /* HU-14 T03: mensaje de error del buscador */
+    #autoventaModal .av-msg-error {
+        font-size: 12px;
+        color: #ff3b30;
+        margin-top: 4px;
+        min-height: 0;
+    }
+
+    /* HU-14 T04: campo con error (el borde rojo gana al estilo base del modal) */
+    #autoventaModal .form-control.is-invalid {
+        border-color: #ff3b30;
+        background-image: none;
+        padding-right: 0.75rem;
+    }
+
+    #autoventaModal .form-control.is-invalid:focus {
+        border-color: #ff3b30;
+        box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.12);
+    }
+
+    /* HU-14 T09: desplegable con error (borde rojo; se conserva la flecha y se quita el ícono de error de Bootstrap) */
+    #autoventaModal .form-select.is-invalid {
+        border-color: #ff3b30;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 16px 12px;
+        padding-right: 2.25rem;
+    }
+
+    #autoventaModal .form-select.is-invalid:focus {
+        border-color: #ff3b30;
+        box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.12);
+    }
+
+    /* HU-14 T03: tarjeta del cliente seleccionado */
+    #autoventaModal .av-cliente-sel {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        padding: 12px 14px;
+        background: #fbfcfd;
+        border: 1px solid #e5e5ea;
+        border-radius: 12px;
+    }
+
+    #autoventaModal .av-cliente-sel strong {
+        font-size: 13.5px;
+        color: #1d1d1f;
+    }
+
+    #autoventaModal .av-cliente-sel .av-cliente-meta {
+        font-size: 12px;
+        color: #6e6e73;
+        margin-top: 2px;
+    }
+
+    #autoventaModal .av-btn-cambiar {
+        height: 30px;
+        padding: 0 12px;
+        background: #f2f2f4;
+        color: #1d1d1f;
+        border: none;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    #autoventaModal .av-btn-cambiar:hover { background: #e8e8ea; }
+
+    #autoventaModal .av-btn-nuevo {
+        height: 42px;
+        padding: 0 16px;
+        background: #ffffff;
+        color: #3a8ab8;
+        border: 1px solid #e5e5ea;
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #autoventaModal .av-btn-nuevo:hover {
+        background: #eaf4fb;
+        border-color: #b8d9ef;
+    }
+
+    #autoventaModal .av-fila,
+    #autoventaModal .av-fila-encabezado {
+        display: grid;
+        grid-template-columns: 1fr 110px 130px 34px;
+        gap: 8px;
+        align-items: center;
+    }
+
+    #autoventaModal .av-fila-encabezado {
+        margin-bottom: 6px;
+        padding: 0 2px;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    #autoventaModal #autoventaFilas {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    #autoventaModal .av-icon-btn {
+        width: 30px;
+        height: 30px;
+        border: none;
+        background: transparent;
+        color: #6e6e73;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+    }
+
+    #autoventaModal .av-icon-btn:hover {
+        background: #ffebea;
+        color: #ff3b30;
+    }
+
+    #autoventaModal .av-total-box {
+        background: #eaf4fb;
+        border-radius: 12px;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        color: #6e6e73;
+    }
+
+    #autoventaModal .av-total-box strong {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 22px;
+        font-weight: 600;
+        color: #1d1d1f;
+    }
+
+    /* HU-14 T14: botón Cancelar del pie blanco con borde (prototipo); !important porque el botón trae estilo en línea */
+    #autoventaModal #btnAutoventaCancelar {
+        background: #ffffff !important;
+        color: #1d1d1f !important;
+        border: 1px solid #e5e5ea;
+    }
+
+    #autoventaModal #btnAutoventaCancelar:hover {
+        background: #fbfcfd !important;
+        color: #1d1d1f !important;
+        border-color: #1d1d1f;
+    }
+
+    /* HU-14 T14: ícono de X dentro del botón Cancelar del cliente nuevo */
+    #autoventaModal .av-btn-nuevo svg {
+        margin-right: 6px;
+        vertical-align: -2px;
+    }
+</style>
+
+<div class="modal fade" id="autoventaModal" tabindex="-1" aria-labelledby="autoventaModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px; border:none;">
+
+            <div class="modal-header" style="border-bottom:1px solid #e5e5ea;">
+                <div>
+                    <h5 class="modal-title" id="autoventaModalLabel" style="font-size:16px;font-weight:600;">Registrar autoventa</h5>
+                    <p style="font-size:12.5px;color:#6e6e73;margin:2px 0 0;">Registra la venta que el repartidor realizó en ruta.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body" style="padding:20px 24px;">
+                @Html.AntiForgeryToken()
+                <div id="autoventaErrores" class="alert alert-danger d-none" role="alert" style="border-radius:10px;"></div>
+
+                <div id="autoventaFormulario">
+
+                    @* HU-14 T02: Repartidor *@
+                    <div class="av-campo">
+                        <label class="av-label" for="autoventaRepartidor">Repartidor</label>
+                        <select id="autoventaRepartidor" class="form-select">
+                            <option value="">Seleccione un repartidor</option>
+                            @foreach (var repartidor in Model.Repartidores)
+                            {
+                                <option value="@repartidor.Id">@repartidor.Nombre</option>
+                            }
+                        </select>
+                    </div>
+
+                    @* HU-14 T02: Cliente (buscador + botón Nuevo). T03: desplegable, error y tarjeta de seleccionado *@
+                    <div class="av-campo" style="margin-bottom:12px;">
+                        <label class="av-label" for="autoventaBuscarCliente">Cliente</label>
+                        <div class="av-cliente-fila">
+                            <div class="av-cliente-busqueda">
+                                <input id="autoventaBuscarCliente" type="text" class="form-control"
+                                       autocomplete="off" placeholder="Buscar por nombre, DNI o teléfono..." />
+                                @* HU-14 T03: resultados de la búsqueda *@
+                                <div id="autoventaDropdown" class="av-dropdown"></div>
+                            </div>
+                            <button type="button" id="btnAutoventaNuevo" class="av-btn-nuevo">+ Nuevo</button>
+                        </div>
+                        @* HU-14 T03: mensaje de error del buscador *@
+                        <div id="autoventaBuscarMensaje" class="av-msg-error"></div>
+
+                        @* HU-14 T03: cliente seleccionado (oculto por defecto) *@
+                        <div id="autoventaClienteSel" class="av-cliente-sel d-none">
+                            <div>
+                                <strong id="autoventaClienteNombre"></strong>
+                                <div id="autoventaClienteMeta" class="av-cliente-meta"></div>
+                            </div>
+                            <button type="button" id="btnAutoventaCambiarCliente" class="av-btn-cambiar">Cambiar cliente</button>
+                        </div>
+                    </div>
+
+                    @* HU-14 T02: bloque Cliente nuevo (oculto por defecto) *@
+                    <div id="autoventaClienteNuevo" class="av-nuevo d-none">
+                        <div class="av-nuevo-encabezado">
+                            <p class="av-nuevo-titulo">Cliente nuevo</p>
+                            <button type="button" id="btnAutoventaNuevoCerrar" class="av-icon-btn" aria-label="Cerrar cliente nuevo">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 6 6 18M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="av-grid-2">
+                            <div class="av-span-2">
+                                <label class="av-label" for="autoventaNuevoNombre">Nombre / Razón social *</label>
+                                <input id="autoventaNuevoNombre" type="text" class="form-control" maxlength="150" placeholder="Ej: Rosa Quispe" />
+                                @* HU-14 T04: error del campo *@
+                                <div id="autoventaNuevoNombreError" class="av-msg-error"></div>
+                            </div>
+                            <div>
+                                <label class="av-label" for="autoventaNuevoTelefono">Teléfono *</label>
+                                <input id="autoventaNuevoTelefono" type="text" class="form-control" maxlength="20" placeholder="Ej: 987654321" />
+                                <div id="autoventaNuevoTelefonoError" class="av-msg-error"></div>
+                            </div>
+                            <div>
+                                <label class="av-label" for="autoventaNuevoDni">DNI</label>
+                                <input id="autoventaNuevoDni" type="text" class="form-control" maxlength="8" inputmode="numeric" placeholder="Ej: 12345678" />
+                                <div id="autoventaNuevoDniError" class="av-msg-error"></div>
+                            </div>
+                            <div class="av-span-2">
+                                <label class="av-label" for="autoventaNuevoDireccion">Dirección *</label>
+                                <input id="autoventaNuevoDireccion" type="text" class="form-control" maxlength="255" placeholder="Ej: Av. Los Álamos 123" />
+                                <div id="autoventaNuevoDireccionError" class="av-msg-error"></div>
+                            </div>
+                            <div>
+                                <label class="av-label" for="autoventaNuevoCiudad">Ciudad</label>
+                                <input id="autoventaNuevoCiudad" type="text" class="form-control" maxlength="100" placeholder="Ej: Lima" />
+                            </div>
+                            <div>
+                                <label class="av-label" for="autoventaNuevoReferencia">Referencia</label>
+                                <input id="autoventaNuevoReferencia" type="text" class="form-control" maxlength="255" placeholder="Ej: Frente al parque" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* HU-14 T02: Productos vendidos *@
+                    <div class="av-campo">
+                        <p class="av-section-title">Productos vendidos</p>
+                        <div class="av-fila-encabezado">
+                            <div>Producto</div>
+                            <div style="text-align:center;">Cantidad</div>
+                            <div style="text-align:right;">Descuento (S/)</div>
+                            <div></div>
+                        </div>
+                        <div id="autoventaFilas"></div>
+                        <button type="button" id="btnAutoventaAgregar" class="av-btn-dashed">+ Agregar producto</button>
+                    </div>
+
+                    @* HU-14 T02: Método de pago. T09: mensaje de error bajo el desplegable *@
+                    <div class="av-campo">
+                        <label class="av-section-title" for="autoventaMetodoPago" style="display:block;">Método de pago</label>
+                        <select id="autoventaMetodoPago" class="form-select">
+                            <option value="">Seleccione un método de pago</option>
+                            @foreach (var metodo in Model.MetodosPago)
+                            {
+                                <option value="@metodo.Id">@metodo.Nombre</option>
+                            }
+                        </select>
+                        @* HU-14 T09: error del método de pago *@
+                        <div id="autoventaMetodoPagoError" class="av-msg-error"></div>
+                    </div>
+
+                    @* HU-14 T02: Total a cobrar (solo lectura, se calcula en T08) *@
+                    <div class="av-total-box">
+                        <span>Total a cobrar</span>
+                        <strong id="autoventaTotal">S/ 0.00</strong>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="modal-footer" id="autoventaPie" style="border-top:1px solid #e5e5ea;justify-content:flex-end;gap:8px;">
+                @* HU-14 T02: botones del pie (sin funcionalidad todavía) *@
+                <button type="button" id="btnAutoventaCancelar" class="btn-apple"
+                        style="background:#f2f2f4;color:#1d1d1f;box-shadow:none;">Cancelar</button>
+                <button type="button" id="btnAutoventaGuardar" class="btn-apple">Guardar autoventa</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@* HU-14 T02: plantilla de fila de producto (se clona desde autoventa.js) *@
+<template id="autoventaFilaTemplate">
+    <div class="av-fila">
+        <select class="form-select av-fila-producto">
+            <option value="">Producto...</option>
+        </select>
+        <input type="number" class="form-control av-fila-cantidad" min="1" step="1" value="1" style="text-align:center;" />
+        <input type="number" class="form-control av-fila-descuento" min="0" step="0.01" value="0.00" style="text-align:right;" />
+        <button type="button" class="av-icon-btn av-fila-quitar" aria-label="Quitar producto">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+</template>

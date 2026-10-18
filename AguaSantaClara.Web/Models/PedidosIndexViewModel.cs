@@ -20,6 +20,13 @@ public class PedidosIndexViewModel
     public long? IdRepartidorFiltro { get; set; }
     public string? ErrorFiltros { get; set; }
     public bool TieneFiltrosAplicados { get; set; }
+
+    // HU-14 T13: resumen de ventas de hoy (pedidos normales vs autoventas)
+    public int PedidosNormalesHoy { get; set; }
+    public decimal MontoPedidosNormalesHoy { get; set; }
+    public int AutoventasHoy { get; set; }
+    public decimal MontoAutoventasHoy { get; set; }
+    public Dictionary<string, decimal> CobradoAutoventasPorMetodoHoy { get; set; } = new();
     
 }
 

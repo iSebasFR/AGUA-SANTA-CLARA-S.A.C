@@ -493,6 +493,16 @@
         </div>
         @if (esVendedora)
         {
+            @* HU-14 T01: botón Registrar autoventa *@
+            <button type="button" class="btn-apple" id="btnAutoventa"
+                    style="margin-left:auto;background:#ffffff;color:#1d1d1f;border:1px solid #e5e5ea;box-shadow:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                    <path d="M3 6h18"/>
+                    <path d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                Registrar autoventa
+            </button>
             <button type="button" class="btn-apple" id="btnNuevoPedido">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 5v14M5 12h14"/>
@@ -517,6 +527,8 @@
             {
                 <option value="@estado" selected="@(estadoActual == estado ? "selected" : null)">@estado</option>
             }
+            @* HU-14 T13: filtro adicional, solo autoventas en ruta (CA5) *@
+            <option value="Autoventa" selected="@(estadoActual == "Autoventa" ? "selected" : null)">Autoventa</option>
         </select>
 
         <select name="idCliente" class="select-filter">
@@ -548,6 +560,37 @@
             <a asp-action="Index" class="btn-apple" style="background:#f2f2f4;color:#1d1d1f;">Limpiar</a>
         }
     </form>
+
+    @* HU-14 T13: resumen de ventas de hoy (incluye autoventas) *@
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;">
+        <div style="background:#ffffff;border:1px solid #e5e5ea;border-radius:14px;padding:14px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:#6e6e73;text-transform:uppercase;letter-spacing:0.08em;">Total vendido hoy</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:#1d1d1f;margin-top:4px;">S/ @((Model.MontoPedidosNormalesHoy + Model.MontoAutoventasHoy).ToString("0.00"))</div>
+            <div style="font-size:12px;color:#6e6e73;margin-top:2px;">@(Model.PedidosNormalesHoy + Model.AutoventasHoy) pedido(s)</div>
+        </div>
+        <div style="background:#ffffff;border:1px solid #e5e5ea;border-radius:14px;padding:14px 18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:#6e6e73;text-transform:uppercase;letter-spacing:0.08em;">Pedidos normales</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:#1d1d1f;margin-top:4px;">S/ @Model.MontoPedidosNormalesHoy.ToString("0.00")</div>
+            <div style="font-size:12px;color:#6e6e73;margin-top:2px;">@Model.PedidosNormalesHoy pedido(s)</div>
+        </div>
+        <div style="background:#eaf4fb;border:1px solid #d0e8f5;border-radius:14px;padding:14px 18px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:#3a8ab8;text-transform:uppercase;letter-spacing:0.08em;">Autoventas</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:#1d1d1f;margin-top:4px;">S/ @Model.MontoAutoventasHoy.ToString("0.00")</div>
+            <div style="font-size:12px;color:#6e6e73;margin-top:2px;">@Model.AutoventasHoy pedido(s)</div>
+            <div style="font-size:11.5px;color:#6e6e73;margin-top:8px;font-weight:600;">Cobrado por método:</div>
+            @if (Model.CobradoAutoventasPorMetodoHoy.Count == 0)
+            {
+                <div style="font-size:12px;color:#6e6e73;">Sin cobros hoy</div>
+            }
+            else
+            {
+                foreach (var cobro in Model.CobradoAutoventasPorMetodoHoy)
+                {
+                    <div style="font-size:12px;color:#1d1d1f;">@cobro.Key: S/ @cobro.Value.ToString("0.00")</div>
+                }
+            }
+        </div>
+    </div>
 
     <!-- BARRA DE ACCIONES -->
     @if (esVendedora)
@@ -822,6 +865,8 @@
 @if (esVendedora)
 {
     <partial name="_CrearPedido" model="Model" />
+    @* HU-14 T01: modal de autoventa *@
+    <partial name="_RegistrarAutoventa" model="Model" />
 }
 
 <!-- MODAL DETALLE DE COBRO -->
@@ -1156,6 +1201,8 @@
         </script>
         <script src="~/js/pedidos.js" asp-append-version="true"></script>
         <script src="~/js/pedidos-lista.js" asp-append-version="true"></script>
+        @* HU-14 T01: script del modal de autoventa *@
+        <script src="~/js/autoventa.js" asp-append-version="true"></script>
     }
     <partial name="_ValidationScriptsPartial" />
 }
