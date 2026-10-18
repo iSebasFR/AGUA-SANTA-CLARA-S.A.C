@@ -167,6 +167,41 @@ public class AutoventaService : IAutoventaService
         if (errores.Count == 0 && total <= 0)
             errores.Add(new ErrorPedido("total", "El total a cobrar debe ser mayor a cero."));
 
+        // ---------- STOCK: VERIFICACIÓN (HU-14 T11) ----------
+        // Si el mismo producto y local están en varias filas, se suma la cantidad antes de comparar
+        var cantidadesPorProducto = detalles
+            .GroupBy(d => new { d.IdLocal, d.IdProducto })
+            .Select(g => new { g.Key.IdLocal, g.Key.IdProducto, Cantidad = g.Sum(d => d.Cantidad) })
+            .ToList();
+
+        var idsLocalesStock = cantidadesPorProducto.Select(c => c.IdLocal).Distinct().ToList();
+        var idsProductosStock = cantidadesPorProducto.Select(c => c.IdProducto).Distinct().ToList();
+
+        var stocks = await _context.ProductosLocal
+            .AsNoTracking()
+            .Include(pl => pl.Producto)
+            .Where(pl => idsLocalesStock.Contains(pl.IdLocal) && idsProductosStock.Contains(pl.IdProducto))
+            .ToDictionaryAsync(pl => (pl.IdLocal, pl.IdProducto));
+
+        var nombresLocales = await _context.Locales
+            .AsNoTracking()
+            .Where(l => idsLocalesStock.Contains(l.Id))
+            .ToDictionaryAsync(l => l.Id, l => l.Nombre);
+
+        foreach (var item in cantidadesPorProducto)
+        {
+            if (!stocks.TryGetValue((item.IdLocal, item.IdProducto), out var existencia))
+                continue;
+
+            if (existencia.Stock < item.Cantidad)
+            {
+                errores.Add(new ErrorPedido("detalles", MensajeStockInsuficiente(
+                    existencia.Producto.Nombre,
+                    nombresLocales.GetValueOrDefault(item.IdLocal, "el local seleccionado"),
+                    $"disponible {existencia.Stock}, solicitado {item.Cantidad}")));
+            }
+        }
+
         if (errores.Count > 0)
             return new PedidoResultado { Errores = errores };
 
@@ -200,6 +235,42 @@ public class AutoventaService : IAutoventaService
         _context.Pedidos.Add(pedido);
         _context.Pagos.Add(pago);
 
+        // ---------- STOCK: DESCUENTO (HU-14 T11) ----------
+        // Una sola sentencia por producto: resta solo si todavía alcanza el stock.
+        // Evita que dos ventas simultáneas se pisen. Va dentro de la misma transacción:
+        // si algo falla después, el Rollback devuelve el stock.
+        foreach (var item in cantidadesPorProducto)
+        {
+            var idLocalStock = item.IdLocal;
+            var idProductoStock = item.IdProducto;
+            var cantidadVendida = item.Cantidad;
+
+            var filasActualizadas = await _context.ProductosLocal
+                .Where(pl => pl.IdLocal == idLocalStock
+                    && pl.IdProducto == idProductoStock
+                    && pl.Stock >= cantidadVendida)
+                .ExecuteUpdateAsync(s => s.SetProperty(pl => pl.Stock, pl => pl.Stock - cantidadVendida));
+
+            if (filasActualizadas == 0)
+            {
+                // El stock cambió desde que se verificó: se sale sin Commit y todo se deshace
+                var nombreProducto = stocks.TryGetValue((idLocalStock, idProductoStock), out var actual)
+                    ? actual.Producto.Nombre
+                    : "el producto";
+
+                return new PedidoResultado
+                {
+                    Errores =
+                    {
+                        new ErrorPedido("detalles", MensajeStockInsuficiente(
+                            nombreProducto,
+                            nombresLocales.GetValueOrDefault(idLocalStock, "el local seleccionado"),
+                            "el stock cambió mientras se registraba la venta, intenta nuevamente"))
+                    }
+                };
+            }
+        }
+
         try
         {
             await _context.SaveChangesAsync();
@@ -222,6 +293,10 @@ public class AutoventaService : IAutoventaService
             Mensaje = esClienteNuevo ? MsgExitoClienteNuevo : MsgExito
         };
     }
+
+    // HU-14 T11: mensaje de stock insuficiente con producto y local
+    private static string MensajeStockInsuficiente(string producto, string local, string detalle) =>
+        $"Stock insuficiente de \"{producto}\" en {local}: {detalle}.";
 
     // Valida los datos del cliente nuevo y, si son correctos, arma la entidad con su dirección principal
     private async Task<(Cliente?, DireccionCliente?)> ValidarYCrearClienteNuevoAsync(
