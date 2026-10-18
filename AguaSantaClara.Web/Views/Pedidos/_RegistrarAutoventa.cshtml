@@ -313,6 +313,25 @@
         font-weight: 600;
         color: #1d1d1f;
     }
+
+    /* HU-14 T14: botón Cancelar del pie blanco con borde (prototipo); !important porque el botón trae estilo en línea */
+    #autoventaModal #btnAutoventaCancelar {
+        background: #ffffff !important;
+        color: #1d1d1f !important;
+        border: 1px solid #e5e5ea;
+    }
+
+    #autoventaModal #btnAutoventaCancelar:hover {
+        background: #fbfcfd !important;
+        color: #1d1d1f !important;
+        border-color: #1d1d1f;
+    }
+
+    /* HU-14 T14: ícono de X dentro del botón Cancelar del cliente nuevo */
+    #autoventaModal .av-btn-nuevo svg {
+        margin-right: 6px;
+        vertical-align: -2px;
+    }
 </style>
 
 <div class="modal fade" id="autoventaModal" tabindex="-1" aria-labelledby="autoventaModalLabel" aria-hidden="true" data-bs-backdrop="static">

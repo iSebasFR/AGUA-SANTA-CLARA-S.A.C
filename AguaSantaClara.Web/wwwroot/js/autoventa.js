@@ -21,6 +21,7 @@
     const errMetodoPago = $("autoventaMetodoPagoError"); // T09
     const alertaErrores = $("autoventaErrores");         // T10
     const btnGuardar = $("btnAutoventaGuardar");         // T10
+    const btnCancelar = $("btnAutoventaCancelar");       // HU-14 T14
     const tokenAntiforgery =
         modalEl.querySelector("input[name='__RequestVerificationToken']")?.value ?? ""; // T10
 
@@ -305,6 +306,27 @@
     });
     inpNuevoDni?.addEventListener("blur", validarDni);
 
+    // ============ BOTÓN "CANCELAR" DEL CLIENTE NUEVO CON ÍCONO DE X (HU-14 T14) ============
+    const ponerIconoCancelar = () => {
+        const ns = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(ns, "svg");
+        svg.setAttribute("width", "12");
+        svg.setAttribute("height", "12");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", "2.5");
+        svg.setAttribute("stroke-linecap", "round");
+        svg.setAttribute("stroke-linejoin", "round");
+        svg.setAttribute("aria-hidden", "true");
+
+        const trazo = document.createElementNS(ns, "path");
+        trazo.setAttribute("d", "M18 6 6 18M6 6l12 12");
+        svg.append(trazo);
+
+        btnNuevo.replaceChildren(svg, document.createTextNode("Cancelar"));
+    };
+
     // ============ CLIENTE NUEVO: MOSTRAR / OCULTAR (T02) ============
     const mostrarClienteNuevo = () => {
         // T03: cliente existente y cliente nuevo son excluyentes
@@ -316,6 +338,7 @@
         inpBuscarCliente.disabled = true;
         inpBuscarCliente.placeholder = PLACEHOLDER_NUEVO;
         btnNuevo.textContent = "Cancelar";
+        ponerIconoCancelar(); // HU-14 T14: mismo texto, ahora con ícono de X
     };
 
     const ocultarClienteNuevo = () => {
@@ -836,5 +859,34 @@
         autoventaRegistrada = false;  // T10
         guardando = false;            // T10
         btnGuardar.disabled = false;  // T10
+    });
+
+    // ============ CANCELAR AUTOVENTA (HU-14 T14) ============
+    // Mientras se está guardando no se puede cerrar (Cancelar, X o Escape).
+    // Si el guardado ya salió bien (autoventaRegistrada), el cierre sí se permite.
+    modalEl.addEventListener("hide.bs.modal", e => {
+        if (e.target === modalEl && guardando && !autoventaRegistrada) e.preventDefault();
+    });
+
+    // Cancelar del pie: cierra sin guardar y sin llamar al servidor
+    btnCancelar?.addEventListener("click", () => {
+        if (guardando) return;
+        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    });
+
+    // Reinicio al cerrar (Cancelar, X o Escape). Tras un guardado exitoso no se reinicia: la página se recarga.
+    modalEl.addEventListener("hidden.bs.modal", e => {
+        if (e.target !== modalEl || autoventaRegistrada) return;
+
+        // Evita que un blur tardío vuelva a marcar errores en un campo ya limpio
+        if (modalEl.contains(document.activeElement)) document.activeElement.blur();
+
+        limpiarClienteSeleccionado();
+        ocultarClienteNuevo();
+        dibujarPrimeraFila();
+        limpiarMetodoPago();
+        limpiarRepartidor();
+        limpiarAlertaErrores();
+        numeroCargaCatalogo++; // descarta una carga de catálogo que siguiera en curso
     });
 })();
