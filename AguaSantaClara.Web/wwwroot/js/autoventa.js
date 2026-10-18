@@ -661,6 +661,38 @@
     selMetodoPago?.addEventListener("blur", validarMetodoPago);
     selMetodoPago?.addEventListener("change", () => setError(selMetodoPago, errMetodoPago, ""));
 
+    // ============ REPARTIDOR (HU-14 T12) ============
+    const selRepartidor = $("autoventaRepartidor");
+    const MSG_REPARTIDOR = "Selecciona un repartidor.";
+
+    // Mensaje de error bajo el select (se crea aquí, como msgProductos)
+    const errRepartidor = document.createElement("div");
+    errRepartidor.id = "autoventaRepartidorError";
+    errRepartidor.className = "av-msg-error";
+    selRepartidor?.insertAdjacentElement("afterend", errRepartidor);
+
+    // Obligatorio: marca el desplegable en rojo si no hay repartidor. Devuelve true si es válido.
+    const validarRepartidor = () => {
+        const valido = selRepartidor.value !== "";
+        setError(selRepartidor, errRepartidor, valido ? "" : MSG_REPARTIDOR);
+        return valido;
+    };
+
+    // Id del repartidor para el guardado. null si no eligió ninguno.
+    const obtenerRepartidor = () => {
+        const valor = selRepartidor.value;
+        return valor === "" ? null : Number(valor);
+    };
+
+    // Vuelve a "Seleccione un repartidor" y quita el error
+    const limpiarRepartidor = () => {
+        selRepartidor.value = "";
+        setError(selRepartidor, errRepartidor, "");
+    };
+
+    selRepartidor?.addEventListener("blur", validarRepartidor);
+    selRepartidor?.addEventListener("change", () => setError(selRepartidor, errRepartidor, ""));
+
     // ============ GUARDAR AUTOVENTA (T10) ============
     const MSG_SIN_CLIENTE = "Selecciona un cliente existente o registra uno nuevo.";
     const MSG_ERROR_GENERAL = "No se pudo registrar la autoventa.";
@@ -701,6 +733,10 @@
             setError(inpNuevoDni, errNuevoDni, errorDni.mensaje || MSG_DNI_DUPLICADO);
             inpNuevoDni.focus();
         }
+
+        // HU-14 T12: el servidor rechazó el repartidor
+        const errorRepartidor = lista.find(e => e?.campo === "idRepartidor");
+        if (errorRepartidor) setError(selRepartidor, errRepartidor, errorRepartidor.mensaje || MSG_REPARTIDOR);
     };
 
     // Cliente existente elegido O bloque de cliente nuevo válido
@@ -723,6 +759,8 @@
         if (clienteActual) cuerpo.idCliente = clienteActual.id;
         else cuerpo.clienteNuevo = obtenerClienteNuevo();
 
+        cuerpo.idRepartidor = obtenerRepartidor(); // HU-14 T12
+
         return cuerpo;
     };
 
@@ -737,8 +775,10 @@
             const clienteOk = await validarClienteParaGuardar();
             const productosOk = validarProductos();
             const pagoOk = validarMetodoPago();
+            const repartidorOk = validarRepartidor(); // HU-14 T12: cuarta validación, también a la vez
 
             if (!clienteOk || !productosOk || !pagoOk) return;
+            if (!repartidorOk) return; // HU-14 T12
 
             const resp = await fetch("/Pedidos/GuardarAutoventa", {
                 method: "POST",
@@ -790,6 +830,7 @@
         ocultarClienteNuevo();        // T02 + T04: bloque oculto y vacío
         dibujarPrimeraFila();
         limpiarMetodoPago();          // T09: método de pago sin elegir y sin error
+        limpiarRepartidor();          // HU-14 T12: repartidor sin elegir y sin error
         cargarCatalogo();             // T05: productos al día cada vez que se abre
         limpiarAlertaErrores();       // T10: sin errores del servidor al abrir
         autoventaRegistrada = false;  // T10

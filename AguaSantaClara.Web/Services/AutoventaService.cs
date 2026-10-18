@@ -87,6 +87,21 @@ public class AutoventaService : IAutoventaService
                 errores.Add(new ErrorPedido("idMetodoPago", "El método de pago no está disponible."));
         }
 
+        // ---------- REPARTIDOR (HU-14 T12) ----------
+        Repartidor? repartidor = null;
+        if (!modelo.IdRepartidor.HasValue)
+        {
+            errores.Add(new ErrorPedido("idRepartidor", "Selecciona un repartidor."));
+        }
+        else
+        {
+            repartidor = await _context.Repartidores
+                .FirstOrDefaultAsync(r => r.Id == modelo.IdRepartidor.Value && r.Estado && r.EstadoRegistro);
+
+            if (repartidor == null)
+                errores.Add(new ErrorPedido("idRepartidor", "El repartidor no está disponible."));
+        }
+
         // ---------- PRODUCTOS ----------
         var detalles = new List<DetallePedido>();
 
@@ -222,6 +237,7 @@ public class AutoventaService : IAutoventaService
             EsAutoventa = true,
             Total = total
         };
+        pedido.IdRepartidor = repartidor!.Id; // HU-14 T12: la autoventa queda asociada al repartidor
         pedido.Clientes.Add(pedidoCliente);
 
         var pago = new Pago

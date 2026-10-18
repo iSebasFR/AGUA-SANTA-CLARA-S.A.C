@@ -20,4 +20,7 @@ public class GuardarAutoventaViewModel
     public ClienteNuevoAutoventaViewModel? ClienteNuevo { get; set; }
     public long? IdMetodoPago { get; set; }
     public List<DetallePedidoViewModel> Detalles { get; set; } = new();
+
+    // HU-14 T12: repartidor que realizó la autoventa
+    public long? IdRepartidor { get; set; }
 }
