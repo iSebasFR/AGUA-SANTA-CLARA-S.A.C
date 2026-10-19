@@ -196,6 +196,14 @@
     border-top: 1px solid #f0f0f2;
     background: #fbfcfd;
 }
+.btn-editar-gasto {
+    font-size: 11px;
+    padding: 3px 9px;
+    line-height: 1.4;
+    border-radius: 6px;
+    font-weight: 400;
+    white-space: nowrap;
+}
 
 @@media (max-width: 768px) {
     .toolbar-row {
@@ -215,7 +223,7 @@
     .total-gastos-dia strong {
         font-size: 18px;
     }
-}
+
 </style>
 
 
@@ -342,8 +350,12 @@
                                         ? "—"
                                         : gasto.Observacion)
                                 </td>
-                                <td class="text-muted-cell">
-                                    Pendiente
+                                <td class="text-center">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary btn-editar-gasto"
+                                            data-id="@gasto.Id">
+                                        Editar
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -372,6 +384,7 @@
 </div>
 
 
+
 @section Scripts {
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -379,7 +392,7 @@
             const modalElemento = document.getElementById("modalGasto");
             const contenidoModal = document.getElementById("contenidoModalGasto");
 
-            if (!botonNuevo || !modalElemento || !contenidoModal) {
+            if (!modalElemento || !contenidoModal) {
                 console.error("No se encontraron los elementos del modal de gastos.");
                 return;
             }
@@ -419,7 +432,6 @@
                     document.body.appendChild(notificacion);
                 }
 
-                // Cancelar el temporizador anterior si se muestra otra notificación.
                 if (notificacion.dataset.temporizador) {
                     clearTimeout(Number(notificacion.dataset.temporizador));
                 }
@@ -485,43 +497,87 @@
             }
 
             // Abrir el formulario de registro.
-            botonNuevo.addEventListener("click", async function () {
+            if (botonNuevo) {
+                botonNuevo.addEventListener("click", async function () {
+                    contenidoModal.innerHTML = `
+                        <div class="modal-body text-center p-4">
+                            Cargando formulario...
+                        </div>`;
+
+                    modal.show();
+
+                    try {
+                        const respuesta = await fetch("/Gastos/Create", {
+                            headers: {
+                                "X-Requested-With": "XMLHttpRequest"
+                            }
+                        });
+
+                        if (!respuesta.ok) {
+                            throw new Error(`Error HTTP ${respuesta.status}`);
+                        }
+
+                        contenidoModal.innerHTML = await respuesta.text();
+                    } catch (error) {
+                        console.error(error);
+
+                        contenidoModal.innerHTML = `
+                            <div class="modal-body">
+                                <p class="text-danger mb-0">
+                                    No se pudo cargar el formulario.
+                                </p>
+                            </div>`;
+                    }
+                });
+            }
+
+            // NUEVO: abrir el formulario de edición.
+            document.addEventListener("click", async function (evento) {
+                const botonEditar = evento.target.closest(".btn-editar-gasto");
+
+                if (!botonEditar) {
+                    return;
+                }
+
+                const id = botonEditar.dataset.id;
+
                 contenidoModal.innerHTML = `
                     <div class="modal-body text-center p-4">
-                        Cargando formulario...
+                        Cargando gasto...
                     </div>`;
 
                 modal.show();
 
                 try {
-                    const respuesta = await fetch("/Gastos/Create", {
-                        headers: {
-                            "X-Requested-With": "XMLHttpRequest"
+                    const respuesta = await fetch(
+                        `/Gastos/Edit?id=${encodeURIComponent(id)}`,
+                        {
+                            headers: {
+                                "X-Requested-With": "XMLHttpRequest"
+                            }
                         }
-                    });
+                    );
 
                     if (!respuesta.ok) {
-                        throw new Error(`Error HTTP ${respuesta.status}`);
+                        throw new Error("No se pudo cargar el gasto para editar.");
                     }
 
                     contenidoModal.innerHTML = await respuesta.text();
                 } catch (error) {
                     console.error(error);
-
-                    contenidoModal.innerHTML = `
-                        <div class="modal-body">
-                            <p class="text-danger mb-0">
-                                No se pudo cargar el formulario.
-                            </p>
-                        </div>`;
+                    mostrarNotificacion(error.message, "error");
+                    modal.hide();
                 }
             });
 
-            // Interceptar el envío del formulario dentro del modal.
+            // Interceptar el envío de los formularios de registro y edición.
             contenidoModal.addEventListener("submit", async function (evento) {
                 const formulario = evento.target;
 
-                if (!formulario.matches("#formCrearGasto")) {
+                const esRegistro = formulario.matches("#formCrearGasto");
+                const esEdicion = formulario.matches("#formEditarGasto");
+
+                if (!esRegistro && !esEdicion) {
                     return;
                 }
 
@@ -565,7 +621,9 @@
                         sessionStorage.setItem(
                             "notificacionGasto",
                             resultado.message ||
-                            "Gasto registrado correctamente."
+                            (esEdicion
+                                ? "Gasto actualizado correctamente."
+                                : "Gasto registrado correctamente.")
                         );
 
                         window.location.href =
@@ -574,7 +632,7 @@
                         return;
                     }
 
-                    // Mostrar nuevamente el formulario si hay errores de validación.
+                    // Mostrar de nuevo el formulario si hay errores de validación.
                     contenidoModal.innerHTML = await respuesta.text();
 
                 } catch (error) {
@@ -597,18 +655,21 @@
 
                 } finally {
                     const botonActual = contenidoModal.querySelector(
-                        '#formCrearGasto button[type="submit"]'
+                        '#formCrearGasto button[type="submit"], ' +
+                        '#formEditarGasto button[type="submit"]'
                     );
 
                     if (botonActual) {
                         botonActual.disabled = false;
                         botonActual.textContent =
-                            textoOriginal || "Guardar gasto";
+                            textoOriginal ||
+                            (esEdicion ? "Guardar cambios" : "Guardar gasto");
                     }
                 }
             });
         });
     </script>
 }
+
 
 

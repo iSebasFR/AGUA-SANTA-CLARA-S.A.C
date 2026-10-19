@@ -162,6 +162,25 @@ if (!ModelState.IsValid)
         });
     }
 
+     // Mostrar el formulario para editar un gasto.
+    [HttpGet]
+    public async Task<IActionResult> Edit(long id)
+    {
+        var gasto = await _context.GastosRuta
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g =>
+                g.Id == id && g.EstadoRegistro);
+
+        if (gasto == null)
+        {
+            return NotFound();
+        }
+
+        await CargarRepartidoresSelectAsync();
+
+        return PartialView("_Edit", gasto);
+    }
+
     // Preparar la lista de repartidores para el formulario.
     private async Task CargarRepartidoresSelectAsync()
     {
@@ -176,4 +195,76 @@ if (!ModelState.IsValid)
             nameof(Repartidor.Id),
             nameof(Repartidor.Nombre));
     }
+    
+    // Guardar los cambios de un gasto existente.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(GastoRuta gasto)
+    {
+        var gastoExistente = await _context.GastosRuta
+            .FirstOrDefaultAsync(g =>
+                g.Id == gasto.Id && g.EstadoRegistro);
+
+        if (gastoExistente == null)
+        {
+            return NotFound();
+        }
+
+        if (!TiposGastoRuta.Todos.Contains(gasto.Tipo))
+        {
+            ModelState.AddModelError(
+                nameof(gasto.Tipo),
+                "Selecciona un tipo de gasto válido.");
+        }
+
+        if (gasto.Monto <= 0)
+        {
+            ModelState.AddModelError(
+                nameof(gasto.Monto),
+                "El monto debe ser mayor que cero.");
+        }
+
+        if (gasto.Fecha == default)
+        {
+            ModelState.AddModelError(
+                nameof(gasto.Fecha),
+                "La fecha es obligatoria.");
+        }
+
+        var repartidorValido = await _context.Repartidores
+            .AnyAsync(r =>
+                r.Id == gasto.IdRepartidor &&
+                r.Estado &&
+                r.EstadoRegistro);
+
+        if (!repartidorValido)
+        {
+            ModelState.AddModelError(
+                nameof(gasto.IdRepartidor),
+                "Selecciona un repartidor activo.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await CargarRepartidoresSelectAsync();
+            return PartialView("_Edit", gasto);
+        }
+
+        gastoExistente.IdRepartidor = gasto.IdRepartidor;
+        gastoExistente.Tipo = gasto.Tipo;
+        gastoExistente.Monto = gasto.Monto;
+        gastoExistente.Fecha = gasto.Fecha;
+        gastoExistente.Observacion = gasto.Observacion;
+        gastoExistente.FechaActualizacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Json(new
+        {
+            success = true,
+            message = "GASTO ACTUALIZADO CORRECTAMENTE",
+            redirectUrl = Url.Action(nameof(Index))
+        });
+    }
+
 }
