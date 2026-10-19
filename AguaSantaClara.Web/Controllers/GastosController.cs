@@ -181,6 +181,33 @@ if (!ModelState.IsValid)
         return PartialView("_Edit", gasto);
     }
 
+    // Eliminación lógica de un gasto de ruta.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(long id)
+    {
+        var gasto = await _context.GastosRuta
+            .FirstOrDefaultAsync(g =>
+                g.Id == id && g.EstadoRegistro);
+
+        if (gasto == null)
+        {
+            return NotFound();
+        }
+
+        gasto.EstadoRegistro = false;
+        gasto.FechaActualizacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Json(new
+        {
+            success = true,
+            message = "GASTO ELIMINADO CORRECTAMENTE",
+            redirectUrl = Url.Action(nameof(Index))
+        });
+    }
+
     // Preparar la lista de repartidores para el formulario.
     private async Task CargarRepartidoresSelectAsync()
     {
