@@ -21,7 +21,8 @@ public class GastosController : Controller
     // Listar gastos y filtrar por repartidor o fecha.
     public async Task<IActionResult> Index(
         long? idRepartidor,
-        DateOnly? fecha)
+        DateOnly? fecha,
+        string? tipo)
     {
         var consulta = _context.GastosRuta
             .AsNoTracking()
@@ -41,6 +42,14 @@ public class GastosController : Controller
                 g => g.Fecha == fecha.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(tipo) &&
+        TiposGastoRuta.Todos.Contains(tipo))
+        {
+            consulta = consulta.Where(g => g.Tipo == tipo);
+        }
+
+        ViewBag.Tipo = tipo;
+
         ViewBag.Repartidores = await _context.Repartidores
             .AsNoTracking()
             .Where(r => r.Estado && r.EstadoRegistro)
@@ -54,6 +63,8 @@ public class GastosController : Controller
             .OrderByDescending(g => g.Fecha)
             .ThenByDescending(g => g.Id)
             .ToListAsync();
+
+        ViewBag.TotalGastos = gastos.Sum(g => g.Monto);
 
         return View(gastos);
     }
