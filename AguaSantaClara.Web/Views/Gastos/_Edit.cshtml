@@ -1,0 +1,100 @@
+
+@model AguaSantaClara.Web.Models.Entities.GastoRuta
+
+<div class="modal-header">
+    <h5 class="modal-title">Editar gasto de ruta</h5>
+    <button type="button" class="btn-close"
+            data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+
+<form id="formEditarGasto"
+      asp-controller="Gastos"
+      asp-action="Edit"
+      method="post">
+
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div class="modal-body">
+
+        <div asp-validation-summary="ModelOnly"
+             class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="IdRepartidor" class="form-label">
+                Repartidor
+            </label>
+            <select asp-for="IdRepartidor"
+                    asp-items="ViewBag.RepartidoresSelect"
+                    class="form-select">
+                <option value="">Seleccionar repartidor</option>
+            </select>
+            <span asp-validation-for="IdRepartidor"
+                  class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Tipo" class="form-label">
+                Tipo de gasto
+            </label>
+            <select asp-for="Tipo" class="form-select">
+                @foreach (var tipo in
+                    AguaSantaClara.Web.Models.Entities.TiposGastoRuta.Todos)
+                {
+                    <option value="@tipo">@tipo</option>
+                }
+            </select>
+            <span asp-validation-for="Tipo"
+                  class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Monto" class="form-label">
+                Monto (S/)
+            </label>
+            <input asp-for="Monto"
+                   type="number"
+                   min="0.01"
+                   step="0.01"
+                   class="form-control" />
+            <span asp-validation-for="Monto"
+                  class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Fecha" class="form-label">
+                Fecha
+            </label>
+            <input asp-for="Fecha"
+                   type="date"
+                   class="form-control" />
+            <span asp-validation-for="Fecha"
+                  class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Observacion" class="form-label">
+                Observación
+            </label>
+            <textarea asp-for="Observacion"
+                      class="form-control"
+                      rows="3"
+                      maxlength="500"></textarea>
+            <span asp-validation-for="Observacion"
+                  class="text-danger"></span>
+        </div>
+
+    </div>
+
+    <div class="modal-footer">
+        <button type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal">
+            Cancelar
+        </button>
+
+        <button type="submit" class="btn btn-primary">
+            Guardar cambios
+        </button>
+    </div>
+</form>

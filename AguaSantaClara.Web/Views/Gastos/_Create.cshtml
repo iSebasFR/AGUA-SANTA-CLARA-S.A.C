@@ -1,0 +1,113 @@
+
+@model AguaSantaClara.Web.Models.Entities.GastoRuta
+
+<div class="modal-content gasto-modal-content">
+    <form asp-controller="Gastos"
+          asp-action="Create"
+          method="post"
+          id="formCrearGasto">
+
+        @Html.AntiForgeryToken()
+
+        <div class="modal-header">
+            <div>
+                <h5 class="modal-title fw-bold">Registrar gasto de ruta</h5>
+                <small class="text-muted">
+                    Completa los datos del gasto reportado.
+                </small>
+            </div>
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+            <div asp-validation-summary="ModelOnly"
+                 class="text-danger small mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="IdRepartidor" class="form-label">
+                    Repartidor <span class="text-danger">*</span>
+                </label>
+                <select asp-for="IdRepartidor"
+                        class="form-select"
+                        asp-items="ViewBag.RepartidoresSelect">
+                    <option value="">Selecciona un repartidor</option>
+                </select>
+                <span asp-validation-for="IdRepartidor"
+                      class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Tipo" class="form-label">
+                    Tipo de gasto <span class="text-danger">*</span>
+                </label>
+                <select asp-for="Tipo" class="form-select">
+                    <option value="">Selecciona el tipo</option>
+                    <option value="Gasolina">Gasolina</option>
+                    <option value="Peajes">Peajes</option>
+                    <option value="Cochera">Cochera</option>
+                    <option value="Otros">Otros</option>
+                </select>
+                <span asp-validation-for="Tipo"
+                      class="text-danger small"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Monto" class="form-label">
+                        Monto (S/) <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Monto"
+                           type="number"
+                           class="form-control"
+                           min="0.01"
+                           step="0.01"
+                           placeholder="0.00" />
+                    <span asp-validation-for="Monto"
+                          class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Fecha" class="form-label">
+                        Fecha <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Fecha"
+                           type="date"
+                           class="form-control" />
+                    <span asp-validation-for="Fecha"
+                          class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Observacion" class="form-label">
+                    Observación
+                </label>
+                <textarea asp-for="Observacion"
+                          class="form-control"
+                          rows="3"
+                          maxlength="255"
+                          placeholder="Detalle adicional del gasto (opcional)"></textarea>
+                <span asp-validation-for="Observacion"
+                      class="text-danger small"></span>
+            </div>
+
+            <p class="small text-muted mb-0">
+                Los campos marcados con * son obligatorios.
+            </p>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-light"
+                    data-bs-dismiss="modal">
+                Cancelar
+            </button>
+            <button type="submit" class="btn btn-dark">
+                Guardar gasto
+            </button>
+        </div>
+    </form>
+</div>

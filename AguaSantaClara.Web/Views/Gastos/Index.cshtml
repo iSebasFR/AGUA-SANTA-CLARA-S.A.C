@@ -1,0 +1,790 @@
+
+@model List<AguaSantaClara.Web.Models.Entities.GastoRuta>
+@using AguaSantaClara.Web.Models.Entities
+
+@{
+    ViewData["Title"] = "Gastos de Ruta";
+    var repartidores = ViewBag.Repartidores
+        as List<AguaSantaClara.Web.Models.Entities.Repartidor>
+        ?? new List<AguaSantaClara.Web.Models.Entities.Repartidor>();
+}
+
+
+<style>
+    body.app-body {
+        background: linear-gradient(180deg, #eaf4fb 0%, #f0f7fc 40%, #fbfcfd 100%) !important;
+        background-attachment: fixed !important;
+    }
+
+    .gastos-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .panel-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1d1d1f;
+        letter-spacing: -0.03em;
+        margin: 0;
+    }
+
+    .panel-subtitle {
+        font-size: 12.5px;
+        color: #6e6e73;
+        margin: 4px 0 0;
+    }
+
+    .btn-apple {
+        min-height: 36px;
+        padding: 0 16px;
+        background: #1d1d1f;
+        color: white;
+        border: none;
+        border-radius: 9px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        gap: 6px;
+    }
+
+    .btn-apple:hover {
+        background: #000;
+        color: white;
+    }
+
+    .toolbar-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 16px 20px;
+        background: white;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+
+    .select-filter,
+    .input-filter {
+        min-height: 36px;
+        padding: 0 12px;
+        border: 1px solid #e5e5ea;
+        border-radius: 9px;
+        background: #fbfcfd;
+        font-family: inherit;
+        font-size: 12.5px;
+        color: #1d1d1f;
+    }
+
+    .select-filter {
+        min-width: 190px;
+    }
+
+    /* Total de gastos: debajo de los filtros y encima de la tabla */
+    .total-gastos-dia {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        padding: 16px 20px;
+        margin: 0;
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.03);
+        color: #6e6e73;
+        font-size: 13px;
+    }
+
+    .total-gastos-dia strong {
+        color: #1d1d1f;
+        font-size: 20px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .card-tabla {
+        background: white;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+
+    .tabla-gastos {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+
+    .tabla-gastos thead th {
+        text-align: left;
+        padding: 14px 16px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        background: #fbfcfd;
+        border-bottom: 1px solid #e5e5ea;
+        white-space: nowrap;
+    }
+
+    .tabla-gastos tbody td {
+        padding: 16px;
+        font-size: 13px;
+        color: #1d1d1f;
+        border-bottom: 1px solid #f0f0f2;
+        vertical-align: middle;
+    }
+
+    .tabla-gastos tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .tabla-gastos tbody tr:hover {
+        background: #fbfcfd;
+    }
+
+.badge-tipo {
+    display: inline-block;
+    min-width: 64px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+}
+.badge-tipo.gasolina {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.badge-tipo.peajes {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.badge-tipo.cochera {
+    background-color: #f0ddff;
+    color: #7e22ce;
+}
+
+.badge-tipo.otros {
+    background-color: #f1f3f5;
+    color: #495057;
+}
+
+
+.monto-gasto {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.text-muted-cell {
+    color: #6e6e73 !important;
+    font-size: 12.5px !important;
+}
+
+.empty-row {
+    text-align: center;
+    padding: 50px 20px !important;
+    color: #6e6e73 !important;
+}
+
+.contador-gastos {
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #6e6e73;
+    border-top: 1px solid #f0f0f2;
+    background: #fbfcfd;
+}
+.btn-editar-gasto {
+    font-size: 11px;
+    padding: 3px 9px;
+    line-height: 1.4;
+    border-radius: 6px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+@@media (max-width: 768px) {
+    .toolbar-row {
+        padding: 12px;
+    }
+
+    .select-filter,
+    .input-filter,
+    .toolbar-row .btn-apple {
+        width: 100%;
+    }
+
+    .total-gastos-dia {
+        padding: 14px;
+    }
+
+    .total-gastos-dia strong {
+        font-size: 18px;
+    }
+
+</style>
+
+
+<div class="container py-4 gastos-layout">
+
+    <div class="panel-header">
+        <div>
+            <h1 class="panel-title">Gastos de Ruta</h1>
+            <p class="panel-subtitle">
+                Registra y consulta los gastos reportados por los repartidores.
+            </p>
+        </div>
+
+        <button type="button" class="btn-apple" id="btnNuevoGasto">
+            <span aria-hidden="true">＋</span>
+            Registrar gasto
+        </button>
+    </div>
+
+    <form asp-action="Index" method="get" class="toolbar-row">
+        <select name="idRepartidor" class="select-filter">
+            <option value="">Todos los repartidores</option>
+            @foreach (var repartidor in repartidores)
+            {
+                if (ViewBag.IdRepartidor != null
+                    && (long)ViewBag.IdRepartidor == repartidor.Id)
+                {
+                    <option value="@repartidor.Id" selected>
+                        @repartidor.Nombre
+                    </option>
+                }
+                else
+                {
+                    <option value="@repartidor.Id">
+                        @repartidor.Nombre
+                    </option>
+                }
+            }
+        </select>
+
+        <input type="date"
+               name="fecha"
+               class="input-filter"
+               value="@ViewBag.Fecha"
+               aria-label="Filtrar por fecha" />
+
+        <select name="tipo" class="select-filter"
+                aria-label="Filtrar por tipo de gasto">
+            <option value="">Todos los tipos</option>
+
+            @foreach (var tipoGasto in TiposGastoRuta.Todos)
+            {
+                if (ViewBag.Tipo != null && (string)ViewBag.Tipo == tipoGasto)
+                {
+                    <option value="@tipoGasto" selected>@tipoGasto</option>
+                }
+                else
+                {
+                    <option value="@tipoGasto">@tipoGasto</option>
+                }
+            }
+        </select>
+
+        <button type="submit" class="btn-apple">
+            Filtrar
+        </button>
+
+        <a asp-action="Index"
+           class="btn-apple"
+           style="background:#f2f2f4;color:#1d1d1f;">
+            Limpiar
+        </a>
+    </form>
+
+    <!-- Total de gastos arriba de la tabla -->
+    <div class="total-gastos-dia">
+        <span>Total de gastos del día</span>
+        <strong>
+            S/ @(((decimal?)ViewBag.TotalGastos ?? 0m).ToString("N2"))
+        </strong>
+    </div>
+
+    <div class="card-tabla">
+        <div class="table-responsive">
+            <table class="tabla-gastos">
+                <thead>
+                    <tr>
+                        <th>Repartidor</th>
+                        <th>Tipo</th>
+                        <th>Monto</th>
+                        <th>Fecha</th>
+                        <th>Observación</th>
+                        <th class="text-center">ACCIONES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="empty-row">
+                                No hay gastos registrados para mostrar.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var gasto in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@gasto.Repartidor.Nombre</strong>
+                                </td>
+                                <td>
+                                    <span class="badge-tipo @gasto.Tipo.ToLowerInvariant()">
+                                    @gasto.Tipo
+                                </span>
+                                </td>
+                                <td class="monto-gasto">
+                                    S/ @gasto.Monto.ToString("N2")
+                                </td>
+                                <td>
+                                    @gasto.Fecha.ToString("dd/MM/yyyy")
+                                </td>
+                                <td class="text-muted-cell">
+                                    @(string.IsNullOrWhiteSpace(gasto.Observacion)
+                                        ? "—"
+                                        : gasto.Observacion)
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="d-flex justify-content-center align-items-center gap-2">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary btn-editar-gasto"
+                                                data-id="@gasto.Id">
+                                            Editar
+                                        </button>
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger btn-eliminar-gasto"
+                                                data-id="@gasto.Id">
+                                            Eliminar
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Solo el contador permanece debajo -->
+        <div class="contador-gastos">
+            Total de registros: @(Model?.Count ?? 0)
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalGasto" tabindex="-1"
+         aria-labelledby="modalGastoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" id="contenidoModalGasto">
+                <div class="modal-body text-center p-4">
+                    Cargando formulario...
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="tokenSeguridadGastos" class="d-none">
+    @Html.AntiForgeryToken()
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const botonNuevo = document.getElementById("btnNuevoGasto");
+            const modalElemento = document.getElementById("modalGasto");
+            const contenidoModal = document.getElementById("contenidoModalGasto");
+
+            if (!modalElemento || !contenidoModal) {
+                console.error("No se encontraron los elementos del modal de gastos.");
+                return;
+            }
+
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElemento);
+
+            // Mostrar notificaciones modernas.
+            function mostrarNotificacion(mensaje, tipo = "success") {
+                let notificacion = document.getElementById("notificacionGasto");
+
+                if (!notificacion) {
+                    notificacion = document.createElement("div");
+                    notificacion.id = "notificacionGasto";
+
+                    Object.assign(notificacion.style, {
+                        position: "fixed",
+                        top: "24px",
+                        right: "24px",
+                        zIndex: "9999",
+                        minWidth: "300px",
+                        maxWidth: "420px",
+                        padding: "16px 20px",
+                        borderRadius: "12px",
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        background: "#ffffff",
+                        border: "1px solid #bbf7d0",
+                        color: "#166534",
+                        fontFamily: "inherit",
+                        opacity: "0",
+                        transform: "translateY(-10px)",
+                        transition: "opacity .25s ease, transform .25s ease"
+                    });
+
+                    document.body.appendChild(notificacion);
+                }
+
+                if (notificacion.dataset.temporizador) {
+                    clearTimeout(Number(notificacion.dataset.temporizador));
+                }
+
+                const correcto = tipo === "success";
+
+                notificacion.style.borderColor =
+                    correcto ? "#bbf7d0" : "#fecaca";
+                notificacion.style.color =
+                    correcto ? "#166534" : "#991b1b";
+
+                notificacion.replaceChildren();
+
+                const icono = document.createElement("span");
+                icono.textContent = correcto ? "✓" : "!";
+                icono.style.fontSize = "24px";
+                icono.style.fontWeight = "bold";
+
+                const texto = document.createElement("span");
+                texto.textContent = mensaje;
+                texto.style.flex = "1";
+
+                const cerrar = document.createElement("button");
+                cerrar.type = "button";
+                cerrar.textContent = "×";
+                cerrar.setAttribute("aria-label", "Cerrar notificación");
+
+                Object.assign(cerrar.style, {
+                    border: "none",
+                    background: "transparent",
+                    fontSize: "22px",
+                    cursor: "pointer",
+                    color: "inherit"
+                });
+
+                cerrar.addEventListener("click", function () {
+                    notificacion.style.opacity = "0";
+                    notificacion.style.transform = "translateY(-10px)";
+                });
+
+                notificacion.append(icono, texto, cerrar);
+
+                requestAnimationFrame(() => {
+                    notificacion.style.opacity = "1";
+                    notificacion.style.transform = "translateY(0)";
+                });
+
+                const temporizador = setTimeout(() => {
+                    notificacion.style.opacity = "0";
+                    notificacion.style.transform = "translateY(-10px)";
+                    delete notificacion.dataset.temporizador;
+                }, 5000);
+
+                notificacion.dataset.temporizador = temporizador;
+            }
+
+            // Recuperar la notificación después de la redirección.
+            const mensajeGuardado = sessionStorage.getItem("notificacionGasto");
+
+            if (mensajeGuardado) {
+                sessionStorage.removeItem("notificacionGasto");
+                mostrarNotificacion(mensajeGuardado, "success");
+            }
+
+            // Abrir el formulario de registro.
+            if (botonNuevo) {
+                botonNuevo.addEventListener("click", async function () {
+                    contenidoModal.innerHTML = `
+                        <div class="modal-body text-center p-4">
+                            Cargando formulario...
+                        </div>`;
+
+                    modal.show();
+
+                    try {
+                        const respuesta = await fetch("/Gastos/Create", {
+                            headers: {
+                                "X-Requested-With": "XMLHttpRequest"
+                            }
+                        });
+
+                        if (!respuesta.ok) {
+                            throw new Error(`Error HTTP ${respuesta.status}`);
+                        }
+
+                        contenidoModal.innerHTML = await respuesta.text();
+                    } catch (error) {
+                        console.error(error);
+
+                        contenidoModal.innerHTML = `
+                            <div class="modal-body">
+                                <p class="text-danger mb-0">
+                                    No se pudo cargar el formulario.
+                                </p>
+                            </div>`;
+                    }
+                });
+            }
+
+            // NUEVO: abrir el formulario de edición.
+            document.addEventListener("click", async function (evento) {
+                const botonEditar = evento.target.closest(".btn-editar-gasto");
+
+                if (!botonEditar) {
+                    return;
+                }
+
+                const id = botonEditar.dataset.id;
+
+                contenidoModal.innerHTML = `
+                    <div class="modal-body text-center p-4">
+                        Cargando gasto...
+                    </div>`;
+
+                modal.show();
+
+                try {
+                    const respuesta = await fetch(
+                        `/Gastos/Edit?id=${encodeURIComponent(id)}`,
+                        {
+                            headers: {
+                                "X-Requested-With": "XMLHttpRequest"
+                            }
+                        }
+                    );
+
+                    if (!respuesta.ok) {
+                        throw new Error("No se pudo cargar el gasto para editar.");
+                    }
+
+                    contenidoModal.innerHTML = await respuesta.text();
+                } catch (error) {
+                    console.error(error);
+                    mostrarNotificacion(error.message, "error");
+                    modal.hide();
+                }
+            });
+
+
+            // Eliminar un gasto con confirmación.
+            document.addEventListener("click", async function (evento) {
+                const botonEliminar = evento.target.closest(
+                    ".btn-eliminar-gasto"
+                );
+
+                if (!botonEliminar) {
+                    return;
+                }
+
+                const id = botonEliminar.dataset.id;
+
+                const confirmar = confirm(
+                    "¿Estás seguro de que deseas eliminar este gasto? " +
+                    "El registro se conservará en el historial."
+                );
+
+                if (!confirmar) {
+                    return;
+                }
+
+                botonEliminar.disabled = true;
+
+                try {
+                    const token = document.querySelector(
+                        '#contenidoModalGasto input[name="__RequestVerificationToken"]'
+                    );
+
+                    const tokenFormulario = token?.value ||
+                        document.querySelector(
+                            'input[name="__RequestVerificationToken"]'
+                        )?.value;
+
+                    if (!tokenFormulario) {
+                        throw new Error(
+                            "No se encontró el token de seguridad. Recarga la página."
+                        );
+                    }
+
+                    const datos = new URLSearchParams();
+                    datos.append("id", id);
+                    datos.append("__RequestVerificationToken", tokenFormulario);
+
+                    const respuesta = await fetch("/Gastos/Delete", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                            "X-Requested-With": "XMLHttpRequest"
+                        },
+                        body: datos.toString()
+                    });
+
+                    const resultado = await respuesta.json();
+
+                    if (!respuesta.ok || !resultado.success) {
+                        throw new Error(
+                            resultado.message || "No se pudo eliminar el gasto."
+                        );
+                    }
+
+                    sessionStorage.setItem(
+                        "notificacionGasto",
+                        resultado.message || "Gasto eliminado correctamente."
+                    );
+
+                    window.location.href =
+                        resultado.redirectUrl || "/Gastos/Index";
+
+                } catch (error) {
+                    console.error(error);
+                    mostrarNotificacion(
+                        error.message || "Ocurrió un error al eliminar el gasto.",
+                        "error"
+                    );
+                    botonEliminar.disabled = false;
+                }
+            });
+
+
+
+            // Interceptar el envío de los formularios de registro y edición.
+            contenidoModal.addEventListener("submit", async function (evento) {
+                const formulario = evento.target;
+
+                const esRegistro = formulario.matches("#formCrearGasto");
+                const esEdicion = formulario.matches("#formEditarGasto");
+
+                if (!esRegistro && !esEdicion) {
+                    return;
+                }
+
+                evento.preventDefault();
+
+                const botonGuardar = formulario.querySelector(
+                    'button[type="submit"]'
+                );
+
+                const textoOriginal = botonGuardar?.textContent;
+
+                if (botonGuardar) {
+                    botonGuardar.disabled = true;
+                    botonGuardar.textContent = "Guardando...";
+                }
+
+                try {
+                    const respuesta = await fetch(formulario.action, {
+                        method: "POST",
+                        body: new FormData(formulario),
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest"
+                        }
+                    });
+
+                    const tipoContenido =
+                        respuesta.headers.get("content-type") || "";
+
+                    if (tipoContenido.includes("application/json")) {
+                        const resultado = await respuesta.json();
+
+                        if (!respuesta.ok || !resultado.success) {
+                            throw new Error(
+                                resultado.message ||
+                                "No se pudo guardar el gasto."
+                            );
+                        }
+
+                        modal.hide();
+
+                        sessionStorage.setItem(
+                            "notificacionGasto",
+                            resultado.message ||
+                            (esEdicion
+                                ? "Gasto actualizado correctamente."
+                                : "Gasto registrado correctamente.")
+                        );
+
+                        window.location.href =
+                            resultado.redirectUrl || "/Gastos/Index";
+
+                        return;
+                    }
+
+                    // Mostrar de nuevo el formulario si hay errores de validación.
+                    contenidoModal.innerHTML = await respuesta.text();
+
+                } catch (error) {
+                    console.error(error);
+
+                    let mensaje = contenidoModal.querySelector(
+                        "#errorEnvioGasto"
+                    );
+
+                    if (!mensaje) {
+                        mensaje = document.createElement("div");
+                        mensaje.id = "errorEnvioGasto";
+                        mensaje.className = "alert alert-danger m-3";
+                        contenidoModal.prepend(mensaje);
+                    }
+
+                    mensaje.textContent =
+                        error.message ||
+                        "Ocurrió un error al guardar el gasto.";
+
+                } finally {
+                    const botonActual = contenidoModal.querySelector(
+                        '#formCrearGasto button[type="submit"], ' +
+                        '#formEditarGasto button[type="submit"]'
+                    );
+
+                    if (botonActual) {
+                        botonActual.disabled = false;
+                        botonActual.textContent =
+                            textoOriginal ||
+                            (esEdicion ? "Guardar cambios" : "Guardar gasto");
+                    }
+                }
+            });
+        });
+    </script>
+}
+
+
+

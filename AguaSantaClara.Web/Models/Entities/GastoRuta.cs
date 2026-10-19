@@ -22,5 +22,6 @@ public class GastoRuta
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaActualizacion { get; set; }
 
+    [Microsoft.AspNetCore.Mvc.ModelBinding.Validation.ValidateNever]
     public Repartidor Repartidor { get; set; } = null!;
 }
