@@ -1,0 +1,221 @@
+@{
+    ViewData["Title"] = "Cierre de Caja";
+}
+
+<style>
+    .cierre-caja-page {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+
+    .cierre-caja-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        padding: 28px;
+        background: #fff;
+        border: 1px solid #e5e5ea;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .03);
+    }
+
+    .cierre-caja-title {
+        margin: 0;
+        color: #1d1d1f;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -.03em;
+    }
+
+    .cierre-caja-subtitle {
+        margin: 6px 0 0;
+        color: #6e6e73;
+        font-size: 14px;
+    }
+
+    .btn-registrar-cierre {
+        min-height: 42px;
+        padding: 0 18px;
+        border: 0;
+        border-radius: 9px;
+        background: #1d1d1f;
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .btn-registrar-cierre:hover {
+        background: #000;
+        color: #fff;
+    }
+
+    .cierre-modal .modal-content {
+        border: 0;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, .2);
+    }
+
+    .cierre-modal .modal-header,
+    .cierre-modal .modal-footer {
+        padding: 20px 24px;
+    }
+
+    .cierre-modal .modal-body {
+        padding: 8px 24px 24px;
+    }
+
+    .cierre-modal .form-label {
+        color: #303036;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .cierre-modal .form-control {
+        min-height: 42px;
+        border-color: #d9d9df;
+        border-radius: 9px;
+    }
+
+    .cierre-modal textarea.form-control {
+        min-height: auto;
+    }
+
+    @@media (max-width: 576px) {
+        .cierre-caja-page {
+            padding: 20px 14px;
+        }
+
+        .cierre-caja-header {
+            align-items: stretch;
+            padding: 20px;
+        }
+
+        .btn-registrar-cierre {
+            width: 100%;
+        }
+    }
+</style>
+
+<main class="cierre-caja-page">
+    <section class="cierre-caja-header" aria-labelledby="tituloCierreCaja">
+        <div>
+            <h1 class="cierre-caja-title" id="tituloCierreCaja">Cierre de Caja</h1>
+            <p class="cierre-caja-subtitle">
+                Registra el efectivo y los pagos recibidos al finalizar la jornada.
+            </p>
+        </div>
+
+        <button type="button"
+                class="btn btn-registrar-cierre"
+                data-bs-toggle="modal"
+                data-bs-target="#modalRegistrarCierre">
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+            Registrar cierre
+        </button>
+    </section>
+</main>
+
+<div class="modal fade cierre-modal"
+     id="modalRegistrarCierre"
+     tabindex="-1"
+     aria-labelledby="modalRegistrarCierreLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 fw-bold" id="modalRegistrarCierreLabel">
+                        Registrar cierre de caja
+                    </h2>
+                    <p class="small text-muted mb-0 mt-1">
+                        Ingresa los montos reportados al finalizar la jornada.
+                    </p>
+                </div>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar"></button>
+            </div>
+
+            <form>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="fechaCierre" class="form-label">Fecha</label>
+                        <input id="fechaCierre"
+                               name="Fecha"
+                               type="date"
+                               class="form-control"
+                               value="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               required />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-sm-6 mb-3">
+                            <label for="efectivoRecibido" class="form-label">
+                                Efectivo recibido (S/)
+                            </label>
+                            <input id="efectivoRecibido"
+                                   name="EfectivoRecibido"
+                                   type="number"
+                                   class="form-control"
+                                   min="0"
+                                   step="0.01"
+                                   placeholder="0.00"
+                                   required />
+                        </div>
+
+                        <div class="col-sm-6 mb-3">
+                            <label for="yapeRecibido" class="form-label">
+                                Yape recibido (S/)
+                            </label>
+                            <input id="yapeRecibido"
+                                   name="YapeRecibido"
+                                   type="number"
+                                   class="form-control"
+                                   min="0"
+                                   step="0.01"
+                                   placeholder="0.00"
+                                   required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="gastosDelDia" class="form-label">
+                            Gastos del día (S/)
+                        </label>
+                        <input id="gastosDelDia"
+                               name="GastosDelDia"
+                               type="number"
+                               class="form-control"
+                               min="0"
+                               step="0.01"
+                               placeholder="0.00"
+                               required />
+                    </div>
+
+                    <div>
+                        <label for="observacionCierre" class="form-label">
+                            Observaciones
+                        </label>
+                        <textarea id="observacionCierre"
+                                  name="Observacion"
+                                  class="form-control"
+                                  rows="3"
+                                  maxlength="255"
+                                  placeholder="Anota cualquier detalle relevante (opcional)"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-light"
+                            data-bs-dismiss="modal">
+                        Cerrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
