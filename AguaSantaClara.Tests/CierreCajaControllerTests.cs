@@ -71,6 +71,26 @@ public class CierreCajaControllerTests
         Assert.Equal("Faltó S/ 1", guardado.Observacion);
         Assert.NotNull(resultado.Value);
 
+        var listado = Assert.IsType<ViewResult>(await controller.Index());
+        var cierres = Assert.IsAssignableFrom<IReadOnlyList<CierreCaja>>(listado.Model);
+        Assert.Single(cierres);
+
+        var detalle = Assert.IsType<ViewResult>(await controller.Details(guardado.Id));
+        var cierreDetalle = Assert.IsType<CierreCaja>(detalle.Model);
+        Assert.Equal(guardado.Id, cierreDetalle.Id);
+        Assert.Equal("Faltó S/ 1", cierreDetalle.Observacion);
+
+        db.CierresCaja.Add(new CierreCaja
+        {
+            IdVendedora = 21,
+            Fecha = hoy,
+            EstadoRegistro = true,
+            Estado = EstadosCierreCaja.Cuadrado
+        });
+        await db.SaveChangesAsync();
+
+        Assert.IsType<NotFoundResult>(await controller.Details(2));
+
         var duplicado = Assert.IsType<ConflictObjectResult>(await controller.Create(modelo));
         Assert.Equal(409, duplicado.StatusCode);
     }

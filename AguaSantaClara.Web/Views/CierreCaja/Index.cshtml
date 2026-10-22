@@ -1,6 +1,8 @@
 @{
     ViewData["Title"] = "Cierre de Caja";
 }
+@model IReadOnlyList<AguaSantaClara.Web.Models.Entities.CierreCaja>
+@using AguaSantaClara.Web.Models.Entities
 
 <style>
     .cierre-caja-page {
@@ -34,6 +36,33 @@
         margin: 6px 0 0;
         color: #6e6e73;
         font-size: 14px;
+    }
+
+    .cierre-listado {
+        margin-top: 20px;
+        overflow: hidden;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .03);
+    }
+
+    .cierre-listado table {
+        margin: 0;
+    }
+
+    .cierre-listado th {
+        padding: 14px 16px;
+        background: #f8f9fb;
+        color: #6e6e73;
+        font-size: 11px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .cierre-listado td {
+        padding: 14px 16px;
+        vertical-align: middle;
     }
 
     .btn-registrar-cierre {
@@ -149,6 +178,58 @@
             <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
             Registrar cierre
         </button>
+    </section>
+
+    <section class="cierre-listado" aria-label="Cierres de caja registrados">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Monto esperado</th>
+                        <th>Monto recibido</th>
+                        <th>Diferencia</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cierresRegistrados">
+                    @if (Model.Count == 0)
+                    {
+                        <tr id="filaSinCierres">
+                            <td colspan="6" class="text-center text-muted py-4">
+                                Aún no hay cierres de caja registrados.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var cierre in Model)
+                        {
+                            <tr>
+                                <td>@cierre.Fecha.ToString("dd/MM/yyyy")</td>
+                                <td>S/ @((cierre.EfectivoEsperado + cierre.YapeEsperado).ToString("N2"))</td>
+                                <td>S/ @((cierre.EfectivoRecibido + cierre.YapeRecibido).ToString("N2"))</td>
+                                <td>S/ @cierre.Diferencia.ToString("N2")</td>
+                                <td>
+                                    <span class="badge @(cierre.Estado == EstadosCierreCaja.Cuadrado ? "text-bg-success" : "text-bg-warning")">
+                                        @cierre.Estado
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="Details"
+                                       asp-route-id="@cierre.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1" aria-hidden="true"></i>
+                                        Ver detalle
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
     </section>
 </main>
 
@@ -297,6 +378,8 @@
                 const alertaDiferencia = document.getElementById("diferenciaCierre");
                 const resultado = document.getElementById("resultadoCierre");
                 const botonGuardar = document.getElementById("btnGuardarCierre");
+                const listaCierres = document.getElementById("cierresRegistrados");
+                const urlDetalleCierre = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Action("Details", "CierreCaja")));
                 let esperadoEfectivo = 0;
                 let esperadoYape = 0;
 
@@ -318,6 +401,40 @@
                     alertaDiferencia.textContent = `Diferencia detectada: ${formatoSoles(diferencia)}`;
                     alertaDiferencia.className = "alert alert-warning mt-3 mb-0";
                     alertaDiferencia.hidden = false;
+                };
+
+                const agregarCierreAlListado = cierre => {
+                    document.getElementById("filaSinCierres")?.remove();
+                    const fila = document.createElement("tr");
+                    const valores = [
+                        new Date(`${cierre.fecha}T00:00:00`).toLocaleDateString("es-PE"),
+                        formatoSoles(Number(cierre.efectivoEsperado) + Number(cierre.yapeEsperado)),
+                        formatoSoles(Number(cierre.efectivoRecibido) + Number(cierre.yapeRecibido)),
+                        formatoSoles(Number(cierre.diferencia))
+                    ];
+
+                    for (const valor of valores) {
+                        const celda = document.createElement("td");
+                        celda.textContent = valor;
+                        fila.append(celda);
+                    }
+
+                    const celdaEstado = document.createElement("td");
+                    const distintivo = document.createElement("span");
+                    distintivo.className = `badge ${cierre.estado === "Cuadrado" ? "text-bg-success" : "text-bg-warning"}`;
+                    distintivo.textContent = cierre.estado;
+                    celdaEstado.append(distintivo);
+                    fila.append(celdaEstado);
+
+                    const celdaAcciones = document.createElement("td");
+                    celdaAcciones.className = "text-end";
+                    const enlaceDetalle = document.createElement("a");
+                    enlaceDetalle.className = "btn btn-sm btn-outline-secondary";
+                    enlaceDetalle.href = `${urlDetalleCierre}?id=${encodeURIComponent(cierre.id)}`;
+                    enlaceDetalle.textContent = "Ver detalle";
+                    celdaAcciones.append(enlaceDetalle);
+                    fila.append(celdaAcciones);
+                    listaCierres.prepend(fila);
                 };
 
                 const cargarResumen = async () => {
@@ -406,6 +523,7 @@
                         mensaje.className = "alert alert-success";
                         mensaje.textContent = datos.message;
                         resultado.replaceChildren(mensaje);
+                        agregarCierreAlListado(datos);
 
                         if (Number(datos.diferencia) !== 0) {
                             const alerta = document.createElement("div");

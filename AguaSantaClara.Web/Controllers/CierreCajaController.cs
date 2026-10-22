@@ -19,9 +19,18 @@ public class CierreCajaController : Controller
         _context = context;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return View();
+        if (!ObtenerIdVendedora(out var idVendedora))
+            return Unauthorized();
+
+        var cierres = await _context.CierresCaja
+            .AsNoTracking()
+            .Where(cierre => cierre.IdVendedora == idVendedora && cierre.EstadoRegistro)
+            .OrderByDescending(cierre => cierre.Fecha)
+            .ToListAsync();
+
+        return View(cierres);
     }
 
     [HttpGet]
@@ -117,9 +126,31 @@ public class CierreCajaController : Controller
         {
             success = true,
             message = "cierre de caja registrado correctamente",
+            id = cierre.Id,
+            fecha = cierre.Fecha.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            efectivoEsperado = cierre.EfectivoEsperado,
+            yapeEsperado = cierre.YapeEsperado,
+            efectivoRecibido = cierre.EfectivoRecibido,
+            yapeRecibido = cierre.YapeRecibido,
             diferencia = cierre.Diferencia,
             estado = cierre.Estado
         });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Details(long id)
+    {
+        if (!ObtenerIdVendedora(out var idVendedora))
+            return Unauthorized();
+
+        var cierre = await _context.CierresCaja
+            .AsNoTracking()
+            .Include(registro => registro.Vendedora)
+            .FirstOrDefaultAsync(registro => registro.Id == id
+                && registro.IdVendedora == idVendedora
+                && registro.EstadoRegistro);
+
+        return cierre == null ? NotFound() : View(cierre);
     }
 
     private async Task<(decimal Efectivo, decimal Yape)> CalcularMontosEsperadosAsync(DateOnly fecha)
@@ -150,4 +181,10 @@ public class CierreCajaController : Controller
 
     private static DateTime InicioDelDiaUtc(DateOnly fecha) =>
         DateTime.SpecifyKind(fecha.ToDateTime(TimeOnly.MinValue), DateTimeKind.Local).ToUniversalTime();
+
+    private bool ObtenerIdVendedora(out long idVendedora)
+    {
+        var idVendedoraTexto = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return long.TryParse(idVendedoraTexto, NumberStyles.None, CultureInfo.InvariantCulture, out idVendedora);
+    }
 }
