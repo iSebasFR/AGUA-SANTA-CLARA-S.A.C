@@ -15,21 +15,19 @@ public class AppDbContext : IdentityDbContext<Usuario, Rol, long>
     public DbSet<DireccionCliente> DireccionesCliente => Set<DireccionCliente>();
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<RolPermiso> RolesPermisos => Set<RolPermiso>();
+    public DbSet<Pedido> Pedidos => Set<Pedido>();
+    public DbSet<DetallePedido> DetallesPedido => Set<DetallePedido>();
+    public DbSet<PedidoCliente> PedidosCliente => Set<PedidoCliente>();
     public DbSet<Local> Locales => Set<Local>();
     public DbSet<ProductoLocal> ProductosLocal => Set<ProductoLocal>();
     public DbSet<Repartidor> Repartidores => Set<Repartidor>();
-    public DbSet<Pedido> Pedidos => Set<Pedido>();
-    public DbSet<PedidoCliente> PedidosCliente => Set<PedidoCliente>();
-    public DbSet<DetallePedido> DetallesPedido => Set<DetallePedido>();
-    public DbSet<Incidencia> Incidencias => Set<Incidencia>();
-    public DbSet<MetodoPago> MetodosPago => Set<MetodoPago>();
     public DbSet<Pago> Pagos => Set<Pago>();
     public DbSet<Deuda> Deudas => Set<Deuda>();
-    public DbSet<MovimientoBidones> MovimientosBidones => Set<MovimientoBidones>();
-
-    // ===== Sprint 3 =====
+    public DbSet<MetodoPago> MetodosPago => Set<MetodoPago>();
     public DbSet<GastoRuta> GastosRuta => Set<GastoRuta>();
     public DbSet<CierreCaja> CierresCaja => Set<CierreCaja>();
+    public DbSet<Incidencia> Incidencias => Set<Incidencia>();
+    public DbSet<MovimientoBidones> MovimientosBidones => Set<MovimientoBidones>();
     public DbSet<AutorizacionPlazo> AutorizacionesPlazo => Set<AutorizacionPlazo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
