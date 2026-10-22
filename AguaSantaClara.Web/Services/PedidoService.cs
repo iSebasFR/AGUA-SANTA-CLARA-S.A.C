@@ -606,6 +606,10 @@ public class PedidoService : IPedidoService
             pedido = pedidoExistente;
         }
 
+        // El pedido y su cambio de estado se guardan juntos para no dejarlo a medias
+        if (persistir && enviar)
+            pedido.Estado = EstadosPedido.Enviado;
+
         if (persistir)
             await _context.SaveChangesAsync();
 
@@ -613,17 +617,6 @@ public class PedidoService : IPedidoService
 
         if (enviar)
         {
-            if (persistir && pedidoExistente == null)
-            {
-                pedido.Estado = EstadosPedido.Enviado;
-                await _context.SaveChangesAsync();
-            }
-            else if (persistir && pedidoExistente != null)
-            {
-                pedidoExistente.Estado = EstadosPedido.Enviado;
-                await _context.SaveChangesAsync();
-                pedido = pedidoExistente;
-            }
 
             await _context.Entry(pedido).Collection(p => p.Clientes).LoadAsync();
             foreach (var pc in pedido.Clientes)

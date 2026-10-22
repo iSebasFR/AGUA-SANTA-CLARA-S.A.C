@@ -22,14 +22,33 @@ public class CierreCajaController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(DateOnly? fechaDesde = null, DateOnly? fechaHasta = null)
     {
         if (!ObtenerIdVendedora(out var idVendedora))
             return Unauthorized();
 
-        var cierres = await _context.CierresCaja
+        var cierresQuery = _context.CierresCaja
             .AsNoTracking()
-            .Where(cierre => cierre.IdVendedora == idVendedora && cierre.EstadoRegistro)
+            .Where(cierre => cierre.IdVendedora == idVendedora && cierre.EstadoRegistro);
+
+        var errorFiltro = !ModelState.IsValid
+            ? "Ingresa fechas válidas para aplicar el filtro."
+            : ValidarRangoFechas(fechaDesde, fechaHasta);
+        if (errorFiltro != null)
+        {
+            ViewBag.ErrorFiltroFechas = errorFiltro;
+            cierresQuery = cierresQuery.Where(_ => false);
+        }
+        else
+        {
+            cierresQuery = AplicarRangoFechas(cierresQuery, fechaDesde, fechaHasta);
+        }
+
+        ViewBag.FechaDesde = fechaDesde?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        ViewBag.FechaHasta = fechaHasta?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        ViewBag.TieneFiltrosFecha = fechaDesde.HasValue || fechaHasta.HasValue;
+
+        var cierres = await cierresQuery
             .OrderByDescending(cierre => cierre.Fecha)
             .ToListAsync();
 
@@ -123,7 +142,15 @@ public class CierreCajaController : Controller
         };
 
         _context.CierresCaja.Add(cierre);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Dos envíos simultáneos: el índice único (vendedora, fecha) rechaza el segundo
+            return Conflict(new { success = false, message = "Ya existe un cierre registrado para esta fecha." });
+        }
 
         return Json(new
         {
@@ -135,6 +162,8 @@ public class CierreCajaController : Controller
             yapeEsperado = cierre.YapeEsperado,
             efectivoRecibido = cierre.EfectivoRecibido,
             yapeRecibido = cierre.YapeRecibido,
+            gastosDelDia = cierre.GastosDelDia,
+            totalEnCaja = cierre.TotalEnCaja,
             diferencia = cierre.Diferencia,
             estado = cierre.Estado
         });
@@ -157,19 +186,32 @@ public class CierreCajaController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Exportar()
+    public async Task<IActionResult> Exportar(DateOnly? fechaDesde = null, DateOnly? fechaHasta = null)
     {
         if (!ObtenerIdVendedora(out var idVendedora))
             return Unauthorized();
 
-        var cierres = await _context.CierresCaja
+        var errorFiltro = !ModelState.IsValid
+            ? "Ingresa fechas válidas para aplicar el filtro."
+            : ValidarRangoFechas(fechaDesde, fechaHasta);
+        if (errorFiltro != null)
+            return BadRequest(errorFiltro);
+
+        var cierresQuery = _context.CierresCaja
             .AsNoTracking()
-            .Where(cierre => cierre.IdVendedora == idVendedora && cierre.EstadoRegistro)
+            .Where(cierre => cierre.IdVendedora == idVendedora && cierre.EstadoRegistro);
+        cierresQuery = AplicarRangoFechas(cierresQuery, fechaDesde, fechaHasta);
+
+        // Orden cronológico (más antiguo primero) para que el reporte se lea de arriba hacia abajo
+        var cierres = await cierresQuery
             .OrderBy(cierre => cierre.Fecha)
+            .ThenBy(cierre => cierre.Id)
             .ToListAsync();
 
-        var contenido = GenerarExcel(cierres);
-        var nombreArchivo = $"cierres-caja-{DateTime.Today:yyyyMMdd}.xlsx";
+        var contenido = GenerarExcel(cierres, fechaDesde, fechaHasta);
+        var nombreArchivo = fechaDesde.HasValue && fechaDesde == fechaHasta
+            ? $"cierre-caja-{fechaDesde.Value:yyyyMMdd}.xlsx"
+            : $"cierres-caja-{DateTime.Today:yyyyMMdd}.xlsx";
 
         return File(
             contenido,
@@ -206,80 +248,300 @@ public class CierreCajaController : Controller
     private static DateTime InicioDelDiaUtc(DateOnly fecha) =>
         DateTime.SpecifyKind(fecha.ToDateTime(TimeOnly.MinValue), DateTimeKind.Local).ToUniversalTime();
 
-    private static byte[] GenerarExcel(IReadOnlyList<CierreCaja> cierres)
+    private static string? ValidarRangoFechas(DateOnly? fechaDesde, DateOnly? fechaHasta)
+    {
+        if (fechaDesde.HasValue && fechaHasta.HasValue && fechaDesde.Value > fechaHasta.Value)
+            return "La fecha inicial no puede ser posterior a la fecha final.";
+
+        return null;
+    }
+
+    private static IQueryable<CierreCaja> AplicarRangoFechas(
+        IQueryable<CierreCaja> cierres,
+        DateOnly? fechaDesde,
+        DateOnly? fechaHasta)
+    {
+        if (fechaDesde.HasValue)
+            cierres = cierres.Where(cierre => cierre.Fecha >= fechaDesde.Value);
+        if (fechaHasta.HasValue)
+            cierres = cierres.Where(cierre => cierre.Fecha <= fechaHasta.Value);
+
+        return cierres;
+    }
+
+    // Índices de cellXfs definidos en xl/styles.xml
+    private const int EstiloTitulo = 1;
+    private const int EstiloSubtitulo = 2;
+    private const int EstiloEncabezado = 3;
+    private const int EstiloFecha = 4;
+    private const int EstiloMonto = 5;
+    private const int EstiloTexto = 6;
+    private const int EstiloTotalEtiqueta = 7;
+    private const int EstiloTotalMonto = 8;
+    private const int EstiloTotalVacio = 9;
+
+    private static readonly DateOnly FechaBaseExcel = new(1899, 12, 30);
+
+    private static byte[] GenerarExcel(
+        IReadOnlyList<CierreCaja> cierres,
+        DateOnly? fechaDesde = null,
+        DateOnly? fechaHasta = null)
     {
         XNamespace spreadsheet = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
         XNamespace relationships = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
         XNamespace packageRelationships = "http://schemas.openxmlformats.org/package/2006/relationships";
         XNamespace contentTypes = "http://schemas.openxmlformats.org/package/2006/content-types";
-        var columnas = new[]
-        {
-            "Fecha",
-            "Efectivo esperado (S/)",
-            "Yape esperado (S/)",
-            "Total esperado (S/)",
-            "Efectivo recibido (S/)",
-            "Yape recibido (S/)",
-            "Total recibido (S/)",
-            "Gastos del día (S/)",
-            "Diferencia (S/)",
-            "Estado",
-            "Observaciones"
-        };
-        var filas = new List<IReadOnlyList<object?>>
-        {
-            columnas.Cast<object?>().ToArray()
-        };
+        const string nombreHoja = "Cierres de caja";
+        const int filaEncabezado = 4;
 
-        filas.AddRange(cierres.Select(cierre => (IReadOnlyList<object?>)new object?[]
+        var columnas = new (string Titulo, double Ancho, bool EsMonto)[]
         {
-            cierre.Fecha.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
-            cierre.EfectivoEsperado,
-            cierre.YapeEsperado,
-            cierre.EfectivoEsperado + cierre.YapeEsperado,
-            cierre.EfectivoRecibido,
-            cierre.YapeRecibido,
-            cierre.EfectivoRecibido + cierre.YapeRecibido,
-            cierre.GastosDelDia,
-            cierre.Diferencia,
-            cierre.Estado,
-            cierre.Observacion ?? string.Empty
-        }));
+            ("Fecha", 13, false),
+            ("Efectivo esperado", 18, true),
+            ("Yape esperado", 16, true),
+            ("Total esperado", 16, true),
+            ("Efectivo recibido", 18, true),
+            ("Yape recibido", 16, true),
+            ("Gastos del día", 16, true),
+            ("Total en caja", 16, true),
+            ("Diferencia", 14, true),
+            ("Estado", 16, false),
+            ("Observaciones", 45, false)
+        };
+        var ultimaColumna = NumeroColumnaExcel(columnas.Length);
 
-        var sheetData = new XElement(spreadsheet + "sheetData");
-        for (var indiceFila = 0; indiceFila < filas.Count; indiceFila++)
+        XElement Celda(string referencia, object? valor, int estilo)
         {
-            var fila = new XElement(spreadsheet + "row", new XAttribute("r", indiceFila + 1));
-            for (var indiceColumna = 0; indiceColumna < columnas.Length; indiceColumna++)
+            var celda = new XElement(spreadsheet + "c",
+                new XAttribute("r", referencia),
+                new XAttribute("s", estilo));
+
+            switch (valor)
             {
-                var valor = filas[indiceFila][indiceColumna];
-                var referencia = $"{NumeroColumnaExcel(indiceColumna + 1)}{indiceFila + 1}";
-                if (valor is decimal monto)
-                {
-                    fila.Add(new XElement(spreadsheet + "c",
-                        new XAttribute("r", referencia),
-                        new XElement(spreadsheet + "v", monto.ToString(CultureInfo.InvariantCulture))));
-                }
-                else
-                {
-                    fila.Add(new XElement(spreadsheet + "c",
-                        new XAttribute("r", referencia),
-                        new XAttribute("t", "inlineStr"),
+                case null:
+                    break;
+                case decimal monto:
+                    celda.Add(new XElement(spreadsheet + "v", monto.ToString(CultureInfo.InvariantCulture)));
+                    break;
+                case DateOnly fecha:
+                    // Excel guarda las fechas como número de días desde 30/12/1899
+                    var serial = fecha.DayNumber - FechaBaseExcel.DayNumber;
+                    celda.Add(new XElement(spreadsheet + "v", serial.ToString(CultureInfo.InvariantCulture)));
+                    break;
+                default:
+                    celda.Add(new XAttribute("t", "inlineStr"),
                         new XElement(spreadsheet + "is",
                             new XElement(spreadsheet + "t",
                                 new XAttribute(XNamespace.Xml + "space", "preserve"),
-                                valor?.ToString() ?? string.Empty))));
-                }
+                                valor.ToString() ?? string.Empty)));
+                    break;
             }
 
-            sheetData.Add(fila);
+            return celda;
         }
+
+        XElement Fila(int numero, IEnumerable<XElement> celdas, double? alto = null)
+        {
+            var fila = new XElement(spreadsheet + "row", new XAttribute("r", numero));
+            if (alto.HasValue)
+            {
+                fila.Add(new XAttribute("ht", alto.Value.ToString(CultureInfo.InvariantCulture)),
+                    new XAttribute("customHeight", 1));
+            }
+
+            fila.Add(celdas);
+            return fila;
+        }
+
+        var periodo = (fechaDesde, fechaHasta) switch
+        {
+            ({ } desde, { } hasta) => $"Periodo: {desde.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)} al {hasta.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}",
+            ({ } desde, null) => $"Periodo: desde {desde.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}",
+            (null, { } hasta) => $"Periodo: hasta {hasta.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}",
+            _ => "Periodo: todos los registros"
+        };
+        var generado = $"Generado el {DateTime.Now.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)}";
+
+        var sheetData = new XElement(spreadsheet + "sheetData",
+            Fila(1, new[] { Celda("A1", "Cierres de caja", EstiloTitulo) }, 24),
+            Fila(2, new[] { Celda("A2", $"{periodo}  ·  {generado}", EstiloSubtitulo) }),
+            Fila(filaEncabezado,
+                columnas.Select((columna, indice) =>
+                    Celda($"{NumeroColumnaExcel(indice + 1)}{filaEncabezado}", columna.Titulo, EstiloEncabezado)),
+                22));
+
+        var numeroFila = filaEncabezado;
+        foreach (var cierre in cierres)
+        {
+            numeroFila++;
+            var valores = new (object? Valor, int Estilo)[]
+            {
+                (cierre.Fecha, EstiloFecha),
+                (cierre.EfectivoEsperado, EstiloMonto),
+                (cierre.YapeEsperado, EstiloMonto),
+                (cierre.EfectivoEsperado + cierre.YapeEsperado, EstiloMonto),
+                (cierre.EfectivoRecibido, EstiloMonto),
+                (cierre.YapeRecibido, EstiloMonto),
+                (cierre.GastosDelDia, EstiloMonto),
+                (cierre.TotalEnCaja, EstiloMonto),
+                (cierre.Diferencia, EstiloMonto),
+                (cierre.Estado, EstiloTexto),
+                (cierre.Observacion ?? string.Empty, EstiloTexto)
+            };
+            var fila = numeroFila;
+            sheetData.Add(Fila(fila, valores.Select((celda, indice) =>
+                Celda($"{NumeroColumnaExcel(indice + 1)}{fila}", celda.Valor, celda.Estilo))));
+        }
+
+        var ultimaFilaDatos = numeroFila;
+        if (cierres.Count > 0)
+        {
+            numeroFila++;
+            var filaTotales = new XElement(spreadsheet + "row", new XAttribute("r", numeroFila),
+                Celda($"A{numeroFila}", "TOTAL", EstiloTotalEtiqueta));
+            for (var indice = 1; indice < columnas.Length; indice++)
+            {
+                var letra = NumeroColumnaExcel(indice + 1);
+                var referencia = $"{letra}{numeroFila}";
+                filaTotales.Add(columnas[indice].EsMonto
+                    ? new XElement(spreadsheet + "c",
+                        new XAttribute("r", referencia),
+                        new XAttribute("s", EstiloTotalMonto),
+                        new XElement(spreadsheet + "f", $"SUM({letra}{filaEncabezado + 1}:{letra}{ultimaFilaDatos})"))
+                    : Celda(referencia, null, EstiloTotalVacio));
+            }
+
+            sheetData.Add(filaTotales);
+        }
+
+        var ultimaFilaFiltro = Math.Max(ultimaFilaDatos, filaEncabezado);
+        var rangoFiltro = $"A{filaEncabezado}:{ultimaColumna}{ultimaFilaFiltro}";
+
+        var worksheet = new XElement(spreadsheet + "worksheet",
+            new XElement(spreadsheet + "sheetViews",
+                new XElement(spreadsheet + "sheetView",
+                    new XAttribute("showGridLines", 0),
+                    new XAttribute("workbookViewId", 0),
+                    new XElement(spreadsheet + "pane",
+                        new XAttribute("ySplit", filaEncabezado),
+                        new XAttribute("topLeftCell", $"A{filaEncabezado + 1}"),
+                        new XAttribute("activePane", "bottomLeft"),
+                        new XAttribute("state", "frozen")))),
+            new XElement(spreadsheet + "cols",
+                columnas.Select((columna, indice) => new XElement(spreadsheet + "col",
+                    new XAttribute("min", indice + 1),
+                    new XAttribute("max", indice + 1),
+                    new XAttribute("width", columna.Ancho.ToString(CultureInfo.InvariantCulture)),
+                    new XAttribute("customWidth", 1)))),
+            sheetData,
+            new XElement(spreadsheet + "autoFilter", new XAttribute("ref", rangoFiltro)),
+            new XElement(spreadsheet + "pageSetup",
+                new XAttribute("orientation", "landscape")));
+
+        XElement Borde(string? color)
+        {
+            XElement Lado(string nombre) => color == null
+                ? new XElement(spreadsheet + nombre)
+                : new XElement(spreadsheet + nombre,
+                    new XAttribute("style", "thin"),
+                    new XElement(spreadsheet + "color", new XAttribute("rgb", color)));
+
+            return new XElement(spreadsheet + "border",
+                Lado("left"), Lado("right"), Lado("top"), Lado("bottom"),
+                new XElement(spreadsheet + "diagonal"));
+        }
+
+        XElement Fuente(double tamano, bool negrita = false, string color = "FF1D1D1F") =>
+            new(spreadsheet + "font",
+                negrita ? new XElement(spreadsheet + "b") : null,
+                new XElement(spreadsheet + "sz", new XAttribute("val", tamano.ToString(CultureInfo.InvariantCulture))),
+                new XElement(spreadsheet + "color", new XAttribute("rgb", color)),
+                new XElement(spreadsheet + "name", new XAttribute("val", "Calibri")));
+
+        XElement Relleno(string tipo, string? color = null) =>
+            new(spreadsheet + "fill",
+                new XElement(spreadsheet + "patternFill",
+                    new XAttribute("patternType", tipo),
+                    color == null ? null : new XElement(spreadsheet + "fgColor", new XAttribute("rgb", color))));
+
+        XElement Xf(int formato, int fuente, int relleno, int borde, string? horizontal = null, bool ajustarTexto = false)
+        {
+            var xf = new XElement(spreadsheet + "xf",
+                new XAttribute("numFmtId", formato),
+                new XAttribute("fontId", fuente),
+                new XAttribute("fillId", relleno),
+                new XAttribute("borderId", borde),
+                new XAttribute("xfId", 0));
+            if (formato != 0) xf.Add(new XAttribute("applyNumberFormat", 1));
+            if (fuente != 0) xf.Add(new XAttribute("applyFont", 1));
+            if (relleno != 0) xf.Add(new XAttribute("applyFill", 1));
+            if (borde != 0) xf.Add(new XAttribute("applyBorder", 1));
+            if (horizontal != null || ajustarTexto)
+            {
+                xf.Add(new XAttribute("applyAlignment", 1),
+                    new XElement(spreadsheet + "alignment",
+                        horizontal == null ? null : new XAttribute("horizontal", horizontal),
+                        new XAttribute("vertical", "center"),
+                        ajustarTexto ? new XAttribute("wrapText", 1) : null));
+            }
+
+            return xf;
+        }
+
+        const int formatoFecha = 164;
+        const int formatoSoles = 165;
+        var estilos = new XElement(spreadsheet + "styleSheet",
+            new XElement(spreadsheet + "numFmts", new XAttribute("count", 2),
+                new XElement(spreadsheet + "numFmt",
+                    new XAttribute("numFmtId", formatoFecha),
+                    new XAttribute("formatCode", "dd/mm/yyyy")),
+                new XElement(spreadsheet + "numFmt",
+                    new XAttribute("numFmtId", formatoSoles),
+                    new XAttribute("formatCode", "\"S/ \"#,##0.00;[Red]\"-S/ \"#,##0.00"))),
+            new XElement(spreadsheet + "fonts", new XAttribute("count", 5),
+                Fuente(11),
+                Fuente(16, negrita: true),
+                Fuente(10, color: "FF6E6E73"),
+                Fuente(11, negrita: true, color: "FFFFFFFF"),
+                Fuente(11, negrita: true)),
+            new XElement(spreadsheet + "fills", new XAttribute("count", 4),
+                Relleno("none"),
+                Relleno("gray125"),
+                Relleno("solid", "FF1D1D1F"),
+                Relleno("solid", "FFF2F4F7")),
+            new XElement(spreadsheet + "borders", new XAttribute("count", 2),
+                Borde(null),
+                Borde("FFD9D9DF")),
+            new XElement(spreadsheet + "cellStyleXfs", new XAttribute("count", 1),
+                new XElement(spreadsheet + "xf",
+                    new XAttribute("numFmtId", 0),
+                    new XAttribute("fontId", 0),
+                    new XAttribute("fillId", 0),
+                    new XAttribute("borderId", 0))),
+            new XElement(spreadsheet + "cellXfs", new XAttribute("count", 10),
+                Xf(0, 0, 0, 0),
+                Xf(0, 1, 0, 0),                                  // EstiloTitulo
+                Xf(0, 2, 0, 0),                                  // EstiloSubtitulo
+                Xf(0, 3, 2, 1, "center", ajustarTexto: true),    // EstiloEncabezado
+                Xf(formatoFecha, 0, 0, 1, "center"),             // EstiloFecha
+                Xf(formatoSoles, 0, 0, 1, "right"),              // EstiloMonto
+                Xf(0, 0, 0, 1, "left", ajustarTexto: true),      // EstiloTexto
+                Xf(0, 4, 3, 1, "center"),                        // EstiloTotalEtiqueta
+                Xf(formatoSoles, 4, 3, 1, "right"),              // EstiloTotalMonto
+                Xf(0, 4, 3, 1)),                                 // EstiloTotalVacio
+            new XElement(spreadsheet + "cellStyles", new XAttribute("count", 1),
+                new XElement(spreadsheet + "cellStyle",
+                    new XAttribute("name", "Normal"),
+                    new XAttribute("xfId", 0),
+                    new XAttribute("builtinId", 0))));
 
         var entradas = new Dictionary<string, XDocument>
         {
             ["[Content_Types].xml"] = new XDocument(
                 new XElement(contentTypes + "Types",
-                    new XAttribute(XNamespace.Xmlns + "r", relationships),
+                    new XElement(contentTypes + "Override",
+                        new XAttribute("PartName", "/xl/styles.xml"),
+                        new XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml")),
                     new XElement(contentTypes + "Default",
                         new XAttribute("Extension", "rels"),
                         new XAttribute("ContentType", "application/vnd.openxmlformats-package.relationships+xml")),
@@ -303,17 +565,27 @@ public class CierreCajaController : Controller
                     new XAttribute(XNamespace.Xmlns + "r", relationships),
                     new XElement(spreadsheet + "sheets",
                         new XElement(spreadsheet + "sheet",
-                            new XAttribute("name", "Cierres de caja"),
+                            new XAttribute("name", nombreHoja),
                             new XAttribute("sheetId", "1"),
-                            new XAttribute(relationships + "id", "rId1"))))),
+                            new XAttribute(relationships + "id", "rId1"))),
+                    new XElement(spreadsheet + "definedNames",
+                        new XElement(spreadsheet + "definedName",
+                            new XAttribute("name", "_xlnm._FilterDatabase"),
+                            new XAttribute("localSheetId", 0),
+                            new XAttribute("hidden", 1),
+                            $"'{nombreHoja}'!$A${filaEncabezado}:${ultimaColumna}${ultimaFilaFiltro}")))),
             ["xl/_rels/workbook.xml.rels"] = new XDocument(
                 new XElement(packageRelationships + "Relationships",
                     new XElement(packageRelationships + "Relationship",
                         new XAttribute("Id", "rId1"),
                         new XAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"),
-                        new XAttribute("Target", "worksheets/sheet1.xml")))),
-            ["xl/worksheets/sheet1.xml"] = new XDocument(
-                new XElement(spreadsheet + "worksheet", sheetData))
+                        new XAttribute("Target", "worksheets/sheet1.xml")),
+                    new XElement(packageRelationships + "Relationship",
+                        new XAttribute("Id", "rId2"),
+                        new XAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"),
+                        new XAttribute("Target", "styles.xml")))),
+            ["xl/styles.xml"] = new XDocument(estilos),
+            ["xl/worksheets/sheet1.xml"] = new XDocument(worksheet)
         };
 
         using var memoria = new MemoryStream();

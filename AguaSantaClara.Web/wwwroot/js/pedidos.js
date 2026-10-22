@@ -602,7 +602,7 @@
 
         icon.className = "modal-custom-icon " + (tipo === "success" ? "success" : tipo === "info" ? "info" : "danger");
         title.textContent = titulo;
-        text.innerHTML = texto;
+        text.textContent = texto;
         btn.style.display = "";
         btn.textContent = textoBoton || "Confirmar";
         btn.className = "modal-custom-btn " + (tipo === "danger" ? "danger" : "primary");

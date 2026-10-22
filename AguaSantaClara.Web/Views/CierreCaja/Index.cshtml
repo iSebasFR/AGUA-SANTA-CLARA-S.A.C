@@ -2,82 +2,255 @@
     ViewData["Title"] = "Cierre de Caja";
 }
 @model IReadOnlyList<AguaSantaClara.Web.Models.Entities.CierreCaja>
+@using System.Globalization
 @using AguaSantaClara.Web.Models.Entities
+@{
+    string Soles(decimal monto) =>
+        (monto < 0 ? "-S/ " : "S/ ") + Math.Abs(monto).ToString("N2", CultureInfo.InvariantCulture);
+
+    var totalEfectivoEsperado = Model.Sum(c => c.EfectivoEsperado);
+    var totalYapeEsperado = Model.Sum(c => c.YapeEsperado);
+    var totalGastos = Model.Sum(c => c.GastosDelDia);
+    var totalEnCaja = Model.Sum(c => c.TotalEnCaja);
+    var tieneFiltros = ViewBag.TieneFiltrosFecha == true;
+}
 
 <style>
-    .cierre-caja-page {
-        max-width: 1100px;
+    .cc-page {
+        --cc-texto: #1d1d1f;
+        --cc-suave: #6e6e73;
+        --cc-borde: #e3e8ef;
+        --cc-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+        --cc-ambar: #a8741a;
+        --cc-verde: #2f9e5b;
+        min-height: 100%;
+        padding: 32px 24px 40px;
+        background: linear-gradient(180deg, #eaf2fb 0%, #f4f8fc 55%, #f7f9fc 100%);
+        color: var(--cc-texto);
+    }
+
+    .cc-contenedor {
+        max-width: 1180px;
         margin: 0 auto;
-        padding: 32px 24px;
     }
 
-    .cierre-caja-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 20px;
-        flex-wrap: wrap;
-        padding: 28px;
-        background: #fff;
-        border: 1px solid #e5e5ea;
-        border-radius: 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .03);
-    }
-
-    .cierre-caja-title {
+    .cc-titulo {
         margin: 0;
-        color: #1d1d1f;
+        font-family: var(--cc-mono);
         font-size: 24px;
-        font-weight: 700;
-        letter-spacing: -.03em;
+        font-weight: 600;
+        letter-spacing: .06em;
+        text-transform: uppercase;
     }
 
-    .cierre-caja-subtitle {
-        margin: 6px 0 0;
-        color: #6e6e73;
-        font-size: 14px;
+    .cc-subtitulo {
+        margin: 8px 0 0;
+        color: var(--cc-suave);
+        font-size: 13px;
     }
 
-    .cierre-listado {
-        margin-top: 20px;
-        overflow: hidden;
-        border: 1px solid #e5e5ea;
-        border-radius: 14px;
+    .cc-barra-acciones {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+
+    .cc-btn-primario {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 36px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 8px;
+        background: #1d1d1f;
+        color: #fff;
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, .12);
+    }
+
+    .cc-btn-primario:hover {
+        background: #000;
+        color: #fff;
+    }
+
+    .cc-btn-secundario {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 34px;
+        padding: 0 14px;
+        border: 1px solid var(--cc-borde);
+        border-radius: 8px;
         background: #fff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .03);
+        color: var(--cc-texto);
+        font-size: 12.5px;
+        font-weight: 500;
+        text-decoration: none;
+        white-space: nowrap;
     }
 
-    .cierre-listado table {
+    .cc-btn-secundario:hover {
+        border-color: #c9d1dc;
+        background: #f8fafc;
+        color: var(--cc-texto);
+    }
+
+    .cc-btn-sm {
+        min-height: 30px;
+        padding: 0 12px;
+        font-size: 12px;
+    }
+
+    .cc-filtros {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+    }
+
+    .cc-filtros label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--cc-suave);
+        font-size: 11.5px;
+        font-weight: 500;
+    }
+
+    .cc-filtros input[type="date"] {
+        min-height: 34px;
+        padding: 0 10px;
+        border: 1px solid #cfd6df;
+        border-radius: 7px;
+        background: #fff;
+        color: var(--cc-texto);
+        font-size: 12.5px;
+    }
+
+    .cc-filtros input[type="date"]:focus {
+        border-color: #1d1d1f;
+        outline: 0;
+        box-shadow: 0 0 0 3px rgba(29, 29, 31, .08);
+    }
+
+    .cc-tarjetas {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 22px;
+    }
+
+    .cc-tarjeta {
+        padding: 16px 18px 18px;
+        border: 1px solid var(--cc-borde);
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, .04);
+    }
+
+    .cc-tarjeta-etiqueta {
         margin: 0;
+        color: var(--cc-suave);
+        font-family: var(--cc-mono);
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: .08em;
+        text-transform: uppercase;
     }
 
-    .cierre-listado th {
+    .cc-tarjeta-valor {
+        margin: 10px 0 0;
+        font-family: var(--cc-mono);
+        font-size: 19px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .cc-tarjeta-valor.cc-ambar { color: var(--cc-ambar); }
+    .cc-tarjeta-valor.cc-verde { color: var(--cc-verde); }
+
+    .cc-listado {
+        margin-top: 14px;
+        overflow: hidden;
+        border: 1px solid var(--cc-borde);
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, .04);
+    }
+
+    .cc-tabla {
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+    }
+
+    .cc-tabla th {
         padding: 14px 16px;
-        background: #f8f9fb;
-        color: #6e6e73;
-        font-size: 11px;
+        border-bottom: 1px solid var(--cc-borde);
+        background: #fbfcfe;
+        color: var(--cc-suave);
+        font-family: var(--cc-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-align: left;
         text-transform: uppercase;
         white-space: nowrap;
     }
 
-    .cierre-listado td {
-        padding: 14px 16px;
+    .cc-tabla td {
+        padding: 15px 16px;
+        border-bottom: 1px solid #eef1f5;
+        font-size: 12.5px;
         vertical-align: middle;
+        white-space: nowrap;
     }
 
-    .btn-registrar-cierre {
-        min-height: 42px;
-        padding: 0 18px;
-        border: 0;
-        border-radius: 9px;
-        background: #1d1d1f;
-        color: #fff;
+    .cc-tabla tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .cc-tabla tbody tr:hover td {
+        background: #fafbfd;
+    }
+
+    .cc-monto {
+        font-family: var(--cc-mono);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .cc-estado {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 6px;
+        font-size: 11px;
         font-weight: 600;
     }
 
-    .btn-registrar-cierre:hover {
-        background: #000;
-        color: #fff;
+    .cc-estado-ok {
+        border: 1px solid #cdebd8;
+        background: #e9f7ef;
+        color: #2a8a4f;
+    }
+
+    .cc-estado-dif {
+        border: 1px solid #f6dfa6;
+        background: #fff5d9;
+        color: #94650c;
+    }
+
+    .cc-acciones {
+        display: flex;
+        gap: 8px;
+    }
+
+    .cc-vacio {
+        padding: 36px 16px !important;
+        color: var(--cc-suave);
+        text-align: center;
     }
 
     .cierre-modal .modal-content {
@@ -127,6 +300,10 @@
         font-size: 13px;
     }
 
+    .cierre-resumen-linea strong {
+        font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    }
+
     .cierre-resumen-linea + .cierre-resumen-linea {
         margin-top: 8px;
     }
@@ -144,99 +321,170 @@
         font-weight: 600;
     }
 
+    @@media (max-width: 900px) {
+        .cc-tarjetas {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
     @@media (max-width: 576px) {
-        .cierre-caja-page {
-            padding: 20px 14px;
+        .cc-page {
+            padding: 20px 16px 32px;
         }
 
-        .cierre-caja-header {
-            align-items: stretch;
-            padding: 20px;
+        .cc-tarjetas {
+            grid-template-columns: 1fr;
         }
 
-        .btn-registrar-cierre {
+        .cc-barra-acciones .cc-btn-primario {
             width: 100%;
+            justify-content: center;
         }
     }
 </style>
 
-<main class="cierre-caja-page">
-    <div id="resultadoCierre" aria-live="polite"></div>
+<main class="cc-page">
+    <div class="cc-contenedor">
+        <div id="resultadoCierre" aria-live="polite"></div>
 
-    <section class="cierre-caja-header" aria-labelledby="tituloCierreCaja">
-        <div>
-            <h1 class="cierre-caja-title" id="tituloCierreCaja">Cierre de Caja</h1>
-            <p class="cierre-caja-subtitle">
-                Registra el efectivo y los pagos recibidos al finalizar la jornada.
-            </p>
-        </div>
+        <header>
+            <h1 class="cc-titulo">Cierre de caja</h1>
+            <p class="cc-subtitulo">Registra y cuadra el efectivo y pagos del día.</p>
+        </header>
 
-        <div class="d-flex gap-2 flex-wrap">
-            <a asp-action="Exportar" class="btn btn-outline-success">
-                <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>
-                Exportar a Excel
-            </a>
+        <div class="cc-barra-acciones">
             <button type="button"
-                    class="btn btn-registrar-cierre"
+                    class="cc-btn-primario"
                     data-bs-toggle="modal"
                     data-bs-target="#modalRegistrarCierre">
-                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
                 Registrar cierre
             </button>
         </div>
-    </section>
 
-    <section class="cierre-listado" aria-label="Cierres de caja registrados">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Monto esperado</th>
-                        <th>Monto recibido</th>
-                        <th>Diferencia</th>
-                        <th>Estado</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="cierresRegistrados">
-                    @if (Model.Count == 0)
-                    {
-                        <tr id="filaSinCierres">
-                            <td colspan="6" class="text-center text-muted py-4">
-                                Aún no hay cierres de caja registrados.
-                            </td>
+        <form asp-action="Index" method="get" class="cc-filtros">
+            <div>
+                <label for="filtroFechaDesde">Desde</label>
+                <input type="date" id="filtroFechaDesde" name="fechaDesde" value="@ViewBag.FechaDesde" />
+            </div>
+            <div>
+                <label for="filtroFechaHasta">Hasta</label>
+                <input type="date" id="filtroFechaHasta" name="fechaHasta" value="@ViewBag.FechaHasta" />
+            </div>
+            <button type="submit" class="cc-btn-secundario">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                Filtrar
+            </button>
+            @if (tieneFiltros)
+            {
+                <a asp-action="Index" class="cc-btn-secundario">Limpiar</a>
+            }
+            @if (Model.Count > 0)
+            {
+                <a asp-action="Exportar"
+                   asp-route-fechaDesde="@ViewBag.FechaDesde"
+                   asp-route-fechaHasta="@ViewBag.FechaHasta"
+                   class="cc-btn-secundario">
+                    <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                    Exportar todo
+                </a>
+            }
+        </form>
+
+        @if (ViewBag.ErrorFiltroFechas != null)
+        {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">
+                @ViewBag.ErrorFiltroFechas
+            </div>
+        }
+
+        <section class="cc-tarjetas" aria-label="Resumen del periodo">
+            <article class="cc-tarjeta">
+                <p class="cc-tarjeta-etiqueta">Efectivo esperado</p>
+                <p class="cc-tarjeta-valor" id="tarjetaEfectivo">@Soles(totalEfectivoEsperado)</p>
+            </article>
+            <article class="cc-tarjeta">
+                <p class="cc-tarjeta-etiqueta">Yape esperado</p>
+                <p class="cc-tarjeta-valor" id="tarjetaYape">@Soles(totalYapeEsperado)</p>
+            </article>
+            <article class="cc-tarjeta">
+                <p class="cc-tarjeta-etiqueta">Gastos del día</p>
+                <p class="cc-tarjeta-valor cc-ambar" id="tarjetaGastos">@Soles(totalGastos)</p>
+            </article>
+            <article class="cc-tarjeta">
+                <p class="cc-tarjeta-etiqueta">Total en caja</p>
+                <p class="cc-tarjeta-valor cc-verde" id="tarjetaTotal">@Soles(totalEnCaja)</p>
+            </article>
+        </section>
+
+        <section class="cc-listado" aria-label="Cierres de caja registrados">
+            <div class="table-responsive">
+                <table class="cc-tabla">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Efectivo</th>
+                            <th>Yape</th>
+                            <th>Gastos</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
                         </tr>
-                    }
-                    else
-                    {
-                        @foreach (var cierre in Model)
+                    </thead>
+                    <tbody id="cierresRegistrados">
+                        @if (Model.Count == 0)
                         {
-                            <tr>
-                                <td>@cierre.Fecha.ToString("dd/MM/yyyy")</td>
-                                <td>S/ @((cierre.EfectivoEsperado + cierre.YapeEsperado).ToString("N2"))</td>
-                                <td>S/ @((cierre.EfectivoRecibido + cierre.YapeRecibido).ToString("N2"))</td>
-                                <td>S/ @cierre.Diferencia.ToString("N2")</td>
-                                <td>
-                                    <span class="badge @(cierre.Estado == EstadosCierreCaja.Cuadrado ? "text-bg-success" : "text-bg-warning")">
-                                        @cierre.Estado
-                                    </span>
-                                </td>
-                                <td class="text-end">
-                                    <a asp-action="Details"
-                                       asp-route-id="@cierre.Id"
-                                       class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-eye me-1" aria-hidden="true"></i>
-                                        Ver detalle
-                                    </a>
+                            <tr id="filaSinCierres">
+                                <td colspan="7" class="cc-vacio">
+                                    @(tieneFiltros
+                                        ? "No hay cierres registrados para el rango seleccionado."
+                                        : "Aún no hay cierres de caja registrados.")
                                 </td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
-        </div>
-    </section>
+                        else
+                        {
+                            @foreach (var cierre in Model)
+                            {
+                                var fechaIso = cierre.Fecha.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                                <tr data-efectivo-esperado="@cierre.EfectivoEsperado.ToString(CultureInfo.InvariantCulture)"
+                                    data-yape-esperado="@cierre.YapeEsperado.ToString(CultureInfo.InvariantCulture)"
+                                    data-gastos="@cierre.GastosDelDia.ToString(CultureInfo.InvariantCulture)"
+                                    data-total="@cierre.TotalEnCaja.ToString(CultureInfo.InvariantCulture)">
+                                    <td>@cierre.Fecha.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
+                                    <td class="cc-monto">@Soles(cierre.EfectivoRecibido)</td>
+                                    <td class="cc-monto">@Soles(cierre.YapeRecibido)</td>
+                                    <td class="cc-monto">@Soles(cierre.GastosDelDia)</td>
+                                    <td class="cc-monto">@Soles(cierre.TotalEnCaja)</td>
+                                    <td>
+                                        @if (cierre.Estado == EstadosCierreCaja.Cuadrado)
+                                        {
+                                            <span class="cc-estado cc-estado-ok">Cuadrado</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="cc-estado cc-estado-dif">Diferencia: @Soles(cierre.Diferencia)</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="cc-acciones">
+                                            <a asp-action="Details"
+                                               asp-route-id="@cierre.Id"
+                                               class="cc-btn-secundario cc-btn-sm">Ver detalle</a>
+                                            <a asp-action="Exportar"
+                                               asp-route-fechaDesde="@fechaIso"
+                                               asp-route-fechaHasta="@fechaIso"
+                                               class="cc-btn-secundario cc-btn-sm">Exportar</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
 </main>
 
 <div class="modal fade cierre-modal"
@@ -369,188 +617,229 @@
             </form>
         </div>
     </div>
+</div>
 
-    @section Scripts {
-        <script>
-            document.addEventListener("DOMContentLoaded", () => {
-                const modal = document.getElementById("modalRegistrarCierre");
-                const form = document.getElementById("formRegistrarCierre");
-                const fecha = document.getElementById("fechaCierre");
-                const efectivo = document.getElementById("efectivoRecibido");
-                const yape = document.getElementById("yapeRecibido");
-                const efectivoEsperado = document.getElementById("efectivoEsperado");
-                const yapeEsperado = document.getElementById("yapeEsperado");
-                const montoEsperado = document.getElementById("montoEsperado");
-                const alertaDiferencia = document.getElementById("diferenciaCierre");
-                const resultado = document.getElementById("resultadoCierre");
-                const botonGuardar = document.getElementById("btnGuardarCierre");
-                const listaCierres = document.getElementById("cierresRegistrados");
-                const urlDetalleCierre = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Action("Details", "CierreCaja")));
-                let esperadoEfectivo = 0;
-                let esperadoYape = 0;
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const modal = document.getElementById("modalRegistrarCierre");
+            const form = document.getElementById("formRegistrarCierre");
+            const fecha = document.getElementById("fechaCierre");
+            const efectivo = document.getElementById("efectivoRecibido");
+            const yape = document.getElementById("yapeRecibido");
+            const efectivoEsperado = document.getElementById("efectivoEsperado");
+            const yapeEsperado = document.getElementById("yapeEsperado");
+            const montoEsperado = document.getElementById("montoEsperado");
+            const alertaDiferencia = document.getElementById("diferenciaCierre");
+            const resultado = document.getElementById("resultadoCierre");
+            const botonGuardar = document.getElementById("btnGuardarCierre");
+            const listaCierres = document.getElementById("cierresRegistrados");
+            const filtroFechaDesde = document.getElementById("filtroFechaDesde");
+            const filtroFechaHasta = document.getElementById("filtroFechaHasta");
+            const urlDetalleCierre = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Action("Details", "CierreCaja")));
+            const urlExportarCierre = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Url.Action("Exportar", "CierreCaja")));
+            const fechaHoy = "@DateTime.Today.ToString("yyyy-MM-dd")";
+            let esperadoEfectivo = 0;
+            let esperadoYape = 0;
 
-                const formatoSoles = monto => new Intl.NumberFormat("es-PE", {
-                    style: "currency",
-                    currency: "PEN"
-                }).format(monto);
+            const formatoNumero = new Intl.NumberFormat("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            const formatoSoles = monto =>
+                `${monto < 0 ? "-" : ""}S/ ${formatoNumero.format(Math.abs(monto))}`;
 
-                const actualizarDiferencia = () => {
-                    const montoReal = (Number(efectivo.value) || 0) + (Number(yape.value) || 0);
-                    const diferencia = montoReal - esperadoEfectivo - esperadoYape;
+            const actualizarDiferencia = () => {
+                const montoReal = (Number(efectivo.value) || 0) + (Number(yape.value) || 0);
+                const diferencia = montoReal - esperadoEfectivo - esperadoYape;
 
-                    if (Math.round(diferencia * 100) === 0) {
-                        alertaDiferencia.hidden = true;
-                        alertaDiferencia.textContent = "";
-                        return;
-                    }
+                if (Math.round(diferencia * 100) === 0) {
+                    alertaDiferencia.hidden = true;
+                    alertaDiferencia.textContent = "";
+                    return;
+                }
 
-                    alertaDiferencia.textContent = `Diferencia detectada: ${formatoSoles(diferencia)}`;
-                    alertaDiferencia.className = "alert alert-warning mt-3 mb-0";
-                    alertaDiferencia.hidden = false;
-                };
+                alertaDiferencia.textContent = `Diferencia detectada: ${formatoSoles(diferencia)}`;
+                alertaDiferencia.className = "alert alert-warning mt-3 mb-0";
+                alertaDiferencia.hidden = false;
+            };
 
-                const agregarCierreAlListado = cierre => {
-                    document.getElementById("filaSinCierres")?.remove();
-                    const fila = document.createElement("tr");
-                    const valores = [
-                        new Date(`${cierre.fecha}T00:00:00`).toLocaleDateString("es-PE"),
-                        formatoSoles(Number(cierre.efectivoEsperado) + Number(cierre.yapeEsperado)),
-                        formatoSoles(Number(cierre.efectivoRecibido) + Number(cierre.yapeRecibido)),
-                        formatoSoles(Number(cierre.diferencia))
-                    ];
+            const recalcularTarjetas = () => {
+                const filas = listaCierres.querySelectorAll("tr[data-total]");
+                const sumar = campo => [...filas].reduce((total, fila) => total + Number(fila.dataset[campo]), 0);
+                document.getElementById("tarjetaEfectivo").textContent = formatoSoles(sumar("efectivoEsperado"));
+                document.getElementById("tarjetaYape").textContent = formatoSoles(sumar("yapeEsperado"));
+                document.getElementById("tarjetaGastos").textContent = formatoSoles(sumar("gastos"));
+                document.getElementById("tarjetaTotal").textContent = formatoSoles(sumar("total"));
+            };
 
-                    for (const valor of valores) {
-                        const celda = document.createElement("td");
-                        celda.textContent = valor;
-                        fila.append(celda);
-                    }
+            const crearCelda = (texto, clase) => {
+                const celda = document.createElement("td");
+                if (clase) celda.className = clase;
+                celda.textContent = texto;
+                return celda;
+            };
 
-                    const celdaEstado = document.createElement("td");
-                    const distintivo = document.createElement("span");
-                    distintivo.className = `badge ${cierre.estado === "Cuadrado" ? "text-bg-success" : "text-bg-warning"}`;
-                    distintivo.textContent = cierre.estado;
-                    celdaEstado.append(distintivo);
-                    fila.append(celdaEstado);
+            const crearBoton = (texto, href) => {
+                const enlace = document.createElement("a");
+                enlace.className = "cc-btn-secundario cc-btn-sm";
+                enlace.href = href;
+                enlace.textContent = texto;
+                return enlace;
+            };
 
-                    const celdaAcciones = document.createElement("td");
-                    celdaAcciones.className = "text-end";
-                    const enlaceDetalle = document.createElement("a");
-                    enlaceDetalle.className = "btn btn-sm btn-outline-secondary";
-                    enlaceDetalle.href = `${urlDetalleCierre}?id=${encodeURIComponent(cierre.id)}`;
-                    enlaceDetalle.textContent = "Ver detalle";
-                    celdaAcciones.append(enlaceDetalle);
-                    fila.append(celdaAcciones);
-                    listaCierres.prepend(fila);
-                };
+            const agregarCierreAlListado = cierre => {
+                if ((filtroFechaDesde.value && cierre.fecha < filtroFechaDesde.value)
+                    || (filtroFechaHasta.value && cierre.fecha > filtroFechaHasta.value)) {
+                    return;
+                }
 
-                const cargarResumen = async () => {
-                    if (!fecha.value) {
-                        return;
-                    }
+                document.getElementById("filaSinCierres")?.remove();
+                const [anio, mes, dia] = cierre.fecha.split("-");
+                const fila = document.createElement("tr");
+                fila.dataset.efectivoEsperado = cierre.efectivoEsperado;
+                fila.dataset.yapeEsperado = cierre.yapeEsperado;
+                fila.dataset.gastos = cierre.gastosDelDia;
+                fila.dataset.total = cierre.totalEnCaja;
 
-                    efectivoEsperado.textContent = "Cargando...";
-                    yapeEsperado.textContent = "Cargando...";
-                    montoEsperado.textContent = "Cargando...";
+                fila.append(
+                    crearCelda(`${dia}/${mes}/${anio}`),
+                    crearCelda(formatoSoles(Number(cierre.efectivoRecibido)), "cc-monto"),
+                    crearCelda(formatoSoles(Number(cierre.yapeRecibido)), "cc-monto"),
+                    crearCelda(formatoSoles(Number(cierre.gastosDelDia)), "cc-monto"),
+                    crearCelda(formatoSoles(Number(cierre.totalEnCaja)), "cc-monto"));
 
-                    const respuesta = await fetch(
-                        `@Url.Action("Resumen", "CierreCaja")?fecha=${encodeURIComponent(fecha.value)}`,
-                        { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                const celdaEstado = document.createElement("td");
+                const distintivo = document.createElement("span");
+                const cuadrado = cierre.estado === "Cuadrado";
+                distintivo.className = `cc-estado ${cuadrado ? "cc-estado-ok" : "cc-estado-dif"}`;
+                distintivo.textContent = cuadrado
+                    ? "Cuadrado"
+                    : `Diferencia: ${formatoSoles(Number(cierre.diferencia))}`;
+                celdaEstado.append(distintivo);
+                fila.append(celdaEstado);
+
+                const celdaAcciones = document.createElement("td");
+                const acciones = document.createElement("div");
+                acciones.className = "cc-acciones";
+                const fechaParam = encodeURIComponent(cierre.fecha);
+                acciones.append(
+                    crearBoton("Ver detalle", `${urlDetalleCierre}?id=${encodeURIComponent(cierre.id)}`),
+                    crearBoton("Exportar", `${urlExportarCierre}?fechaDesde=${fechaParam}&fechaHasta=${fechaParam}`));
+                celdaAcciones.append(acciones);
+                fila.append(celdaAcciones);
+
+                // Mantiene el orden de la tabla: fecha más reciente primero
+                const siguiente = [...listaCierres.querySelectorAll("tr[data-total]")]
+                    .find(otra => {
+                        const [d, m, a] = otra.cells[0].textContent.trim().split("/");
+                        return `${a}-${m}-${d}` < cierre.fecha;
+                    });
+                listaCierres.insertBefore(fila, siguiente ?? null);
+                recalcularTarjetas();
+            };
+
+            const cargarResumen = async () => {
+                if (!fecha.value) {
+                    return;
+                }
+
+                efectivoEsperado.textContent = "Cargando...";
+                yapeEsperado.textContent = "Cargando...";
+                montoEsperado.textContent = "Cargando...";
+
+                const respuesta = await fetch(
+                    `@Url.Action("Resumen", "CierreCaja")?fecha=${encodeURIComponent(fecha.value)}`,
+                    { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                const texto = await respuesta.text();
+                let datos;
+
+                try {
+                    datos = JSON.parse(texto);
+                } catch {
+                    throw new Error("No se pudo cargar el monto esperado del día.");
+                }
+
+                if (!respuesta.ok) {
+                    throw new Error(datos.message || "No se pudo cargar el monto esperado del día.");
+                }
+
+                esperadoEfectivo = Number(datos.efectivoEsperado);
+                esperadoYape = Number(datos.yapeEsperado);
+                efectivoEsperado.textContent = formatoSoles(esperadoEfectivo);
+                yapeEsperado.textContent = formatoSoles(esperadoYape);
+                montoEsperado.textContent = formatoSoles(Number(datos.montoEsperado));
+                actualizarDiferencia();
+            };
+
+            const mostrarError = error => {
+                alertaDiferencia.textContent = error.message;
+                alertaDiferencia.className = "alert alert-danger mt-3 mb-0";
+                alertaDiferencia.hidden = false;
+            };
+
+            modal.addEventListener("show.bs.modal", () => {
+                resultado.replaceChildren();
+                cargarResumen().catch(error => {
+                    efectivoEsperado.textContent = "No disponible";
+                    yapeEsperado.textContent = "No disponible";
+                    montoEsperado.textContent = "No disponible";
+                    mostrarError(error);
+                });
+            });
+
+            fecha.addEventListener("change", () => cargarResumen().catch(mostrarError));
+            efectivo.addEventListener("input", actualizarDiferencia);
+            yape.addEventListener("input", actualizarDiferencia);
+
+            form.addEventListener("submit", async event => {
+                event.preventDefault();
+                botonGuardar.disabled = true;
+
+                try {
+                    const respuesta = await fetch(form.action, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                            "X-Requested-With": "XMLHttpRequest"
+                        },
+                        body: new URLSearchParams(new FormData(form))
+                    });
                     const texto = await respuesta.text();
                     let datos;
 
                     try {
                         datos = JSON.parse(texto);
                     } catch {
-                        throw new Error("No se pudo cargar el monto esperado del día.");
+                        throw new Error("No se pudo registrar el cierre. Inténtalo nuevamente.");
                     }
 
                     if (!respuesta.ok) {
-                        throw new Error(datos.message || "No se pudo cargar el monto esperado del día.");
+                        throw new Error(datos.message || "No se pudo registrar el cierre.");
                     }
 
-                    esperadoEfectivo = Number(datos.efectivoEsperado);
-                    esperadoYape = Number(datos.yapeEsperado);
-                    efectivoEsperado.textContent = formatoSoles(esperadoEfectivo);
-                    yapeEsperado.textContent = formatoSoles(esperadoYape);
-                    montoEsperado.textContent = formatoSoles(Number(datos.montoEsperado));
-                    actualizarDiferencia();
-                };
+                    const mensaje = document.createElement("div");
+                    mensaje.className = "alert alert-success";
+                    mensaje.textContent = "Cierre de caja registrado correctamente.";
+                    resultado.replaceChildren(mensaje);
+                    agregarCierreAlListado(datos);
 
-                modal.addEventListener("show.bs.modal", () => {
-                    resultado.replaceChildren();
-                    cargarResumen().catch(error => {
-                        efectivoEsperado.textContent = "No disponible";
-                        yapeEsperado.textContent = "No disponible";
-                        montoEsperado.textContent = "No disponible";
-                        alertaDiferencia.textContent = error.message;
-                        alertaDiferencia.className = "alert alert-danger mt-3 mb-0";
-                        alertaDiferencia.hidden = false;
-                    });
-                });
-
-                fecha.addEventListener("change", () => {
-                    cargarResumen().catch(error => {
-                        alertaDiferencia.textContent = error.message;
-                        alertaDiferencia.className = "alert alert-danger mt-3 mb-0";
-                        alertaDiferencia.hidden = false;
-                    });
-                });
-
-                efectivo.addEventListener("input", actualizarDiferencia);
-                yape.addEventListener("input", actualizarDiferencia);
-
-                form.addEventListener("submit", async event => {
-                    event.preventDefault();
-                    botonGuardar.disabled = true;
-
-                    try {
-                        const respuesta = await fetch(form.action, {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/x-www-form-urlencoded",
-                                "X-Requested-With": "XMLHttpRequest"
-                            },
-                            body: new URLSearchParams(new FormData(form))
-                        });
-                        const texto = await respuesta.text();
-                        let datos;
-
-                        try {
-                            datos = JSON.parse(texto);
-                        } catch {
-                            throw new Error("No se pudo registrar el cierre. Inténtalo nuevamente.");
-                        }
-
-                        if (!respuesta.ok) {
-                            throw new Error(datos.message || "No se pudo registrar el cierre.");
-                        }
-
-                        const mensaje = document.createElement("div");
-                        mensaje.className = "alert alert-success";
-                        mensaje.textContent = datos.message;
-                        resultado.replaceChildren(mensaje);
-                        agregarCierreAlListado(datos);
-
-                        if (Number(datos.diferencia) !== 0) {
-                            const alerta = document.createElement("div");
-                            alerta.className = "alert alert-warning";
-                            alerta.textContent =
-                                `Diferencia detectada: ${formatoSoles(Number(datos.diferencia))}`;
-                            resultado.append(alerta);
-                        }
-
-                        bootstrap.Modal.getInstance(modal).hide();
-                        form.reset();
-                        fecha.value = "@DateTime.Today.ToString("yyyy-MM-dd")";
-                    } catch (error) {
-                        alertaDiferencia.textContent = error.message;
-                        alertaDiferencia.className = "alert alert-danger mt-3 mb-0";
-                        alertaDiferencia.hidden = false;
-                    } finally {
-                        botonGuardar.disabled = false;
+                    if (Number(datos.diferencia) !== 0) {
+                        const alerta = document.createElement("div");
+                        alerta.className = "alert alert-warning";
+                        alerta.textContent = `Diferencia detectada: ${formatoSoles(Number(datos.diferencia))}`;
+                        resultado.append(alerta);
                     }
-                });
+
+                    bootstrap.Modal.getInstance(modal).hide();
+                    form.reset();
+                    fecha.value = fechaHoy;
+                } catch (error) {
+                    mostrarError(error);
+                } finally {
+                    botonGuardar.disabled = false;
+                }
             });
-        </script>
-    }
-</div>
+        });
+    </script>
+}

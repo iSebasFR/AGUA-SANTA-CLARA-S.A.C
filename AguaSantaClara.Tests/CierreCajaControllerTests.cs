@@ -82,17 +82,49 @@ public class CierreCajaControllerTests
         Assert.Equal(guardado.Id, cierreDetalle.Id);
         Assert.Equal("Faltó S/ 1", cierreDetalle.Observacion);
 
-        db.CierresCaja.Add(new CierreCaja
+        db.CierresCaja.AddRange(
+            new CierreCaja
+            {
+                IdVendedora = 20,
+                Fecha = hoy.AddDays(-1),
+                EstadoRegistro = true,
+                Estado = EstadosCierreCaja.Cuadrado,
+                Observacion = "Cierre anterior"
+            },
+            new CierreCaja
+            {
+                IdVendedora = 20,
+                Fecha = hoy.AddDays(1),
+                EstadoRegistro = true,
+                Estado = EstadosCierreCaja.Cuadrado,
+                Observacion = "Cierre posterior"
+            });
+        await db.SaveChangesAsync();
+
+        var filtrado = Assert.IsType<ViewResult>(
+            await controller.Index(hoy, hoy));
+        var cierresFiltrados = Assert.IsAssignableFrom<IReadOnlyList<CierreCaja>>(filtrado.Model);
+        Assert.Single(cierresFiltrados);
+        Assert.Equal(hoy, cierresFiltrados[0].Fecha);
+
+        var rangoInvertido = Assert.IsType<ViewResult>(
+            await controller.Index(hoy.AddDays(1), hoy));
+        var sinResultados = Assert.IsAssignableFrom<IReadOnlyList<CierreCaja>>(rangoInvertido.Model);
+        Assert.Empty(sinResultados);
+        Assert.NotNull(rangoInvertido.ViewData["ErrorFiltroFechas"]);
+
+        var cierreOtraVendedora = new CierreCaja
         {
             IdVendedora = 21,
             Fecha = hoy,
             EstadoRegistro = true,
             Estado = EstadosCierreCaja.Cuadrado,
             Observacion = "Cierre de otra vendedora"
-        });
+        };
+        db.CierresCaja.Add(cierreOtraVendedora);
         await db.SaveChangesAsync();
 
-        Assert.IsType<NotFoundResult>(await controller.Details(2));
+        Assert.IsType<NotFoundResult>(await controller.Details(cierreOtraVendedora.Id));
 
         var archivo = Assert.IsType<FileContentResult>(await controller.Exportar());
         Assert.Equal(
@@ -113,6 +145,20 @@ public class CierreCajaControllerTests
         Assert.Contains("Observaciones", contenidoHoja);
         Assert.Contains("Faltó S/ 1", contenidoHoja);
         Assert.DoesNotContain("Cierre de otra vendedora", contenidoHoja);
+
+        var exportacionFiltrada = Assert.IsType<FileContentResult>(
+            await controller.Exportar(hoy, hoy));
+        using var contenidoExcelFiltrado = new MemoryStream(exportacionFiltrada.FileContents);
+        using var libroFiltrado = new ZipArchive(contenidoExcelFiltrado, ZipArchiveMode.Read);
+        using var lectorHojaFiltrada = libroFiltrado.GetEntry("xl/worksheets/sheet1.xml")!.Open();
+        var contenidoHojaFiltrada = XDocument.Load(lectorHojaFiltrada);
+        var textoHojaFiltrada = string.Join(
+            " ",
+            contenidoHojaFiltrada.Descendants().Where(elemento => elemento.Name.LocalName == "t"
+                || elemento.Name.LocalName == "v").Select(elemento => elemento.Value));
+        Assert.Contains("Faltó S/ 1", textoHojaFiltrada);
+        Assert.DoesNotContain("Cierre anterior", textoHojaFiltrada);
+        Assert.DoesNotContain("Cierre posterior", textoHojaFiltrada);
 
         var duplicado = Assert.IsType<ConflictObjectResult>(await controller.Create(modelo));
         Assert.Equal(409, duplicado.StatusCode);
