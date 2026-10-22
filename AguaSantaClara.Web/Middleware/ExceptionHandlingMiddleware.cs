@@ -27,6 +27,12 @@ public class ExceptionHandlingMiddleware
                 context.Request.Method,
                 context.Request.Path);
 
+            // Páginas MVC: se deja subir la excepción para que UseExceptionHandler muestre /Home/Error.
+            // Si la respuesta ya empezó a enviarse, no se puede reescribir.
+            if (context.Response.HasStarted || !EsSolicitudJson(context.Request))
+                throw;
+
+            context.Response.Clear();
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             context.Response.ContentType = "application/json";
 
@@ -37,4 +43,10 @@ public class ExceptionHandlingMiddleware
             });
         }
     }
+
+    private static bool EsSolicitudJson(HttpRequest request) =>
+        request.Path.StartsWithSegments("/api")
+        || request.Headers.XRequestedWith == "XMLHttpRequest"
+        || request.Headers.Accept.ToString().Contains("application/json", StringComparison.OrdinalIgnoreCase)
+        || request.HasJsonContentType();
 }

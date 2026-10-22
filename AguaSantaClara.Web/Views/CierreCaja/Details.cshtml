@@ -1,0 +1,173 @@
+@model AguaSantaClara.Web.Models.Entities.CierreCaja
+
+@{
+    ViewData["Title"] = "Detalle del Cierre de Caja";
+}
+
+<style>
+    .detalle-cierre-page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+
+    .detalle-cierre-card {
+        overflow: hidden;
+        border: 1px solid #e5e5ea;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
+    }
+
+    .detalle-cierre-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 24px;
+        border-bottom: 1px solid #e5e5ea;
+    }
+
+    .detalle-cierre-header h1 {
+        margin: 0;
+        color: #1d1d1f;
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .detalle-cierre-header p {
+        margin: 6px 0 0;
+        color: #6e6e73;
+    }
+
+    .detalle-cierre-body {
+        padding: 24px;
+    }
+
+    .detalle-cierre-body h2 {
+        margin: 0 0 14px;
+        color: #303036;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .detalle-cierre-linea {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f2;
+        color: #55555b;
+    }
+
+    .detalle-cierre-linea strong {
+        color: #1d1d1f;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .detalle-cierre-total {
+        font-weight: 700;
+    }
+
+    .detalle-cierre-total strong {
+        font-size: 17px;
+    }
+
+    .detalle-cierre-observacion {
+        min-height: 60px;
+        padding: 14px;
+        border-radius: 10px;
+        background: #f8f9fb;
+        color: #45454b;
+        white-space: pre-wrap;
+    }
+
+    @@media (max-width: 576px) {
+        .detalle-cierre-page {
+            padding: 20px 14px;
+        }
+
+        .detalle-cierre-header,
+        .detalle-cierre-body {
+            padding: 18px;
+        }
+
+        .detalle-cierre-header {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<main class="detalle-cierre-page">
+    <div class="mb-3">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+            Volver a cierres
+        </a>
+    </div>
+
+    <article class="detalle-cierre-card">
+        <header class="detalle-cierre-header">
+            <div>
+                <h1>Detalle del cierre de caja</h1>
+                <p>Fecha: @Model.Fecha.ToString("dd/MM/yyyy")</p>
+                <p>Registrado por: @Model.Vendedora.Nombres @Model.Vendedora.Apellidos</p>
+            </div>
+            <span class="badge @(Model.Estado == AguaSantaClara.Web.Models.Entities.EstadosCierreCaja.Cuadrado ? "text-bg-success" : "text-bg-warning") fs-6">
+                @Model.Estado
+            </span>
+        </header>
+
+        <div class="detalle-cierre-body">
+            <section aria-labelledby="montosEsperadosTitulo">
+                <h2 id="montosEsperadosTitulo">Montos esperados del sistema</h2>
+                <div class="detalle-cierre-linea">
+                    <span>Efectivo esperado</span>
+                    <strong>S/ @Model.EfectivoEsperado.ToString("N2")</strong>
+                </div>
+                <div class="detalle-cierre-linea">
+                    <span>Yape esperado</span>
+                    <strong>S/ @Model.YapeEsperado.ToString("N2")</strong>
+                </div>
+                <div class="detalle-cierre-linea detalle-cierre-total">
+                    <span>Total esperado</span>
+                    <strong>S/ @((Model.EfectivoEsperado + Model.YapeEsperado).ToString("N2"))</strong>
+                </div>
+            </section>
+
+            <section class="mt-4" aria-labelledby="montosRecibidosTitulo">
+                <h2 id="montosRecibidosTitulo">Montos recibidos</h2>
+                <div class="detalle-cierre-linea">
+                    <span>Efectivo recibido</span>
+                    <strong>S/ @Model.EfectivoRecibido.ToString("N2")</strong>
+                </div>
+                <div class="detalle-cierre-linea">
+                    <span>Yape recibido</span>
+                    <strong>S/ @Model.YapeRecibido.ToString("N2")</strong>
+                </div>
+                <div class="detalle-cierre-linea detalle-cierre-total">
+                    <span>Total recibido</span>
+                    <strong>S/ @((Model.EfectivoRecibido + Model.YapeRecibido).ToString("N2"))</strong>
+                </div>
+                <div class="detalle-cierre-linea">
+                    <span>Gastos del día</span>
+                    <strong>S/ @Model.GastosDelDia.ToString("N2")</strong>
+                </div>
+                <div class="detalle-cierre-linea detalle-cierre-total">
+                    <span>Diferencia (real - esperado)</span>
+                    <strong>S/ @Model.Diferencia.ToString("N2")</strong>
+                </div>
+            </section>
+
+            <section class="mt-4" aria-labelledby="observacionesTitulo">
+                <h2 id="observacionesTitulo">Observaciones</h2>
+                <div class="detalle-cierre-observacion">
+                    @(string.IsNullOrWhiteSpace(Model.Observacion)
+                        ? "Sin observaciones."
+                        : Model.Observacion)
+                </div>
+            </section>
+        </div>
+    </article>
+</main>

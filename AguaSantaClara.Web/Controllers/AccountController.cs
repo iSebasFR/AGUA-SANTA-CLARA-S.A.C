@@ -14,11 +14,16 @@ public class AccountController : Controller
 {
     private readonly AppDbContext _context;
     private readonly IPasswordHasher<Usuario> _passwordHasher;
+    private readonly UserManager<Usuario> _userManager;
 
-    public AccountController(AppDbContext context, IPasswordHasher<Usuario> passwordHasher)
+    public AccountController(
+        AppDbContext context,
+        IPasswordHasher<Usuario> passwordHasher,
+        UserManager<Usuario> userManager)
     {
         _context = context;
         _passwordHasher = passwordHasher;
+        _userManager = userManager;
     }
 
     [HttpGet]
@@ -46,10 +51,11 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Regla de Negocio: Usuarios inactivos no pueden iniciar sesión
-        if (!usuario.Estado)
+        // Bloqueo temporal tras varios intentos fallidos (protección contra fuerza bruta)
+        if (await _userManager.IsLockedOutAsync(usuario))
         {
-            ModelState.AddModelError(string.Empty, "El usuario se encuentra inactivo. Contacte al administrador.");
+            ModelState.AddModelError(string.Empty,
+                "Cuenta bloqueada temporalmente por intentos fallidos. Intente nuevamente en unos minutos.");
             return View(model);
         }
 
@@ -60,7 +66,18 @@ public class AccountController : Controller
 
         if (!passwordValida)
         {
+            await _userManager.AccessFailedAsync(usuario);
             ModelState.AddModelError(string.Empty, "Usuario o contraseña incorrectos.");
+            return View(model);
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(usuario);
+
+        // Regla de Negocio: Usuarios inactivos no pueden iniciar sesión.
+        // Se valida después de la contraseña para no revelar qué usuarios existen.
+        if (!usuario.Estado)
+        {
+            ModelState.AddModelError(string.Empty, "El usuario se encuentra inactivo. Contacte al administrador.");
             return View(model);
         }
 

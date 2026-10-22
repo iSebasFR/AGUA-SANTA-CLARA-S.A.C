@@ -28,6 +28,9 @@ public class CierreCaja
     public string Estado { get; set; } = EstadosCierreCaja.Cuadrado;
     public string? Observacion { get; set; }
 
+    // Dinero que queda en caja: lo recibido menos los gastos (no se persiste)
+    public decimal TotalEnCaja => EfectivoRecibido + YapeRecibido - GastosDelDia;
+
     public bool EstadoRegistro { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaActualizacion { get; set; }

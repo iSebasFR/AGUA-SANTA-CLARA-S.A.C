@@ -44,6 +44,9 @@ builder.Services.AddIdentity<Usuario, Rol>(options =>
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
     options.User.RequireUniqueEmail = false; // <-- CAMBIO: ya no usamos Email
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.AllowedForNewUsers = true;
 })
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
@@ -93,7 +96,6 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // 5. Migración automática + Seed DENTRO del mismo scope al arrancar
 using (var scope = app.Services.CreateScope())
@@ -119,6 +121,9 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+
+// Errores de API/AJAX como JSON; las páginas MVC siguen usando /Home/Error
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 
