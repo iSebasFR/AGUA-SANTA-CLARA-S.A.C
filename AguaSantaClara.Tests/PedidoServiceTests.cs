@@ -108,6 +108,45 @@ public class PedidoServiceTests
     }
 
     [Fact]
+    public async Task CrearAsync_ConEnviar_GuardaPedidoEnviadoYGeneraMensaje()
+    {
+        var (db, servicio, local, producto, cliente, direccion, repartidor) = await CrearEscenarioAsync();
+
+        var modelo = new CrearPedidoViewModel
+        {
+            IdRepartidor = repartidor.Id,
+            Clientes =
+            {
+                new PedidoClienteViewModel
+                {
+                    IdCliente = cliente.Id,
+                    IdDireccion = direccion.Id,
+                    Detalles =
+                    {
+                        new DetallePedidoViewModel
+                        {
+                            IdLocal = local.Id,
+                            IdProducto = producto.Id,
+                            Cantidad = 1
+                        }
+                    }
+                }
+            }
+        };
+
+        var resultado = await servicio.CrearAsync(modelo, enviar: true);
+
+        Assert.True(resultado.Ok, string.Join("; ", resultado.Errores.Select(e => e.Mensaje)));
+        Assert.False(string.IsNullOrWhiteSpace(resultado.Mensaje));
+        Assert.False(string.IsNullOrWhiteSpace(resultado.WhatsappUrl));
+
+        // El pedido se guarda directamente como Enviado, en un solo guardado
+        var pedidoGuardado = await db.Pedidos.SingleAsync();
+        Assert.Equal(EstadosPedido.Enviado, pedidoGuardado.Estado);
+        Assert.Equal(repartidor.Id, pedidoGuardado.IdRepartidor);
+    }
+
+    [Fact]
     public async Task CrearAsync_ConDescuentoMayorQueSubtotal_DevuelveError()
     {
         var (db, servicio, local, producto, cliente, direccion, repartidor) = await CrearEscenarioAsync();
