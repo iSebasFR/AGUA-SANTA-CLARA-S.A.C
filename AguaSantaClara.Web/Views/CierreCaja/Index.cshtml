@@ -171,13 +171,19 @@
             </p>
         </div>
 
-        <button type="button"
-                class="btn btn-registrar-cierre"
-                data-bs-toggle="modal"
-                data-bs-target="#modalRegistrarCierre">
-            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
-            Registrar cierre
-        </button>
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-action="Exportar" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>
+                Exportar a Excel
+            </a>
+            <button type="button"
+                    class="btn btn-registrar-cierre"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalRegistrarCierre">
+                <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>
+                Registrar cierre
+            </button>
+        </div>
     </section>
 
     <section class="cierre-listado" aria-label="Cierres de caja registrados">

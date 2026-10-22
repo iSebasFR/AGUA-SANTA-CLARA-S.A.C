@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.IO.Compression;
+using System.Xml.Linq;
 using AguaSantaClara.Web.Controllers;
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models;
@@ -85,11 +87,32 @@ public class CierreCajaControllerTests
             IdVendedora = 21,
             Fecha = hoy,
             EstadoRegistro = true,
-            Estado = EstadosCierreCaja.Cuadrado
+            Estado = EstadosCierreCaja.Cuadrado,
+            Observacion = "Cierre de otra vendedora"
         });
         await db.SaveChangesAsync();
 
         Assert.IsType<NotFoundResult>(await controller.Details(2));
+
+        var archivo = Assert.IsType<FileContentResult>(await controller.Exportar());
+        Assert.Equal(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            archivo.ContentType);
+        Assert.EndsWith(".xlsx", archivo.FileDownloadName);
+        using var contenidoExcel = new MemoryStream(archivo.FileContents);
+        using var libro = new ZipArchive(contenidoExcel, ZipArchiveMode.Read);
+        var hoja = libro.GetEntry("xl/worksheets/sheet1.xml");
+        Assert.NotNull(hoja);
+        using var lectorHoja = hoja!.Open();
+        var xmlHoja = XDocument.Load(lectorHoja);
+        var contenidoHoja = string.Join(
+            " ",
+            xmlHoja.Descendants().Where(elemento => elemento.Name.LocalName == "t"
+                || elemento.Name.LocalName == "v").Select(elemento => elemento.Value));
+        Assert.Contains("Fecha", contenidoHoja);
+        Assert.Contains("Observaciones", contenidoHoja);
+        Assert.Contains("Faltó S/ 1", contenidoHoja);
+        Assert.DoesNotContain("Cierre de otra vendedora", contenidoHoja);
 
         var duplicado = Assert.IsType<ConflictObjectResult>(await controller.Create(modelo));
         Assert.Equal(409, duplicado.StatusCode);
