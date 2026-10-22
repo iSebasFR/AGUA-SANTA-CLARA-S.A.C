@@ -82,6 +82,39 @@
         min-height: auto;
     }
 
+    .cierre-resumen {
+        padding: 14px 16px;
+        margin-bottom: 20px;
+        border: 1px solid #e5e5ea;
+        border-radius: 10px;
+        background: #f8f9fb;
+    }
+
+    .cierre-resumen-linea {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: #55555b;
+        font-size: 13px;
+    }
+
+    .cierre-resumen-linea + .cierre-resumen-linea {
+        margin-top: 8px;
+    }
+
+    .cierre-resumen-total {
+        padding-top: 8px;
+        border-top: 1px solid #e5e5ea;
+        color: #1d1d1f;
+        font-weight: 700;
+    }
+
+    #diferenciaCierre {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
     @@media (max-width: 576px) {
         .cierre-caja-page {
             padding: 20px 14px;
@@ -99,6 +132,8 @@
 </style>
 
 <main class="cierre-caja-page">
+    <div id="resultadoCierre" aria-live="polite"></div>
+
     <section class="cierre-caja-header" aria-labelledby="tituloCierreCaja">
         <div>
             <h1 class="cierre-caja-title" id="tituloCierreCaja">Cierre de Caja</h1>
@@ -139,7 +174,11 @@
                         aria-label="Cerrar"></button>
             </div>
 
-            <form>
+            <form asp-controller="CierreCaja"
+                  asp-action="Create"
+                  method="post"
+                  id="formRegistrarCierre">
+                @Html.AntiForgeryToken()
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="fechaCierre" class="form-label">Fecha</label>
@@ -150,6 +189,22 @@
                                value="@DateTime.Today.ToString("yyyy-MM-dd")"
                                required />
                     </div>
+
+                    <section class="cierre-resumen"
+                             aria-label="Montos esperados según pagos registrados">
+                        <div class="cierre-resumen-linea">
+                            <span>Efectivo esperado</span>
+                            <strong id="efectivoEsperado">S/ 0.00</strong>
+                        </div>
+                        <div class="cierre-resumen-linea">
+                            <span>Yape esperado</span>
+                            <strong id="yapeEsperado">S/ 0.00</strong>
+                        </div>
+                        <div class="cierre-resumen-linea cierre-resumen-total">
+                            <span>Total esperado</span>
+                            <strong id="montoEsperado">S/ 0.00</strong>
+                        </div>
+                    </section>
 
                     <div class="row">
                         <div class="col-sm-6 mb-3">
@@ -206,16 +261,172 @@
                                   maxlength="255"
                                   placeholder="Anota cualquier detalle relevante (opcional)"></textarea>
                     </div>
+
+                    <div class="alert alert-warning mt-3 mb-0"
+                         id="diferenciaCierre"
+                         role="status"
+                         aria-live="polite"
+                         hidden></div>
                 </div>
 
                 <div class="modal-footer">
                     <button type="button"
                             class="btn btn-light"
                             data-bs-dismiss="modal">
-                        Cerrar
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-dark" id="btnGuardarCierre">
+                        Guardar cierre
                     </button>
                 </div>
             </form>
         </div>
     </div>
+
+    @section Scripts {
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                const modal = document.getElementById("modalRegistrarCierre");
+                const form = document.getElementById("formRegistrarCierre");
+                const fecha = document.getElementById("fechaCierre");
+                const efectivo = document.getElementById("efectivoRecibido");
+                const yape = document.getElementById("yapeRecibido");
+                const efectivoEsperado = document.getElementById("efectivoEsperado");
+                const yapeEsperado = document.getElementById("yapeEsperado");
+                const montoEsperado = document.getElementById("montoEsperado");
+                const alertaDiferencia = document.getElementById("diferenciaCierre");
+                const resultado = document.getElementById("resultadoCierre");
+                const botonGuardar = document.getElementById("btnGuardarCierre");
+                let esperadoEfectivo = 0;
+                let esperadoYape = 0;
+
+                const formatoSoles = monto => new Intl.NumberFormat("es-PE", {
+                    style: "currency",
+                    currency: "PEN"
+                }).format(monto);
+
+                const actualizarDiferencia = () => {
+                    const montoReal = (Number(efectivo.value) || 0) + (Number(yape.value) || 0);
+                    const diferencia = montoReal - esperadoEfectivo - esperadoYape;
+
+                    if (Math.round(diferencia * 100) === 0) {
+                        alertaDiferencia.hidden = true;
+                        alertaDiferencia.textContent = "";
+                        return;
+                    }
+
+                    alertaDiferencia.textContent = `Diferencia detectada: ${formatoSoles(diferencia)}`;
+                    alertaDiferencia.className = "alert alert-warning mt-3 mb-0";
+                    alertaDiferencia.hidden = false;
+                };
+
+                const cargarResumen = async () => {
+                    if (!fecha.value) {
+                        return;
+                    }
+
+                    efectivoEsperado.textContent = "Cargando...";
+                    yapeEsperado.textContent = "Cargando...";
+                    montoEsperado.textContent = "Cargando...";
+
+                    const respuesta = await fetch(
+                        `@Url.Action("Resumen", "CierreCaja")?fecha=${encodeURIComponent(fecha.value)}`,
+                        { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                    const texto = await respuesta.text();
+                    let datos;
+
+                    try {
+                        datos = JSON.parse(texto);
+                    } catch {
+                        throw new Error("No se pudo cargar el monto esperado del día.");
+                    }
+
+                    if (!respuesta.ok) {
+                        throw new Error(datos.message || "No se pudo cargar el monto esperado del día.");
+                    }
+
+                    esperadoEfectivo = Number(datos.efectivoEsperado);
+                    esperadoYape = Number(datos.yapeEsperado);
+                    efectivoEsperado.textContent = formatoSoles(esperadoEfectivo);
+                    yapeEsperado.textContent = formatoSoles(esperadoYape);
+                    montoEsperado.textContent = formatoSoles(Number(datos.montoEsperado));
+                    actualizarDiferencia();
+                };
+
+                modal.addEventListener("show.bs.modal", () => {
+                    resultado.replaceChildren();
+                    cargarResumen().catch(error => {
+                        efectivoEsperado.textContent = "No disponible";
+                        yapeEsperado.textContent = "No disponible";
+                        montoEsperado.textContent = "No disponible";
+                        alertaDiferencia.textContent = error.message;
+                        alertaDiferencia.className = "alert alert-danger mt-3 mb-0";
+                        alertaDiferencia.hidden = false;
+                    });
+                });
+
+                fecha.addEventListener("change", () => {
+                    cargarResumen().catch(error => {
+                        alertaDiferencia.textContent = error.message;
+                        alertaDiferencia.className = "alert alert-danger mt-3 mb-0";
+                        alertaDiferencia.hidden = false;
+                    });
+                });
+
+                efectivo.addEventListener("input", actualizarDiferencia);
+                yape.addEventListener("input", actualizarDiferencia);
+
+                form.addEventListener("submit", async event => {
+                    event.preventDefault();
+                    botonGuardar.disabled = true;
+
+                    try {
+                        const respuesta = await fetch(form.action, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/x-www-form-urlencoded",
+                                "X-Requested-With": "XMLHttpRequest"
+                            },
+                            body: new URLSearchParams(new FormData(form))
+                        });
+                        const texto = await respuesta.text();
+                        let datos;
+
+                        try {
+                            datos = JSON.parse(texto);
+                        } catch {
+                            throw new Error("No se pudo registrar el cierre. Inténtalo nuevamente.");
+                        }
+
+                        if (!respuesta.ok) {
+                            throw new Error(datos.message || "No se pudo registrar el cierre.");
+                        }
+
+                        const mensaje = document.createElement("div");
+                        mensaje.className = "alert alert-success";
+                        mensaje.textContent = datos.message;
+                        resultado.replaceChildren(mensaje);
+
+                        if (Number(datos.diferencia) !== 0) {
+                            const alerta = document.createElement("div");
+                            alerta.className = "alert alert-warning";
+                            alerta.textContent =
+                                `Diferencia detectada: ${formatoSoles(Number(datos.diferencia))}`;
+                            resultado.append(alerta);
+                        }
+
+                        bootstrap.Modal.getInstance(modal).hide();
+                        form.reset();
+                        fecha.value = "@DateTime.Today.ToString("yyyy-MM-dd")";
+                    } catch (error) {
+                        alertaDiferencia.textContent = error.message;
+                        alertaDiferencia.className = "alert alert-danger mt-3 mb-0";
+                        alertaDiferencia.hidden = false;
+                    } finally {
+                        botonGuardar.disabled = false;
+                    }
+                });
+            });
+        </script>
+    }
 </div>
