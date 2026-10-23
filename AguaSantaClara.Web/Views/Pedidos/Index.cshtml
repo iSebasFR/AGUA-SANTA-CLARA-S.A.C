@@ -194,6 +194,9 @@
     .status-badge.pendiente { background: #fff7e6; color: #b8860b; }
     .status-badge.enviado { background: #eaf4fb; color: #3a8ab8; }
     .status-badge.entregado { background: #e8f9ee; color: #1a8a3a; }
+    .status-badge.con-incidencia { background: #fdecec; color: #c0392b; }
+    .status-badge.pagado { background: #e3e9f7; color: #1e3a8a; }
+    .status-badge.pago-parcial { background: #f1e8fb; color: #7e3fc4; }
 
     .acciones-tabla {
         display: inline-flex;
@@ -688,6 +691,9 @@
                                 "Pendiente" => "pendiente",
                                 "Enviado" => "enviado",
                                 "Entregado" => "entregado",
+                                "Con Incidencia" => "con-incidencia",
+                                "Pagado" => "pagado",
+                                "Pago Parcial" => "pago-parcial",
                                 _ => ""
                             };
 
@@ -790,6 +796,7 @@
                                                         .ToDictionary(grupo => grupo.Key, grupo => grupo.First().Cliente.Nombre);
                                                     var deudasParaVer = deudasDelPedido.Select(par => new
                                                     {
+                                                        idCliente = par.Key,
                                                         nombre = nombresClientes.GetValueOrDefault(par.Key) ?? $"Cliente {par.Key}",
                                                         monto = par.Value.Monto,
                                                         fechaVencimiento = par.Value.FechaVencimiento.ToString("yyyy-MM-dd"),
@@ -817,6 +824,12 @@
                                                                 data-pedido-id="@pedido.Id"
                                                                 data-deudas="@System.Text.Json.JsonSerializer.Serialize(deudasParaVer)">
                                                             Ver deuda
+                                                        </button>
+                                                        <button type="button"
+                                                                class="btn-tabla pedido-autorizar-plazo"
+                                                                data-pedido-id="@pedido.Id"
+                                                                data-deudas="@System.Text.Json.JsonSerializer.Serialize(deudasParaVer)">
+                                                            Autorizar plazo
                                                         </button>
                                                     }
                                                     @if (clientesParaRegistrar.Count > 0)
@@ -938,6 +951,65 @@
                 </button>
                 <button type="button" id="registrarDeudaGuardar" class="btn-apple success" disabled>
                     Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL AUTORIZAR PLAZO -->
+<div class="modal fade" id="autorizarPlazoModal" tabindex="-1" aria-labelledby="autorizarPlazoTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="border-bottom:1px solid #e5e5ea;">
+                <div>
+                    <h5 class="modal-title" id="autorizarPlazoTitulo" style="font-size:15px;font-weight:600;color:#1d1d1f;">
+                        Autorizar nuevo plazo
+                    </h5>
+                    <p id="autorizarPlazoPedido" style="font-size:12.5px;color:#6e6e73;margin:3px 0 0;">Actualiza el monto y la fecha de vencimiento de la deuda.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:20px;">
+                <input type="hidden" id="autorizarPlazoIdPedido" />
+                <div style="background:#e8f3fb;border-radius:12px;padding:14px 16px;font-size:13px;color:#3a3a3c;" class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span>Cliente</span>
+                        <span id="autorizarPlazoCliente" style="font-family:'JetBrains Mono',monospace;font-weight:600;color:#1d1d1f;"></span>
+                        <select id="autorizarPlazoIdCliente" class="form-select form-select-sm d-none" style="width:auto;"></select>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span>Monto actual</span>
+                        <span id="autorizarPlazoMontoActual" style="font-family:'JetBrains Mono',monospace;font-weight:600;color:#1d1d1f;"></span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Vencimiento actual</span>
+                        <span id="autorizarPlazoVencimientoActual" style="font-family:'JetBrains Mono',monospace;font-weight:600;color:#1d1d1f;"></span>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                        <label for="autorizarPlazoMontoNuevo" class="form-label small">Nuevo monto (S/)</label>
+                        <input type="number" id="autorizarPlazoMontoNuevo" class="form-control" min="0.01" step="0.01" required />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="autorizarPlazoFechaNueva" class="form-label small">Nueva fecha de vencimiento</label>
+                        <input type="date" id="autorizarPlazoFechaNueva" class="form-control" required />
+                    </div>
+                </div>
+                <div>
+                    <label for="autorizarPlazoObservacion" class="form-label small">Observación (opcional)</label>
+                    <textarea id="autorizarPlazoObservacion" class="form-control" rows="3" maxlength="255"
+                              placeholder="Ej: Se otorgan 15 días adicionales por ser cliente frecuente"></textarea>
+                </div>
+                <div id="autorizarPlazoError" class="alert alert-danger d-none mt-3 mb-0" role="alert"></div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #e5e5ea;padding:14px 20px;">
+                <button type="button" class="btn-apple" style="background:#fff;color:#1d1d1f;border:1px solid #e5e5ea;box-shadow:none;" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" id="autorizarPlazoGuardar" class="btn-apple">
+                    Autorizar plazo
                 </button>
             </div>
         </div>

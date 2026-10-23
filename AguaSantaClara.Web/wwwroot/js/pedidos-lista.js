@@ -116,6 +116,58 @@
             bootstrap.Modal.getOrCreateInstance(verDeudaModal).show();
         });
     });
+    // ============ AUTORIZAR PLAZO ============
+    const autorizarPlazoModal = $("autorizarPlazoModal");
+    const autorizarPlazoPedido = $("autorizarPlazoPedido");
+    const autorizarPlazoIdPedido = $("autorizarPlazoIdPedido");
+    const autorizarPlazoIdCliente = $("autorizarPlazoIdCliente");
+    const autorizarPlazoMontoActual = $("autorizarPlazoMontoActual");
+    const autorizarPlazoVencimientoActual = $("autorizarPlazoVencimientoActual");
+    const autorizarPlazoMontoNuevo = $("autorizarPlazoMontoNuevo");
+    const autorizarPlazoFechaNueva = $("autorizarPlazoFechaNueva");
+    const autorizarPlazoError = $("autorizarPlazoError");
+
+    const autorizarPlazoCliente = $("autorizarPlazoCliente");
+    const autorizarPlazoObservacion = $("autorizarPlazoObservacion");
+
+    const mostrarDeudaActualPlazo = () => {
+        const opcion = autorizarPlazoIdCliente.selectedOptions[0];
+        autorizarPlazoError.classList.add("d-none");
+        autorizarPlazoCliente.textContent = opcion?.textContent ?? "";
+        autorizarPlazoMontoActual.textContent = opcion
+            ? `S/ ${Number(opcion.dataset.monto).toFixed(2)}`
+            : "";
+        autorizarPlazoVencimientoActual.textContent = opcion
+            ? new Date(`${opcion.dataset.fechaVencimiento}T00:00:00`).toLocaleDateString("es-PE")
+            : "";
+        autorizarPlazoObservacion.value = "";
+        autorizarPlazoMontoNuevo.value = opcion ? Number(opcion.dataset.monto).toFixed(2) : "";
+        autorizarPlazoFechaNueva.value = "";
+    };
+
+    document.querySelectorAll(".pedido-autorizar-plazo").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const deudas = JSON.parse(btn.dataset.deudas);
+            autorizarPlazoIdPedido.value = btn.dataset.pedidoId;
+            autorizarPlazoIdCliente.replaceChildren();
+
+            deudas.forEach(deuda => {
+                const opcion = document.createElement("option");
+                opcion.value = deuda.idCliente;
+                opcion.textContent = deuda.nombre;
+                opcion.dataset.monto = Number(deuda.monto).toFixed(2);
+                opcion.dataset.fechaVencimiento = deuda.fechaVencimiento;
+                autorizarPlazoIdCliente.append(opcion);
+            });
+
+            // Con varios clientes deudores se muestra un selector en lugar del nombre fijo.
+            autorizarPlazoIdCliente.classList.toggle("d-none", deudas.length < 2);
+            autorizarPlazoCliente.classList.toggle("d-none", deudas.length > 1);
+            mostrarDeudaActualPlazo();
+            bootstrap.Modal.getOrCreateInstance(autorizarPlazoModal).show();
+        });
+    });
+    autorizarPlazoIdCliente.addEventListener("change", mostrarDeudaActualPlazo);
     registrarDeudaIdCliente.addEventListener("change", () => {
         const montoPendiente = registrarDeudaIdCliente.selectedOptions[0]?.dataset.montoPendiente;
         registrarDeudaMonto.value = montoPendiente ?? "";
