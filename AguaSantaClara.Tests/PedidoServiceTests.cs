@@ -703,6 +703,136 @@ public class PedidoServiceTests
     }
 
     [Fact]
+    public async Task AutorizarPlazoAsync_ExigeClienteMontoValidoFechaYObservacionCorta()
+    {
+        var (db, servicio, pedido, _, _) = await CrearEscenarioPagoParcialConDeudaAsync();
+
+        var resultado = await servicio.AutorizarPlazoAsync(pedido.Id, new AutorizarPlazoViewModel
+        {
+            IdCliente = 0,
+            MontoNuevo = 0m,
+            FechaVencimientoNueva = null,
+            Observacion = new string('x', 256)
+        }, idUsuario: 1);
+
+        Assert.False(resultado.Ok);
+        Assert.Contains(resultado.Errores, error => error.Campo == "idCliente");
+        Assert.Contains(resultado.Errores, error => error.Campo == "montoNuevo");
+        Assert.Contains(resultado.Errores, error => error.Campo == "fechaVencimientoNueva");
+        Assert.Contains(resultado.Errores, error => error.Campo == "observacion");
+        Assert.Empty(await db.AutorizacionesPlazo.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AutorizarPlazoAsync_RechazaMontoConMasDeDosDecimales()
+    {
+        var (db, servicio, pedido, cliente, _) = await CrearEscenarioPagoParcialConDeudaAsync();
+
+        var resultado = await servicio.AutorizarPlazoAsync(pedido.Id, new AutorizarPlazoViewModel
+        {
+            IdCliente = cliente.Id,
+            MontoNuevo = 10.123m,
+            FechaVencimientoNueva = DateTime.UtcNow.Date.AddDays(10)
+        }, idUsuario: 1);
+
+        Assert.False(resultado.Ok);
+        Assert.Contains(resultado.Errores, error => error.Campo == "montoNuevo");
+        Assert.Empty(await db.AutorizacionesPlazo.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AutorizarPlazoAsync_RechazaPedidoInexistenteOQueNoEstaEnPagoParcial()
+    {
+        var (db, servicio, pedido, cliente, _) = await CrearEscenarioPagoParcialConDeudaAsync();
+        var modelo = new AutorizarPlazoViewModel
+        {
+            IdCliente = cliente.Id,
+            MontoNuevo = 80m,
+            FechaVencimientoNueva = DateTime.UtcNow.Date.AddDays(10)
+        };
+
+        var inexistente = await servicio.AutorizarPlazoAsync(pedido.Id + 999, modelo, idUsuario: 1);
+        Assert.False(inexistente.Ok);
+        Assert.Contains(inexistente.Errores, error => error.Campo == "pedido");
+
+        pedido.Estado = EstadosPedido.Pagado;
+        await db.SaveChangesAsync();
+        var pagado = await servicio.AutorizarPlazoAsync(pedido.Id, modelo, idUsuario: 1);
+        Assert.False(pagado.Ok);
+        Assert.Contains(pagado.Errores, error => error.Campo == "pedido");
+
+        Assert.Empty(await db.AutorizacionesPlazo.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AutorizarPlazoAsync_RechazaClienteSinDeudaDeudaPagadaOSinSaldo()
+    {
+        var (db, servicio, pedido, cliente, deuda) = await CrearEscenarioPagoParcialConDeudaAsync();
+        var modelo = new AutorizarPlazoViewModel
+        {
+            IdCliente = cliente.Id,
+            MontoNuevo = 80m,
+            FechaVencimientoNueva = DateTime.UtcNow.Date.AddDays(10)
+        };
+
+        var otroCliente = await servicio.AutorizarPlazoAsync(pedido.Id, new AutorizarPlazoViewModel
+        {
+            IdCliente = cliente.Id + 999,
+            MontoNuevo = modelo.MontoNuevo,
+            FechaVencimientoNueva = modelo.FechaVencimientoNueva
+        }, idUsuario: 1);
+        Assert.False(otroCliente.Ok);
+        Assert.Contains(otroCliente.Errores, error => error.Campo == "idCliente");
+
+        deuda.Estado = EstadosDeuda.Pagada;
+        await db.SaveChangesAsync();
+        var pagada = await servicio.AutorizarPlazoAsync(pedido.Id, modelo, idUsuario: 1);
+        Assert.False(pagada.Ok);
+        Assert.Contains(pagada.Errores, error => error.Campo == "pedido");
+
+        deuda.Estado = EstadosDeuda.Pendiente;
+        db.Pagos.Add(new Pago
+        {
+            IdPedido = pedido.Id,
+            IdCliente = cliente.Id,
+            IdMetodoPago = (await db.MetodosPago.FirstAsync()).Id,
+            Monto = 80m
+        });
+        await db.SaveChangesAsync();
+        var sinSaldo = await servicio.AutorizarPlazoAsync(pedido.Id, modelo, idUsuario: 1);
+        Assert.False(sinSaldo.Ok);
+        Assert.Contains(sinSaldo.Errores, error => error.Campo == "pedido");
+
+        Assert.Empty(await db.AutorizacionesPlazo.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AutorizarPlazoAsync_RechazaClienteNoDisponibleYReactivaDeudaVencida()
+    {
+        var (db, servicio, pedido, cliente, deuda) = await CrearEscenarioPagoParcialConDeudaAsync();
+        var modelo = new AutorizarPlazoViewModel
+        {
+            IdCliente = cliente.Id,
+            MontoNuevo = 80m,
+            FechaVencimientoNueva = DateTime.UtcNow.Date.AddDays(10)
+        };
+
+        cliente.EstadoRegistro = false;
+        await db.SaveChangesAsync();
+        var noDisponible = await servicio.AutorizarPlazoAsync(pedido.Id, modelo, idUsuario: 1);
+        Assert.False(noDisponible.Ok);
+        Assert.Contains(noDisponible.Errores, error => error.Campo == "idCliente");
+
+        cliente.EstadoRegistro = true;
+        deuda.Estado = EstadosDeuda.Vencida;
+        await db.SaveChangesAsync();
+        var resultado = await servicio.AutorizarPlazoAsync(pedido.Id, modelo, idUsuario: 1);
+        Assert.True(resultado.Ok);
+        Assert.Equal(EstadosDeuda.Pendiente, deuda.Estado);
+        Assert.Null((await db.AutorizacionesPlazo.SingleAsync()).Observacion);
+    }
+
+    [Fact]
     public void ModeloPedido_AceptaEstadosGeneradosPorElRegistroDePagos()
     {
         using var db = CrearContexto();
