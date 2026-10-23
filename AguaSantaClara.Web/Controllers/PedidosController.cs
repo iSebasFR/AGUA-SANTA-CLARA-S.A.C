@@ -188,6 +188,7 @@ public class PedidosController : Controller
                 deuda.IdPedido,
                 deuda.IdCliente,
                 deuda.Monto,
+                deuda.MontoPagadoAlRegistrar,
                 deuda.FechaVencimiento,
                 deuda.Estado
             })
@@ -203,7 +204,7 @@ public class PedidosController : Controller
                         grupoCliente =>
                         {
                             var deuda = grupoCliente.OrderByDescending(item => item.Id).First();
-                            return new DeudaPedidoResumen(deuda.Monto, deuda.FechaVencimiento, deuda.Estado);
+                            return new DeudaPedidoResumen(deuda.Monto, deuda.MontoPagadoAlRegistrar, deuda.FechaVencimiento, deuda.Estado);
                         }));
 
         return View(modelo);
@@ -425,6 +426,29 @@ public class PedidosController : Controller
         var resultado = await _pedidoService.RegistrarDeudaAsync(
             idPedido,
             modelo ?? new RegistrarDeudaViewModel());
+
+        return resultado.Ok
+            ? Json(new { mensaje = resultado.Mensaje })
+            : BadRequest(resultado);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Vendedora")]
+    public async Task<IActionResult> AutorizarPlazo(
+        long idPedido,
+        [FromBody] AutorizarPlazoViewModel? modelo)
+    {
+        var idUsuarioTexto = User.FindFirst(
+            System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (!long.TryParse(idUsuarioTexto, out var idUsuario))
+            return Unauthorized();
+
+        var resultado = await _pedidoService.AutorizarPlazoAsync(
+            idPedido,
+            modelo ?? new AutorizarPlazoViewModel(),
+            idUsuario);
 
         return resultado.Ok
             ? Json(new { mensaje = resultado.Mensaje })

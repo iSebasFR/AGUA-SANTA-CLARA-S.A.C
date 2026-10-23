@@ -798,7 +798,11 @@
                                                     {
                                                         idCliente = par.Key,
                                                         nombre = nombresClientes.GetValueOrDefault(par.Key) ?? $"Cliente {par.Key}",
-                                                        monto = par.Value.Monto,
+                                                        // Saldo = lo que aún debe, descontando lo ya pagado del pedido
+                                                        monto = Math.Max(0m, par.Value.Monto + par.Value.MontoPagadoAlRegistrar
+                                                            - (Model.MontosPagadosPorPedidoCliente
+                                                                .GetValueOrDefault(pedido.Id)?
+                                                                .GetValueOrDefault(par.Key) ?? 0m)),
                                                         fechaVencimiento = par.Value.FechaVencimiento.ToString("yyyy-MM-dd"),
                                                         estado = par.Value.Estado
                                                     }).ToList();

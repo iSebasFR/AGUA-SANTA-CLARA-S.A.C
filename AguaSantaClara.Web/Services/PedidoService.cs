@@ -335,6 +335,89 @@ public class PedidoService : IPedidoService
         return resultado;
     }
 
+    public async Task<PedidoResultado> AutorizarPlazoAsync(long idPedido, AutorizarPlazoViewModel modelo, long idUsuario)
+    {
+        var resultado = new PedidoResultado { IdPedido = idPedido };
+        if (modelo.IdCliente <= 0)
+            resultado.Errores.Add(new ErrorPedido("idCliente", "Selecciona un cliente deudor."));
+        if (modelo.MontoNuevo <= 0 || decimal.Round(modelo.MontoNuevo, 2) != modelo.MontoNuevo)
+            resultado.Errores.Add(new ErrorPedido("montoNuevo", "El nuevo monto debe ser mayor que cero y tener como máximo dos decimales."));
+        if (modelo.FechaVencimientoNueva == null)
+            resultado.Errores.Add(new ErrorPedido("fechaVencimientoNueva", "La nueva fecha de vencimiento es obligatoria."));
+        var observacion = modelo.Observacion?.Trim();
+        if (observacion?.Length > 255)
+            resultado.Errores.Add(new ErrorPedido("observacion", "La observación no puede superar los 255 caracteres."));
+        if (!resultado.Ok)
+            return resultado;
+
+        var pedido = await _context.Pedidos
+            .FirstOrDefaultAsync(p => p.Id == idPedido && p.EstadoRegistro);
+        if (pedido == null)
+        {
+            resultado.Errores.Add(new ErrorPedido("pedido", "El pedido no existe."));
+            return resultado;
+        }
+        if (pedido.Estado != EstadosPedido.PagoParcial)
+        {
+            resultado.Errores.Add(new ErrorPedido("pedido", "Solo se puede autorizar un nuevo plazo en pedidos con pago parcial."));
+            return resultado;
+        }
+
+        var deuda = await _context.Deudas
+            .FirstOrDefaultAsync(d => d.EstadoRegistro && d.IdPedido == idPedido && d.IdCliente == modelo.IdCliente);
+        if (deuda == null)
+        {
+            resultado.Errores.Add(new ErrorPedido("idCliente", "El cliente no tiene una deuda registrada en este pedido."));
+            return resultado;
+        }
+        if (deuda.Estado == EstadosDeuda.Pagada)
+        {
+            resultado.Errores.Add(new ErrorPedido("pedido", "La deuda ya fue pagada."));
+            return resultado;
+        }
+
+        var cliente = await _context.Clientes
+            .FirstOrDefaultAsync(c => c.Id == modelo.IdCliente && c.EstadoRegistro);
+        if (cliente == null)
+        {
+            resultado.Errores.Add(new ErrorPedido("idCliente", "El cliente no está disponible."));
+            return resultado;
+        }
+
+        // El "monto" de la autorización es el saldo que aún debe el cliente, no el total del pedido.
+        var montoPagado = await _context.Pagos
+            .Where(p => p.EstadoRegistro && p.IdPedido == idPedido && p.IdCliente == modelo.IdCliente)
+            .SumAsync(p => (decimal?)p.Monto) ?? 0m;
+        var saldoActual = Math.Max(0m, deuda.Monto + deuda.MontoPagadoAlRegistrar - montoPagado);
+        if (saldoActual <= 0)
+        {
+            resultado.Errores.Add(new ErrorPedido("pedido", "El cliente no tiene saldo pendiente en este pedido."));
+            return resultado;
+        }
+
+        var fechaNueva = modelo.FechaVencimientoNueva.GetValueOrDefault().Date;
+        _context.AutorizacionesPlazo.Add(new AutorizacionPlazo
+        {
+            Deuda = deuda,
+            IdUsuarioAutoriza = idUsuario,
+            MontoAnterior = saldoActual,
+            MontoNuevo = modelo.MontoNuevo,
+            FechaVencimientoAnterior = DateOnly.FromDateTime(deuda.FechaVencimiento),
+            FechaVencimientoNueva = DateOnly.FromDateTime(fechaNueva),
+            Observacion = string.IsNullOrEmpty(observacion) ? null : observacion
+        });
+
+        cliente.DeudaTotal = Math.Max(0m, cliente.DeudaTotal + modelo.MontoNuevo - saldoActual);
+        deuda.Monto = modelo.MontoNuevo - deuda.MontoPagadoAlRegistrar + montoPagado;
+        deuda.FechaVencimiento = fechaNueva;
+        deuda.Estado = EstadosDeuda.Pendiente;
+        deuda.FechaActualizacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        resultado.Mensaje = "Nuevo plazo autorizado correctamente.";
+        return resultado;
+    }
+
     public async Task<PedidoResultado> RegistrarIncidenciaAsync(long idPedido,RegistrarIncidenciaViewModel modelo,long idUsuario)
     {
         var resultado = new PedidoResultado

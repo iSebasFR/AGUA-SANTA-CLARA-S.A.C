@@ -2,7 +2,7 @@ using AguaSantaClara.Web.Models.Entities;
 
 namespace AguaSantaClara.Web.Models;
 
-public sealed record DeudaPedidoResumen(decimal Monto, DateTime FechaVencimiento, string Estado);
+public sealed record DeudaPedidoResumen(decimal Monto, decimal MontoPagadoAlRegistrar, DateTime FechaVencimiento, string Estado);
 
 public class PedidosIndexViewModel
 {
@@ -40,6 +40,14 @@ public class RegistrarDeudaViewModel
     public long IdCliente { get; set; }
     public decimal Monto { get; set; }
     public DateTime? FechaVencimiento { get; set; }
+}
+
+public class AutorizarPlazoViewModel
+{
+    public long IdCliente { get; set; }
+    public decimal MontoNuevo { get; set; }
+    public DateTime? FechaVencimientoNueva { get; set; }
+    public string? Observacion { get; set; }
 }
 
 public class PagoClientePedidoViewModel

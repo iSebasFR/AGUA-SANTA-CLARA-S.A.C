@@ -168,6 +168,49 @@
         });
     });
     autorizarPlazoIdCliente.addEventListener("change", mostrarDeudaActualPlazo);
+
+    const autorizarPlazoGuardar = $("autorizarPlazoGuardar");
+    autorizarPlazoGuardar.addEventListener("click", async () => {
+        if (autorizarPlazoGuardar.disabled)
+            return;
+
+        autorizarPlazoGuardar.disabled = true;
+        autorizarPlazoError.classList.add("d-none");
+        try {
+            const respuesta = await fetch(
+                `/Pedidos/AutorizarPlazo?idPedido=${encodeURIComponent(autorizarPlazoIdPedido.value)}`,
+                {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": token
+                    },
+                    body: JSON.stringify({
+                        idCliente: Number(autorizarPlazoIdCliente.value),
+                        montoNuevo: Number(autorizarPlazoMontoNuevo.value),
+                        fechaVencimientoNueva: autorizarPlazoFechaNueva.value || null,
+                        observacion: autorizarPlazoObservacion.value
+                    })
+                });
+            const datos = await respuesta.json();
+            if (!respuesta.ok) {
+                autorizarPlazoError.textContent = datos?.errores?.map(error => error.mensaje).filter(Boolean).join(" ")
+                    || `No se pudo autorizar el plazo (HTTP ${respuesta.status}).`;
+                autorizarPlazoError.classList.remove("d-none");
+                autorizarPlazoGuardar.disabled = false;
+                return;
+            }
+
+            sessionStorage.setItem("pedidoToast", datos?.mensaje || "Nuevo plazo autorizado correctamente.");
+            bootstrap.Modal.getOrCreateInstance(autorizarPlazoModal).hide();
+            window.location.reload();
+        } catch {
+            autorizarPlazoError.textContent = "Ocurrió un error al autorizar el plazo. Inténtalo nuevamente.";
+            autorizarPlazoError.classList.remove("d-none");
+            autorizarPlazoGuardar.disabled = false;
+        }
+    });
     registrarDeudaIdCliente.addEventListener("change", () => {
         const montoPendiente = registrarDeudaIdCliente.selectedOptions[0]?.dataset.montoPendiente;
         registrarDeudaMonto.value = montoPendiente ?? "";

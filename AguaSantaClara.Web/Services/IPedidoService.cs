@@ -11,6 +11,7 @@ public interface IPedidoService
     Task<PedidoResultado> CambiarEstadoAsync(long idPedido, string? estado);
     Task<PedidoResultado> RegistrarPagosAsync(long idPedido, RegistrarPagosPedidoViewModel modelo);
     Task<PedidoResultado> RegistrarDeudaAsync(long idPedido, RegistrarDeudaViewModel modelo);
+    Task<PedidoResultado> AutorizarPlazoAsync(long idPedido, AutorizarPlazoViewModel modelo, long idUsuario);
     Task<PedidoResultado> RegistrarIncidenciaAsync(long idPedido,RegistrarIncidenciaViewModel modelo,long idUsuario);
     Task<PedidoResultado> EnviarVariosAsync(EnviarPedidosViewModel modelo);
     Task<PedidoResultado> PreviewEnviarVariosAsync(EnviarPedidosViewModel modelo);
