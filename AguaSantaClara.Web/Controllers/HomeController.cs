@@ -7,19 +7,17 @@ namespace AguaSantaClara.Web.Controllers;
 
 public class HomeController : Controller
 {
-    [Authorize(Roles = "Administradora,Gerente,Vendedora")]
+    [Authorize]
     public IActionResult Index()
     {
         return View();
     }
 
-    [Authorize(Roles = "Administradora,Gerente,Vendedora")]
     public IActionResult Privacy()
     {
         return View();
     }
 
-    [AllowAnonymous]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {

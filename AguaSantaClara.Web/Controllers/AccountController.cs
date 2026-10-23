@@ -14,16 +14,11 @@ public class AccountController : Controller
 {
     private readonly AppDbContext _context;
     private readonly IPasswordHasher<Usuario> _passwordHasher;
-    private readonly UserManager<Usuario> _userManager;
 
-    public AccountController(
-        AppDbContext context,
-        IPasswordHasher<Usuario> passwordHasher,
-        UserManager<Usuario> userManager)
+    public AccountController(AppDbContext context, IPasswordHasher<Usuario> passwordHasher)
     {
         _context = context;
         _passwordHasher = passwordHasher;
-        _userManager = userManager;
     }
 
     [HttpGet]
@@ -51,11 +46,10 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Bloqueo temporal tras varios intentos fallidos (protección contra fuerza bruta)
-        if (await _userManager.IsLockedOutAsync(usuario))
+        // Regla de Negocio: Usuarios inactivos no pueden iniciar sesión
+        if (!usuario.Estado)
         {
-            ModelState.AddModelError(string.Empty,
-                "Cuenta bloqueada temporalmente por intentos fallidos. Intente nuevamente en unos minutos.");
+            ModelState.AddModelError(string.Empty, "El usuario se encuentra inactivo. Contacte al administrador.");
             return View(model);
         }
 
@@ -66,18 +60,7 @@ public class AccountController : Controller
 
         if (!passwordValida)
         {
-            await _userManager.AccessFailedAsync(usuario);
             ModelState.AddModelError(string.Empty, "Usuario o contraseña incorrectos.");
-            return View(model);
-        }
-
-        await _userManager.ResetAccessFailedCountAsync(usuario);
-
-        // Regla de Negocio: Usuarios inactivos no pueden iniciar sesión.
-        // Se valida después de la contraseña para no revelar qué usuarios existen.
-        if (!usuario.Estado)
-        {
-            ModelState.AddModelError(string.Empty, "El usuario se encuentra inactivo. Contacte al administrador.");
             return View(model);
         }
 
@@ -108,9 +91,6 @@ public class AccountController : Controller
 
         return RedirectToAction("Index", "Home");
     }
-
-    [HttpGet]
-    public IActionResult AccessDenied() => View();
 
     [HttpPost]
     [ValidateAntiForgeryToken]

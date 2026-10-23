@@ -47,8 +47,15 @@ public class ClientesController : Controller
         seleccionado ??= clientes.FirstOrDefault();
 
         var pedidos = new List<Pedido>();
+        var autorizacionesPlazo = new List<AutorizacionPlazo>();
         if (seleccionado != null)
         {
+            autorizacionesPlazo = await _context.AutorizacionesPlazo
+                .Include(a => a.Deuda)
+                .Where(a => a.EstadoRegistro && a.Deuda.IdCliente == seleccionado.Id)
+                .OrderByDescending(a => a.FechaCreacion)
+                .ToListAsync();
+
             pedidos = await _context.Pedidos
                 .Include(p => p.Repartidor)
                 .Include(p => p.Clientes).ThenInclude(pc => pc.Cliente)
@@ -66,6 +73,7 @@ public class ClientesController : Controller
             Clientes = clientes,
             Seleccionado = seleccionado,
             Pedidos = pedidos,
+            AutorizacionesPlazo = autorizacionesPlazo,
             Search = search,
             EstadoFiltro = estado
         };

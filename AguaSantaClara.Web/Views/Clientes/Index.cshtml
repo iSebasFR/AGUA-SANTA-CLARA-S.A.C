@@ -767,6 +767,7 @@
                     Direcciones <span class="tab-count">@sel.Direcciones.Count</span>
                 </button>
                 <button type="button" class="detail-tab" data-tab="historial">Historial de pedidos</button>
+                <button type="button" class="detail-tab" data-tab="deudas">Historial de deudas</button>
             </div>
 
             <div class="tab-content">
@@ -941,6 +942,41 @@
                                         <td style="text-align:center;">
                                             <span style="background:#eaf4fb; color:#3a8ab8; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:600;">@pedido.Estado</span>
                                         </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+
+                <div class="tab-pane" data-pane="deudas">
+                    @if (!Model.AutorizacionesPlazo.Any())
+                    {
+                        <p style="color:#6e6e73; font-size:13px;">Este cliente aún no tiene autorizaciones de plazo registradas.</p>
+                    }
+                    else
+                    {
+                        <table class="clientes-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Pedido</th>
+                                    <th style="text-align:right;">Monto anterior</th>
+                                    <th style="text-align:right;">Nuevo monto</th>
+                                    <th>Nueva fecha de vencimiento</th>
+                                    <th>Observación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var autorizacion in Model.AutorizacionesPlazo)
+                                {
+                                    <tr>
+                                        <td>@autorizacion.FechaCreacion.AddHours(-5).ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td><strong>#@autorizacion.Deuda.IdPedido</strong></td>
+                                        <td style="text-align:right;">S/ @autorizacion.MontoAnterior.ToString("0.00")</td>
+                                        <td style="text-align:right;">S/ @autorizacion.MontoNuevo.ToString("0.00")</td>
+                                        <td>@autorizacion.FechaVencimientoNueva.ToString("dd/MM/yyyy")</td>
+                                        <td>@(string.IsNullOrWhiteSpace(autorizacion.Observacion) ? "—" : autorizacion.Observacion)</td>
                                     </tr>
                                 }
                             </tbody>
