@@ -344,6 +344,13 @@ public class PedidoService : IPedidoService
             resultado.Errores.Add(new ErrorPedido("montoNuevo", "El nuevo monto debe ser mayor que cero y tener como máximo dos decimales."));
         if (modelo.FechaVencimientoNueva == null)
             resultado.Errores.Add(new ErrorPedido("fechaVencimientoNueva", "La nueva fecha de vencimiento es obligatoria."));
+        else
+        {
+            // Hora de Perú (UTC-5, sin horario de verano): "hoy" no debe adelantarse por la hora UTC del servidor.
+            var hoy = DateTime.UtcNow.AddHours(-5).Date;
+            if (modelo.FechaVencimientoNueva.Value.Date <= hoy)
+                resultado.Errores.Add(new ErrorPedido("fechaVencimientoNueva", "La nueva fecha de vencimiento debe ser posterior a la fecha actual."));
+        }
         var observacion = modelo.Observacion?.Trim();
         if (observacion?.Length > 255)
             resultado.Errores.Add(new ErrorPedido("observacion", "La observación no puede superar los 255 caracteres."));

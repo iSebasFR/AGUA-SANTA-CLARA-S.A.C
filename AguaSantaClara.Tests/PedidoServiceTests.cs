@@ -600,6 +600,108 @@ public class PedidoServiceTests
         Assert.Empty(await db.Deudas.ToListAsync());
     }
 
+    private static async Task<(AppDbContext Db, PedidoService Servicio, Pedido Pedido, Cliente Cliente, Deuda Deuda)> CrearEscenarioPagoParcialConDeudaAsync()
+    {
+        var (db, servicio, _, _, cliente, direccion, _) = await CrearEscenarioAsync();
+        var metodoPago = new MetodoPago { Nombre = "Efectivo" };
+        var pedido = new Pedido
+        {
+            Estado = EstadosPedido.PagoParcial,
+            Total = 160m,
+            Clientes =
+            {
+                new PedidoCliente
+                {
+                    Cliente = cliente,
+                    IdCliente = cliente.Id,
+                    Direccion = direccion,
+                    IdDireccion = direccion.Id,
+                    Subtotal = 160m
+                }
+            }
+        };
+        db.MetodosPago.Add(metodoPago);
+        db.Pedidos.Add(pedido);
+        await db.SaveChangesAsync();
+
+        db.Pagos.Add(new Pago
+        {
+            IdPedido = pedido.Id,
+            IdCliente = cliente.Id,
+            IdMetodoPago = metodoPago.Id,
+            Monto = 80m
+        });
+        var deuda = new Deuda
+        {
+            IdPedido = pedido.Id,
+            IdCliente = cliente.Id,
+            Monto = 160m,
+            FechaVencimiento = new DateTime(2026, 10, 15),
+            Estado = EstadosDeuda.Pendiente
+        };
+        db.Deudas.Add(deuda);
+        cliente.DeudaTotal = 80m;
+        await db.SaveChangesAsync();
+
+        return (db, servicio, pedido, cliente, deuda);
+    }
+
+    [Fact]
+    public async Task AutorizarPlazoAsync_RegistraAutorizacionYActualizaLaDeudaSobreElSaldo()
+    {
+        var (db, servicio, pedido, cliente, deuda) = await CrearEscenarioPagoParcialConDeudaAsync();
+        var fechaNueva = DateTime.UtcNow.Date.AddDays(15);
+
+        var resultado = await servicio.AutorizarPlazoAsync(pedido.Id, new AutorizarPlazoViewModel
+        {
+            IdCliente = cliente.Id,
+            MontoNuevo = 90m,
+            FechaVencimientoNueva = fechaNueva,
+            Observacion = "  Cliente frecuente  "
+        }, idUsuario: 1);
+
+        Assert.True(resultado.Ok);
+        Assert.Equal("Nuevo plazo autorizado correctamente.", resultado.Mensaje);
+
+        var autorizacion = Assert.Single(await db.AutorizacionesPlazo.ToListAsync());
+        Assert.Equal(80m, autorizacion.MontoAnterior);
+        Assert.Equal(90m, autorizacion.MontoNuevo);
+        Assert.Equal(new DateOnly(2026, 10, 15), autorizacion.FechaVencimientoAnterior);
+        Assert.Equal(DateOnly.FromDateTime(fechaNueva), autorizacion.FechaVencimientoNueva);
+        Assert.Equal("Cliente frecuente", autorizacion.Observacion);
+        Assert.Equal(1, autorizacion.IdUsuarioAutoriza);
+
+        Assert.Equal(fechaNueva, deuda.FechaVencimiento);
+        Assert.Equal(170m, deuda.Monto); // saldo 90 + 80 ya pagados
+        Assert.Equal(90m, cliente.DeudaTotal);
+    }
+
+    [Fact]
+    public async Task AutorizarPlazoAsync_RechazaFechaMenorOIgualALaActual()
+    {
+        var (db, servicio, pedido, cliente, deuda) = await CrearEscenarioPagoParcialConDeudaAsync();
+        var hoyPeru = DateTime.UtcNow.AddHours(-5).Date;
+
+        foreach (var fecha in new[] { hoyPeru, hoyPeru.AddDays(-1) })
+        {
+            var resultado = await servicio.AutorizarPlazoAsync(pedido.Id, new AutorizarPlazoViewModel
+            {
+                IdCliente = cliente.Id,
+                MontoNuevo = 80m,
+                FechaVencimientoNueva = fecha
+            }, idUsuario: 1);
+
+            Assert.False(resultado.Ok);
+            var error = Assert.Single(resultado.Errores);
+            Assert.Equal("fechaVencimientoNueva", error.Campo);
+            Assert.Equal("La nueva fecha de vencimiento debe ser posterior a la fecha actual.", error.Mensaje);
+        }
+
+        Assert.Empty(await db.AutorizacionesPlazo.ToListAsync());
+        Assert.Equal(new DateTime(2026, 10, 15), deuda.FechaVencimiento);
+        Assert.Equal(160m, deuda.Monto);
+    }
+
     [Fact]
     public void ModeloPedido_AceptaEstadosGeneradosPorElRegistroDePagos()
     {
