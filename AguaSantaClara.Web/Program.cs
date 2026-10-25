@@ -9,10 +9,12 @@ using AguaSantaClara.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var isTesting = builder.Environment.IsEnvironment("Testing");
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? builder.Configuration["DATABASE_URL"];
 
-if (string.IsNullOrWhiteSpace(connectionString))
+if (!isTesting && string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
         "Configura ConnectionStrings__DefaultConnection o DATABASE_URL antes de iniciar la aplicación.");
@@ -36,10 +38,13 @@ if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri)
 // 1. EF Core + PostgreSQL (con convención snake_case para PostgreSQL)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditoriaInterceptor>(); // HT-12: auditoría transversal
-builder.Services.AddDbContext<AppDbContext>((sp, options) =>
-    options.UseNpgsql(connectionString)
-        .AddInterceptors(sp.GetRequiredService<AuditoriaInterceptor>())
-);
+if (!isTesting)
+{
+    builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+        options.UseNpgsql(connectionString!)
+            .AddInterceptors(sp.GetRequiredService<AuditoriaInterceptor>())
+    );
+}
 
 // 2. ASP.NET Core Identity con entidades personalizadas
 builder.Services.AddIdentity<Usuario, Rol>(options =>
@@ -84,7 +89,10 @@ builder.Services.AddOptions<AlertasOptions>()
     .Validate(options => options.FrecuenciaDias > 0, "Alertas:FrecuenciaDias debe ser mayor que cero.")
     .Validate(options => options.IntervaloRevisionSegundos > 0, "Alertas:IntervaloRevisionSegundos debe ser mayor que cero.")
     .ValidateOnStart();
-builder.Services.AddHostedService<AlertasBackgroundService>();
+if (!isTesting)
+{
+    builder.Services.AddHostedService<AlertasBackgroundService>();
+}
 
 builder.Services.AddControllersWithViews();
 
@@ -103,21 +111,26 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 // 5. Migración automática + Seed DENTRO del mismo scope al arrancar
-using (var scope = app.Services.CreateScope())
+// 5. Migraciones y SeedData solo fuera del entorno Testing
+if (!isTesting)
 {
-    var services = scope.ServiceProvider;
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var db = services.GetRequiredService<AppDbContext>();
-        db.Database.Migrate();
+        var services = scope.ServiceProvider;
+        try
+        {
+            var db = services.GetRequiredService<AppDbContext>();
+            db.Database.Migrate();
 
-        await SeedData.InitializeAsync(services, builder.Configuration);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Ocurrió un error al aplicar las migraciones o sembrar la base de datos.");
-        throw;
+            await SeedData.InitializeAsync(services, builder.Configuration);
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex,
+                "Ocurrió un error al aplicar las migraciones o sembrar la base de datos.");
+            throw;
+        }
     }
 }
 
@@ -154,3 +167,5 @@ app.MapControllerRoute(
     pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();
+
+public partial class Program { }
