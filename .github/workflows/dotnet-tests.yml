@@ -3,7 +3,7 @@ name: .NET Tests
 on:
   push:
     branches:
-      - main
+      - '**'
   pull_request:
     branches:
       - main
@@ -39,6 +39,14 @@ jobs:
 
       - name: Run tests with coverage
         run: dotnet test AguaSantaClara.slnx --configuration Release --no-restore --collect:"XPlat Code Coverage" --results-directory TestResults --verbosity normal
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-ht13
+          path: TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn
 
       - name: Require 80% coverage on changed business logic
         env:
