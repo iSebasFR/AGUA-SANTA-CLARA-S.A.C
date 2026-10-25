@@ -22,6 +22,65 @@ namespace AguaSantaClara.Web.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.AuditoriaCambio", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_auditoria");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("accion");
+
+                    b.Property<string>("Entidad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("entidad");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha");
+
+                    b.Property<string>("IdRegistro")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("id_registro");
+
+                    b.Property<long?>("IdUsuario")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id_usuario");
+
+                    b.Property<string>("NombreUsuario")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("nombre_usuario");
+
+                    b.Property<string>("ValoresAnteriores")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("valores_anteriores");
+
+                    b.Property<string>("ValoresNuevos")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("valores_nuevos");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fecha")
+                        .HasDatabaseName("idx_auditoria_fecha");
+
+                    b.HasIndex("Entidad", "IdRegistro")
+                        .HasDatabaseName("idx_auditoria_entidad_registro");
+
+                    b.ToTable("auditoria_cambio", (string)null);
+                });
+
             modelBuilder.Entity("AguaSantaClara.Web.Models.Entities.AutorizacionPlazo", b =>
                 {
                     b.Property<long>("Id")

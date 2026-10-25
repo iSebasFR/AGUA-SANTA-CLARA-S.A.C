@@ -87,6 +87,9 @@
                         <a asp-controller="Pagos" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-cash-coin"></i><span class="sidebar-label">Pagos / Finanzas</span>
                         </a>
+                        <a asp-controller="Auditoria" asp-action="Index" class="sidebar-link">
+                            <i class="bi bi-shield-check"></i><span class="sidebar-label">Auditoría</span>
+                        </a>
                     }
                     else if (User.IsInRole("Vendedora"))
                     {
