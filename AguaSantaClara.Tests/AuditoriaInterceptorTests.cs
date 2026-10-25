@@ -164,4 +164,53 @@ public class AuditoriaInterceptorTests
         Assert.Equal(1, resultado.Total);
         Assert.Equal(3, (await servicio.ConsultarAsync(new FiltroAuditoria())).Total);
     }
+
+    [Fact]
+    public async Task ServicioConsulta_FiltraPorUsuarioYFechas()
+    {
+        using var db = CrearContexto();
+        db.Insumos.Add(NuevoInsumo());
+        await db.SaveChangesAsync();
+        var servicio = new AuditoriaService(db);
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var coincide = await servicio.ConsultarAsync(new FiltroAuditoria(Usuario: "ADM", Desde: hoy.AddDays(-1), Hasta: hoy));
+        var otroUsuario = await servicio.ConsultarAsync(new FiltroAuditoria(Usuario: "otro"));
+        var fueraDeRango = await servicio.ConsultarAsync(new FiltroAuditoria(Hasta: hoy.AddDays(-2)));
+        var posterior = await servicio.ConsultarAsync(new FiltroAuditoria(Desde: hoy.AddDays(1)));
+
+        Assert.Equal(1, coincide.Total);
+        Assert.Equal(0, otroUsuario.Total);
+        Assert.Equal(0, fueraDeRango.Total);
+        Assert.Equal(0, posterior.Total);
+    }
+
+    [Fact]
+    public async Task ServicioConsulta_Pagina()
+    {
+        using var db = CrearContexto();
+        for (var i = 0; i < 3; i++) db.Insumos.Add(NuevoInsumo());
+        await db.SaveChangesAsync();
+        var servicio = new AuditoriaService(db);
+
+        var resultado = await servicio.ConsultarAsync(new FiltroAuditoria(), pagina: 2, tamanoPagina: 2);
+
+        Assert.Single(resultado.Items);
+        Assert.Equal(2, resultado.TotalPaginas);
+    }
+
+    [Fact]
+    public async Task ServicioObtener_DevuelveRegistroOEntidadesDistintas()
+    {
+        using var db = CrearContexto();
+        db.Insumos.Add(NuevoInsumo());
+        db.Locales.Add(new Local { Nombre = "Central" });
+        await db.SaveChangesAsync();
+        var servicio = new AuditoriaService(db);
+        var id = db.AuditoriasCambio.First().Id;
+
+        Assert.NotNull(await servicio.ObtenerAsync(id));
+        Assert.Null(await servicio.ObtenerAsync(-1));
+        Assert.Equal(new[] { nameof(Insumo), nameof(Local) }, await servicio.ObtenerEntidadesAsync());
+    }
 }
