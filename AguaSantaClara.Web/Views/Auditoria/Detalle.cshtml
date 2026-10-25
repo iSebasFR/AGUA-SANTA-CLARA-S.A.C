@@ -1,0 +1,57 @@
+@model AguaSantaClara.Web.Models.Entities.AuditoriaCambio
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Detalle de Auditoría";
+
+    static Dictionary<string, JsonElement> Leer(string? json) =>
+        string.IsNullOrWhiteSpace(json)
+            ? new()
+            : JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json) ?? new();
+
+    static string Texto(Dictionary<string, JsonElement> d, string campo) =>
+        d.TryGetValue(campo, out var v)
+            ? (v.ValueKind == JsonValueKind.Null ? "—" : v.ToString())
+            : "—";
+
+    var anteriores = Leer(Model.ValoresAnteriores);
+    var nuevos = Leer(Model.ValoresNuevos);
+    var campos = anteriores.Keys.Concat(nuevos.Keys).Distinct().ToList();
+}
+
+<div class="d-flex flex-column gap-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="h4 fw-bold mb-0">Detalle de auditoría #@Model.Id</h1>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Volver</a>
+    </div>
+
+    <div class="card card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Usuario</dt><dd class="col-sm-9">@Model.NombreUsuario</dd>
+            <dt class="col-sm-3">Entidad</dt><dd class="col-sm-9">@Model.Entidad</dd>
+            <dt class="col-sm-3">Registro</dt><dd class="col-sm-9">@Model.IdRegistro</dd>
+            <dt class="col-sm-3">Acción</dt><dd class="col-sm-9">@Model.Accion</dd>
+            <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">@Model.Fecha.AddHours(-5).ToString("dd/MM/yyyy HH:mm:ss")</dd>
+        </dl>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr><th>Campo</th><th>Valor anterior</th><th>Valor nuevo</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var campo in campos)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@campo</td>
+                            <td class="text-danger">@Texto(anteriores, campo)</td>
+                            <td class="text-success">@Texto(nuevos, campo)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

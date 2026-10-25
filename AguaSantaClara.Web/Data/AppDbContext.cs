@@ -29,6 +29,7 @@ public class AppDbContext : IdentityDbContext<Usuario, Rol, long>
     public DbSet<Incidencia> Incidencias => Set<Incidencia>();
     public DbSet<MovimientoBidones> MovimientosBidones => Set<MovimientoBidones>();
     public DbSet<AutorizacionPlazo> AutorizacionesPlazo => Set<AutorizacionPlazo>();
+    public DbSet<AuditoriaCambio> AuditoriasCambio => Set<AuditoriaCambio>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

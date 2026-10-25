@@ -1,0 +1,121 @@
+@model AguaSantaClara.Web.Services.ResultadoAuditoria
+@using AguaSantaClara.Web.Models.Entities
+@using AguaSantaClara.Web.Services
+
+@{
+    ViewData["Title"] = "Auditoría de Cambios";
+    var filtro = (FiltroAuditoria)ViewBag.Filtro;
+    var entidades = (IReadOnlyList<string>)ViewBag.Entidades;
+
+    string Badge(string accion) => accion switch
+    {
+        AccionAuditoria.Insertar => "bg-success",
+        AccionAuditoria.Editar => "bg-primary",
+        _ => "bg-danger"
+    };
+}
+
+<div class="d-flex flex-column gap-3">
+    <div>
+        <h1 class="h4 fw-bold mb-1">Auditoría de Cambios</h1>
+        <p class="text-muted small mb-0">Registro de inserciones, ediciones y eliminaciones del sistema.</p>
+    </div>
+
+    <form asp-action="Index" method="get" class="card card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">Entidad</label>
+                <select name="entidad" class="form-select form-select-sm">
+                    <option value="">Todas</option>
+                    @foreach (var e in entidades)
+                    {
+                        <option value="@e" selected="@(e == filtro.Entidad)">@e</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Acción</label>
+                <select name="accion" class="form-select form-select-sm">
+                    <option value="">Todas</option>
+                    @foreach (var a in AccionAuditoria.Todas)
+                    {
+                        <option value="@a" selected="@(a == filtro.Accion)">@a</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Usuario</label>
+                <input type="text" name="usuario" value="@filtro.Usuario" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Desde</label>
+                <input type="date" name="desde" value="@filtro.Desde?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Hasta</label>
+                <input type="date" name="hasta" value="@filtro.Hasta?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn btn-dark btn-sm"><i class="bi bi-search"></i> Filtrar</button>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th>Entidad</th>
+                        <th>Registro</th>
+                        <th>Acción</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model.Items)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@a.Fecha.AddHours(-5).ToString("dd/MM/yyyy HH:mm:ss")</td>
+                            <td>@a.NombreUsuario</td>
+                            <td>@a.Entidad</td>
+                            <td>@a.IdRegistro</td>
+                            <td><span class="badge @Badge(a.Accion)">@a.Accion</span></td>
+                            <td class="text-end">
+                                <a asp-action="Detalle" asp-route-id="@a.Id" class="btn btn-outline-dark btn-sm">Ver detalle</a>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Items.Any())
+                    {
+                        <tr><td colspan="6" class="text-center text-muted py-4">No hay registros de auditoría.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.TotalPaginas > 1)
+    {
+        <nav aria-label="Paginación">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(Model.Pagina <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-all-route-data="@(new Dictionary<string, string?> {
+                        ["pagina"] = (Model.Pagina - 1).ToString(), ["entidad"] = filtro.Entidad, ["accion"] = filtro.Accion,
+                        ["usuario"] = filtro.Usuario, ["desde"] = filtro.Desde?.ToString("yyyy-MM-dd"),
+                        ["hasta"] = filtro.Hasta?.ToString("yyyy-MM-dd") })">Anterior</a>
+                </li>
+                <li class="page-item disabled"><span class="page-link">Página @Model.Pagina de @Model.TotalPaginas (@Model.Total registros)</span></li>
+                <li class="page-item @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-all-route-data="@(new Dictionary<string, string?> {
+                        ["pagina"] = (Model.Pagina + 1).ToString(), ["entidad"] = filtro.Entidad, ["accion"] = filtro.Accion,
+                        ["usuario"] = filtro.Usuario, ["desde"] = filtro.Desde?.ToString("yyyy-MM-dd"),
+                        ["hasta"] = filtro.Hasta?.ToString("yyyy-MM-dd") })">Siguiente</a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>

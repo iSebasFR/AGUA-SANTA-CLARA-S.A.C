@@ -1,3 +1,4 @@
+using AguaSantaClara.Web.Auditoria;
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models.Alertas;
 using AguaSantaClara.Web.Models.Entities;
@@ -33,8 +34,11 @@ if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri)
 }
 
 // 1. EF Core + PostgreSQL (con convención snake_case para PostgreSQL)
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AuditoriaInterceptor>(); // HT-12: auditoría transversal
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
     options.UseNpgsql(connectionString)
+        .AddInterceptors(sp.GetRequiredService<AuditoriaInterceptor>())
 );
 
 // 2. ASP.NET Core Identity con entidades personalizadas
@@ -71,6 +75,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 builder.Services.AddScoped<IPedidoService, PedidoService>();
 builder.Services.AddScoped<IAutoventaService, AutoventaService>(); // HU-14 T10
 builder.Services.AddScoped<IAlertasService, AlertasService>();
+builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddOptions<AlertasOptions>()
     .BindConfiguration(AlertasOptions.SectionName)
     .Validate(options => options.HoraEjecucion is >= 0 and <= 23, "Alertas:HoraEjecucion debe estar entre 0 y 23.")
