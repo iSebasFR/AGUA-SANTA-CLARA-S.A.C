@@ -9,10 +9,16 @@ using AguaSantaClara.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? builder.Configuration["DATABASE_URL"];
+var isTesting = builder.Environment.IsEnvironment("Testing");
 
-if (string.IsNullOrWhiteSpace(connectionString))
+var isTestingPostgres = builder.Environment.IsEnvironment("TestingPostgres");
+
+var connectionString = isTestingPostgres
+    ? builder.Configuration["HT13_TEST_DB_CONNECTION"]
+    : builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? builder.Configuration["DATABASE_URL"];
+
+if (!isTesting && string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
         "Configura ConnectionStrings__DefaultConnection o DATABASE_URL antes de iniciar la aplicación.");
@@ -33,13 +39,37 @@ if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri)
     }.ConnectionString;
 }
 
+// HT-13: impedir que las pruebas PostgreSQL utilicen otra base.
+if (isTestingPostgres)
+{
+    var testConnection = new Npgsql.NpgsqlConnectionStringBuilder(connectionString!);
+
+    if (!string.Equals(
+            testConnection.Database,
+            "aguasantaclara_ht13_test",
+            StringComparison.OrdinalIgnoreCase)
+        || !string.Equals(
+            testConnection.Username,
+            "agua_ht13_test",
+            StringComparison.OrdinalIgnoreCase)
+        || !new[] { "localhost", "127.0.0.1", "::1" }
+            .Contains(testConnection.Host, StringComparer.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            "TestingPostgres solo permite la base HT-13, su usuario exclusivo y PostgreSQL local.");
+    }
+}
+
 // 1. EF Core + PostgreSQL (con convención snake_case para PostgreSQL)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditoriaInterceptor>(); // HT-12: auditoría transversal
-builder.Services.AddDbContext<AppDbContext>((sp, options) =>
-    options.UseNpgsql(connectionString)
-        .AddInterceptors(sp.GetRequiredService<AuditoriaInterceptor>())
-);
+if (!isTesting)
+{
+    builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+        options.UseNpgsql(connectionString!)
+            .AddInterceptors(sp.GetRequiredService<AuditoriaInterceptor>())
+    );
+}
 
 // 2. ASP.NET Core Identity con entidades personalizadas
 builder.Services.AddIdentity<Usuario, Rol>(options =>
@@ -84,7 +114,10 @@ builder.Services.AddOptions<AlertasOptions>()
     .Validate(options => options.FrecuenciaDias > 0, "Alertas:FrecuenciaDias debe ser mayor que cero.")
     .Validate(options => options.IntervaloRevisionSegundos > 0, "Alertas:IntervaloRevisionSegundos debe ser mayor que cero.")
     .ValidateOnStart();
-builder.Services.AddHostedService<AlertasBackgroundService>();
+if (!isTesting && !isTestingPostgres)
+{
+    builder.Services.AddHostedService<AlertasBackgroundService>();
+}
 
 builder.Services.AddControllersWithViews();
 
@@ -103,21 +136,30 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 // 5. Migración automática + Seed DENTRO del mismo scope al arrancar
-using (var scope = app.Services.CreateScope())
+// 5. Migraciones y SeedData solo fuera del entorno Testing
+if (!isTesting)
 {
-    var services = scope.ServiceProvider;
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var db = services.GetRequiredService<AppDbContext>();
-        db.Database.Migrate();
+        var services = scope.ServiceProvider;
+        try
+        {
+           var db = services.GetRequiredService<AppDbContext>();
+            db.Database.Migrate();
 
-        await SeedData.InitializeAsync(services, builder.Configuration);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Ocurrió un error al aplicar las migraciones o sembrar la base de datos.");
-        throw;
+            // En TestingPostgres probamos las migraciones sin cargar datos de ejemplo.
+            if (!isTestingPostgres)
+            {
+                await SeedData.InitializeAsync(services, builder.Configuration);
+            }
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex,
+                "Ocurrió un error al aplicar las migraciones o sembrar la base de datos.");
+            throw;
+        }
     }
 }
 
@@ -154,3 +196,5 @@ app.MapControllerRoute(
     pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();
+
+public partial class Program { }
