@@ -11,8 +11,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 var isTesting = builder.Environment.IsEnvironment("Testing");
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? builder.Configuration["DATABASE_URL"];
+var isTestingPostgres = builder.Environment.IsEnvironment("TestingPostgres");
+
+var connectionString = isTestingPostgres
+    ? builder.Configuration["HT13_TEST_DB_CONNECTION"]
+    : builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? builder.Configuration["DATABASE_URL"];
 
 if (!isTesting && string.IsNullOrWhiteSpace(connectionString))
 {
@@ -33,6 +37,27 @@ if (Uri.TryCreate(connectionString, UriKind.Absolute, out var databaseUri)
         Password = credentials.Length > 1 ? Uri.UnescapeDataString(credentials[1]) : string.Empty,
         SslMode = Npgsql.SslMode.Require
     }.ConnectionString;
+}
+
+// HT-13: impedir que las pruebas PostgreSQL utilicen otra base.
+if (isTestingPostgres)
+{
+    var testConnection = new Npgsql.NpgsqlConnectionStringBuilder(connectionString!);
+
+    if (!string.Equals(
+            testConnection.Database,
+            "aguasantaclara_ht13_test",
+            StringComparison.OrdinalIgnoreCase)
+        || !string.Equals(
+            testConnection.Username,
+            "agua_ht13_test",
+            StringComparison.OrdinalIgnoreCase)
+        || !new[] { "localhost", "127.0.0.1", "::1" }
+            .Contains(testConnection.Host, StringComparer.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            "TestingPostgres solo permite la base HT-13, su usuario exclusivo y PostgreSQL local.");
+    }
 }
 
 // 1. EF Core + PostgreSQL (con convención snake_case para PostgreSQL)
@@ -89,7 +114,7 @@ builder.Services.AddOptions<AlertasOptions>()
     .Validate(options => options.FrecuenciaDias > 0, "Alertas:FrecuenciaDias debe ser mayor que cero.")
     .Validate(options => options.IntervaloRevisionSegundos > 0, "Alertas:IntervaloRevisionSegundos debe ser mayor que cero.")
     .ValidateOnStart();
-if (!isTesting)
+if (!isTesting && !isTestingPostgres)
 {
     builder.Services.AddHostedService<AlertasBackgroundService>();
 }
@@ -119,10 +144,14 @@ if (!isTesting)
         var services = scope.ServiceProvider;
         try
         {
-            var db = services.GetRequiredService<AppDbContext>();
+           var db = services.GetRequiredService<AppDbContext>();
             db.Database.Migrate();
 
-            await SeedData.InitializeAsync(services, builder.Configuration);
+            // En TestingPostgres probamos las migraciones sin cargar datos de ejemplo.
+            if (!isTestingPostgres)
+            {
+                await SeedData.InitializeAsync(services, builder.Configuration);
+            }
         }
         catch (Exception ex)
         {
