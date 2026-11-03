@@ -1,0 +1,229 @@
+/* ============================================================
+   ESTILOS REPORTE DE VENTAS (HU-13)
+   ============================================================ */
+
+.reporte-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.reporte-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Pills de filtro */
+.reporte-pills {
+  background: #f1f2f4;
+  border-radius: 9999px;
+  padding: 3px;
+  display: inline-flex;
+}
+
+.reporte-pills .pill-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  transition: all 0.15s ease-in-out;
+}
+
+.reporte-pills .pill-btn:hover {
+  color: var(--text);
+}
+
+.reporte-pills .pill-btn.active {
+  background: #111827;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Controles de fecha */
+.date-range-picker {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+
+.date-input {
+  border: none !important;
+  box-shadow: none !important;
+  font-size: 0.82rem;
+  color: var(--text);
+  padding: 4px 6px;
+  width: 125px;
+}
+
+.export-btn {
+  border-radius: 8px 0 0 8px;
+  font-weight: 500;
+  font-size: 0.82rem;
+  padding: 6px 14px;
+  background: #111827;
+}
+
+.export-btn:hover {
+  background: #000000;
+}
+
+/* KPI Cards */
+.kpi-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: transform 0.15s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+}
+
+.kpi-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.kpi-value.text-success {
+  color: #16a34a !important;
+}
+
+.kpi-value.text-danger {
+  color: #ef4444 !important;
+}
+
+.kpi-value.text-primary {
+  color: #2563eb !important;
+}
+
+/* Tablas del reporte */
+.reporte-section-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+}
+
+.reporte-section-header {
+  padding: 14px 20px;
+  background: #fafafa;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-heading-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #4b5563;
+  text-transform: uppercase;
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.section-count-badge {
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+
+.reporte-table {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+}
+
+.reporte-table thead th {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  background: #ffffff;
+  border-bottom: 1px solid #f3f4f6;
+  padding: 12px 20px;
+}
+
+.reporte-table tbody td {
+  padding: 12px 20px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f9fafb;
+  color: #374151;
+}
+
+.reporte-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.reporte-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Badges de Estado */
+.badge-estado {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  display: inline-block;
+}
+
+.badge-estado-pagado {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.badge-estado-parcial {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.badge-estado-pendiente {
+  background-color: #fef9c3;
+  color: #854d0e;
+}
+
+.badge-estado-enviado {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+}
+
+.badge-estado-entregado {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-estado-incidencia {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Totales Consolidados en Footer */
+.reporte-totales-footer {
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+  border-radius: 0 0 12px 12px;
+}

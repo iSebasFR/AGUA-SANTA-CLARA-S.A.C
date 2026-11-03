@@ -1,0 +1,268 @@
+@model AguaSantaClara.Web.Models.ReporteVentasViewModel
+@{
+    ViewData["Title"] = "Reporte de Ventas";
+    var culturaPe = new System.Globalization.CultureInfo("es-PE");
+}
+
+<link rel="stylesheet" href="~/css/reporte-ventas.css" asp-append-version="true" />
+
+<div class="reporte-ventas-container">
+    <!-- ===== ENCABEZADO Y CONTROLES SUPERIORES ===== -->
+    <div class="reporte-ventas-header d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="reporte-title mb-1">REPORTE DE VENTAS</h1>
+            <p class="reporte-subtitle mb-0">Consulta el detalle consolidado de las ventas del período seleccionado.</p>
+        </div>
+        <div class="reporte-controls d-flex flex-wrap align-items-center gap-3">
+            <!-- Filtros Rápidos (Pills) -->
+            <div class="btn-group reporte-pills" role="group" aria-label="Filtros rápidos">
+                <button type="button" class="btn pill-btn @(Model.FiltroRapido == "hoy" ? "active" : "")" data-filtro="hoy">Hoy</button>
+                <button type="button" class="btn pill-btn @(Model.FiltroRapido == "ayer" ? "active" : "")" data-filtro="ayer">Ayer</button>
+                <button type="button" class="btn pill-btn @(Model.FiltroRapido == "semana" ? "active" : "")" data-filtro="semana">Semana</button>
+            </div>
+
+            <!-- Rango de Fechas -->
+            <div class="d-flex align-items-center gap-2 date-range-picker">
+                <input type="date" id="inputFechaDesde" class="form-control form-control-sm date-input" value="@Model.FechaDesde.ToString("yyyy-MM-dd")" />
+                <span class="text-muted small">hasta</span>
+                <input type="date" id="inputFechaHasta" class="form-control form-control-sm date-input" value="@Model.FechaHasta.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <!-- Botón Exportar (Excel y CSV) -->
+            <div class="btn-group">
+                <button type="button" id="btnExportarExcel" class="btn btn-dark btn-sm d-flex align-items-center gap-2 export-btn" title="Exportar a Excel">
+                    <i class="bi bi-download"></i>
+                    <span>Exportar</span>
+                </button>
+                <button type="button" class="btn btn-dark btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="visually-hidden">Opciones de exportación</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="#" id="optExportarExcel">
+                            <i class="bi bi-file-earmark-excel text-success"></i> Exportar como Excel (.xlsx)
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="#" id="optExportarCsv">
+                            <i class="bi bi-file-earmark-text text-primary"></i> Exportar como CSV
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TARJETAS RESUMEN / KPIS ===== -->
+    <div class="row g-3 mb-4">
+        <!-- Total Ventas -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body p-3">
+                    <div class="kpi-label">TOTAL VENTAS</div>
+                    <div class="kpi-value text-dark" id="kpiTotalVentas">S/ @Model.TotalVentas.ToString("N2", culturaPe)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagos Recibidos -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body p-3">
+                    <div class="kpi-label">PAGOS RECIBIDOS</div>
+                    <div class="kpi-value text-success" id="kpiTotalPagos">S/ @Model.TotalPagos.ToString("N2", culturaPe)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deudas Registradas -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body p-3">
+                    <div class="kpi-label">DEUDAS REGISTRADAS</div>
+                    <div class="kpi-value text-danger" id="kpiTotalDeudas">S/ @Model.TotalDeudas.ToString("N2", culturaPe)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pedidos del Período / Día -->
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body p-3">
+                    <div class="kpi-label" id="kpiLabelPedidos">PEDIDOS DEL PERÍODO</div>
+                    <div class="kpi-value text-primary" id="kpiCantidadPedidos">@Model.CantidadPedidos</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SECCIÓN 1: PEDIDOS DEL PERÍODO ===== -->
+    <div class="reporte-section-card mb-4">
+        <div class="reporte-section-header">
+            <h2 class="section-heading-title">PEDIDOS DEL PERÍODO</h2>
+            <span class="section-count-badge" id="badgeCountPedidos">@Model.CantidadPedidos</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table reporte-table">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">N°</th>
+                        <th>CLIENTE</th>
+                        <th style="width: 150px;">FECHA</th>
+                        <th style="width: 160px;">ESTADO</th>
+                        <th style="width: 150px;" class="text-end">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyPedidos">
+                    @if (Model.Pedidos.Any())
+                    {
+                        foreach (var pedido in Model.Pedidos)
+                        {
+                            var badgeClass = pedido.Estado switch
+                            {
+                                "Pagado" => "badge-estado-pagado",
+                                "Pago Parcial" => "badge-estado-parcial",
+                                "Pendiente" => "badge-estado-pendiente",
+                                "Enviado" => "badge-estado-enviado",
+                                "Entregado" => "badge-estado-entregado",
+                                "Con Incidencia" => "badge-estado-incidencia",
+                                _ => "badge-estado-pendiente"
+                            };
+
+                            <tr>
+                                <td class="fw-semibold text-secondary">@pedido.Numero</td>
+                                <td class="fw-medium">@pedido.Cliente</td>
+                                <td class="text-secondary">@pedido.Fecha.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                <td><span class="badge-estado @badgeClass">@pedido.Estado</span></td>
+                                <td class="text-end fw-semibold">S/ @pedido.Total.ToString("N2", culturaPe)</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox d-block mb-1" style="font-size: 1.5rem;"></i>
+                                No se encontraron pedidos en el período seleccionado.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===== SECCIÓN 2: PAGOS RECIBIDOS ===== -->
+    <div class="reporte-section-card mb-4">
+        <div class="reporte-section-header">
+            <h2 class="section-heading-title">PAGOS RECIBIDOS</h2>
+            <span class="section-count-badge" id="badgeCountPagos">@Model.CantidadPagos</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table reporte-table">
+                <thead>
+                    <tr>
+                        <th>CLIENTE</th>
+                        <th style="width: 180px;">FECHA</th>
+                        <th style="width: 180px;">MÉTODO</th>
+                        <th style="width: 150px;" class="text-end">MONTO</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyPagos">
+                    @if (Model.Pagos.Any())
+                    {
+                        foreach (var pago in Model.Pagos)
+                        {
+                            <tr>
+                                <td class="fw-medium">@pago.Cliente</td>
+                                <td class="text-secondary">@pago.Fecha.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                <td><span class="badge bg-light text-dark border">@pago.MetodoPago</span></td>
+                                <td class="text-end fw-semibold text-success">S/ @pago.Monto.ToString("N2", culturaPe)</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox d-block mb-1" style="font-size: 1.5rem;"></i>
+                                No se encontraron pagos registrados en el período seleccionado.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===== SECCIÓN 3: DEUDAS REGISTRADAS ===== -->
+    <div class="reporte-section-card mb-4">
+        <div class="reporte-section-header">
+            <h2 class="section-heading-title">DEUDAS REGISTRADAS</h2>
+            <span class="section-count-badge" id="badgeCountDeudas">@Model.CantidadDeudas</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table reporte-table">
+                <thead>
+                    <tr>
+                        <th>CLIENTE</th>
+                        <th style="width: 180px;">FECHA</th>
+                        <th style="width: 180px;">VENCIMIENTO</th>
+                        <th style="width: 150px;" class="text-end">MONTO</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyDeudas">
+                    @if (Model.Deudas.Any())
+                    {
+                        foreach (var deuda in Model.Deudas)
+                        {
+                            <tr>
+                                <td class="fw-medium">@deuda.Cliente</td>
+                                <td class="text-secondary">@deuda.Fecha.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                <td class="text-danger fw-medium">@deuda.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end fw-semibold text-danger">S/ @deuda.Monto.ToString("N2", culturaPe)</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox d-block mb-1" style="font-size: 1.5rem;"></i>
+                                No se encontraron deudas registradas en el período seleccionado.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===== PARTE INFERIOR: TOTALES CONSOLIDADOS ===== -->
+    <div class="card border shadow-sm reporte-totales-footer mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <span class="text-uppercase small fw-bold text-muted d-block">Resumen Consolidado del Período</span>
+                <span class="text-secondary small">Totales de operaciones registradas al cierre</span>
+            </div>
+            <div class="d-flex flex-wrap gap-4 text-end">
+                <div>
+                    <span class="d-block small text-muted">Total Ventas</span>
+                    <span class="fw-bold fs-6 text-dark" id="footerTotalVentas">S/ @Model.TotalVentas.ToString("N2", culturaPe)</span>
+                </div>
+                <div>
+                    <span class="d-block small text-muted">Total Pagos</span>
+                    <span class="fw-bold fs-6 text-success" id="footerTotalPagos">S/ @Model.TotalPagos.ToString("N2", culturaPe)</span>
+                </div>
+                <div>
+                    <span class="d-block small text-muted">Total Deudas</span>
+                    <span class="fw-bold fs-6 text-danger" id="footerTotalDeudas">S/ @Model.TotalDeudas.ToString("N2", culturaPe)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/reporte-ventas.js" asp-append-version="true"></script>
+}

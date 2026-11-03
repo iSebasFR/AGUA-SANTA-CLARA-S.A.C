@@ -1,4 +1,4 @@
-﻿@{
+@{
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var userName = User.FindFirst("NombreCompleto")?.Value ?? User.Identity?.Name;
     var roleName = User.IsInRole("Vendedora") ? "Vendedora"
@@ -19,6 +19,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="app-body @(isAuthenticated ? "with-sidebar" : "guest-layout")">
     <div class="app-shell">
@@ -89,6 +90,11 @@
                         </a>
                         <a asp-controller="Auditoria" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-shield-check"></i><span class="sidebar-label">Auditoría</span>
+                        </a>
+
+                        <div class="sidebar-section-title sidebar-label">Reportes</div>
+                        <a asp-controller="Reportes" asp-action="Ventas" class="sidebar-link">
+                            <i class="bi bi-file-earmark-bar-graph"></i><span class="sidebar-label">Reporte de Ventas</span>
                         </a>
                     }
                     else if (User.IsInRole("Vendedora"))
