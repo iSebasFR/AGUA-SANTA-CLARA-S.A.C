@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Clientes";
+    var culturaPe = new System.Globalization.CultureInfo("es-PE");
     var puedeCrear = User.IsInRole("Vendedora");
     var puedeAdministrar = User.IsInRole("Vendedora") || User.IsInRole("Gerente") || User.IsInRole("Administradora");
     var estadoActual = Model.EstadoFiltro;
@@ -359,24 +360,211 @@
     .tab-pane.active { display: block; }
 
     .financial-overdue-alert {
+        display: flex;
+        align-items: center;
+        gap: 10px;
         margin-bottom: 18px;
-        padding: 12px 14px;
-        border: 1px solid #f5b7b1;
-        border-radius: 10px;
-        background: #fff1f0;
+        padding: 14px 16px;
+        border: 1px solid #ffd0cc;
+        border-radius: 12px;
+        background: #ffebea;
         color: #b42318;
         font-size: 13px;
         font-weight: 600;
     }
 
-    .financial-overdue-status {
-        display: inline-block;
-        padding: 3px 9px;
-        border-radius: 6px;
-        background: #ffebea;
-        color: #b42318;
+    .financial-alert-icon {
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        background: #ffffff;
+    }
+
+    .financial-summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .financial-summary-card {
+        position: relative;
+        min-width: 0;
+        padding: 16px 18px;
+        overflow: hidden;
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .financial-summary-card::before {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: #3a8ab8;
+        content: "";
+    }
+
+    .financial-summary-card.debt::before { background: #ff3b30; }
+    .financial-summary-card.credit::before { background: #34c759; }
+    .financial-summary-card.count::before { background: #3a8ab8; }
+
+    .financial-summary-label {
+        display: block;
+        margin-bottom: 7px;
+        color: #6e6e73;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .financial-summary-value {
+        display: block;
+        color: #1d1d1f;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+    }
+
+    .financial-summary-card.debt .financial-summary-value { color: #d93025; }
+    .financial-summary-card.credit .financial-summary-value { color: #1a8a3a; }
+
+    .financial-section {
+        margin-top: 20px;
+        padding: 18px;
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .financial-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .financial-section-header .section-title { color: #1d1d1f; }
+
+    .financial-section-count {
+        min-width: 26px;
+        padding: 3px 8px;
+        border-radius: 7px;
+        background: #eaf4fb;
+        color: #3a8ab8;
         font-size: 11px;
         font-weight: 700;
+        text-align: center;
+    }
+
+    .financial-filter {
+        display: flex;
+        align-items: end;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        padding: 12px;
+        border: 1px solid #e5e5ea;
+        border-radius: 10px;
+        background: #fbfcfd;
+    }
+
+    .financial-filter label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        color: #6e6e73;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .financial-filter input[type="date"] {
+        height: 36px;
+        padding: 0 10px;
+        border: 1px solid #e5e5ea;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #1d1d1f;
+        font-family: inherit;
+        font-size: 12px;
+    }
+
+    .financial-filter input[type="date"]:focus {
+        outline: none;
+        border-color: #3a8ab8;
+        box-shadow: 0 0 0 3px rgba(58, 138, 184, 0.12);
+    }
+
+    .financial-status,
+    .financial-type {
+        display: inline-block;
+        padding: 4px 9px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .financial-status.paid {
+        background: #e8f9ee;
+        color: #1a8a3a;
+    }
+
+    .financial-status.pending {
+        background: #fff4d6;
+        color: #9a6700;
+    }
+
+    .financial-status.overdue {
+        background: #ffebea;
+        color: #b42318;
+    }
+
+    .financial-type.debt {
+        background: #eaf4fb;
+        color: #3a8ab8;
+    }
+
+    .financial-type.payment {
+        background: #f3e8ff;
+        color: #7c3aed;
+    }
+
+    .financial-method {
+        display: inline-block;
+        padding: 4px 9px;
+        border: 1px solid #e5e5ea;
+        border-radius: 6px;
+        background: #f2f2f4;
+        color: #3a3a3c;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .financial-empty {
+        padding: 28px 16px;
+        border: 1px dashed #d1d1d6;
+        border-radius: 10px;
+        background: #fbfcfd;
+        color: #6e6e73;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    @@media (max-width: 640px) {
+        .financial-summary { grid-template-columns: 1fr; }
+        .financial-section { padding: 14px; }
     }
 
     .info-grid {
@@ -1010,30 +1198,44 @@
                     @if (Model.HistorialFinanciero.TieneDeudasVencidas)
                     {
                         <div class="financial-overdue-alert" role="alert">
-                            Alerta de morosidad: este cliente tiene deudas vencidas.
+                            <span class="financial-alert-icon" aria-hidden="true">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M10.3 3.9 1.8 18.1A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+                                    <path d="M12 9v4m0 4h.01"/>
+                                </svg>
+                            </span>
+                            <span>Alerta de morosidad: este cliente tiene deudas vencidas.</span>
                         </div>
                     }
-                    <div class="section-header">
-                        <h3 class="section-title">Resumen financiero</h3>
-                    </div>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <span class="info-label">Deuda total pendiente</span>
-                            <span class="info-value">S/ @Model.HistorialFinanciero.DeudaTotal.ToString("0.00")</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Saldo a favor</span>
-                            <span class="info-value">S/ @Model.HistorialFinanciero.SaldoAFavor.ToString("0.00")</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Deudas activas</span>
-                            <span class="info-value">@Model.HistorialFinanciero.CantidadDeudasActivas</span>
+                    <div class="financial-section-header">
+                        <div>
+                            <h3 class="section-title">Resumen financiero</h3>
+                            <p class="panel-subtitle">Situación actual del cliente</p>
                         </div>
                     </div>
-                    <div class="section-header" style="margin-top:24px;">
-                        <h3 class="section-title">Movimientos financieros</h3>
+                    <div class="financial-summary">
+                        <div class="financial-summary-card debt">
+                            <span class="financial-summary-label">Deuda total</span>
+                            <span class="financial-summary-value">S/ @Model.HistorialFinanciero.DeudaTotal.ToString("N2", culturaPe)</span>
+                        </div>
+                        <div class="financial-summary-card credit">
+                            <span class="financial-summary-label">Saldo a favor</span>
+                            <span class="financial-summary-value">S/ @Model.HistorialFinanciero.SaldoAFavor.ToString("N2", culturaPe)</span>
+                        </div>
+                        <div class="financial-summary-card count">
+                            <span class="financial-summary-label">Deudas activas</span>
+                            <span class="financial-summary-value">@Model.HistorialFinanciero.CantidadDeudasActivas</span>
+                        </div>
                     </div>
-                    <form method="get" asp-action="Index" class="toolbar-row">
+                    <section class="financial-section">
+                    <div class="financial-section-header">
+                        <div>
+                            <h3 class="section-title">Movimientos financieros</h3>
+                            <p class="panel-subtitle">Deudas y pagos registrados, del más reciente al más antiguo</p>
+                        </div>
+                        <span class="financial-section-count">@Model.HistorialFinanciero.Movimientos.Count</span>
+                    </div>
+                    <form method="get" asp-action="Index" class="financial-filter">
                         <input type="hidden" name="id" value="@sel.Id" />
                         <input type="hidden" name="search" value="@Model.Search" />
                         @if (Model.EstadoFiltro.HasValue)
@@ -1048,9 +1250,9 @@
                             Hasta
                             <input type="date" name="fechaHasta" value="@Model.HistorialFinanciero.FechaHasta?.ToString("yyyy-MM-dd")" />
                         </label>
-                        <button type="submit" class="btn-apple">Filtrar</button>
+                        <button type="submit" class="btn-apple">Aplicar filtro</button>
                         <a asp-action="Index" asp-route-id="@sel.Id" asp-route-search="@Model.Search"
-                           asp-route-estado="@Model.EstadoFiltro" class="filter-pill">Limpiar</a>
+                           asp-route-estado="@Model.EstadoFiltro" class="filter-pill">Limpiar fechas</a>
                     </form>
                     @if (!string.IsNullOrEmpty(Model.HistorialFinanciero.ErrorFiltro))
                     {
@@ -1058,7 +1260,7 @@
                     }
                     else if (!Model.HistorialFinanciero.Movimientos.Any())
                     {
-                        <p style="color:#6e6e73; font-size:13px;">No hay movimientos financieros para el período seleccionado.</p>
+                        <div class="financial-empty">No hay movimientos financieros para el período seleccionado.</div>
                     }
                     else
                     {
@@ -1076,20 +1278,35 @@
                             <tbody>
                                 @foreach (var movimiento in Model.HistorialFinanciero.Movimientos)
                                 {
+                                    var estadoClase = movimiento.Estado switch
+                                    {
+                                        "Pagada" => "paid",
+                                        "Vencida" => "overdue",
+                                        "Pendiente" => "pending",
+                                        _ => string.Empty
+                                    };
                                     <tr>
                                         <td>@movimiento.Fecha.ToString(movimiento.Tipo == "Pago" ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy")</td>
-                                        <td>@movimiento.Tipo</td>
+                                        <td>
+                                            <span class="financial-type @(movimiento.Tipo == "Pago" ? "payment" : "debt")">
+                                                @movimiento.Tipo
+                                            </span>
+                                        </td>
                                         <td><strong>#@movimiento.IdPedido</strong></td>
-                                        <td style="text-align:right;">S/ @movimiento.Monto.ToString("0.00")</td>
+                                        <td style="text-align:right; font-weight:600;">S/ @movimiento.Monto.ToString("N2", culturaPe)</td>
                                         <td>@(movimiento.FechaVencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
                                         <td>
-                                            @if (movimiento.Estado == "Vencida")
+                                            @if (!string.IsNullOrEmpty(movimiento.Estado))
                                             {
-                                                <span class="financial-overdue-status">@movimiento.Estado</span>
+                                                <span class="financial-status @estadoClase">@movimiento.Estado</span>
+                                            }
+                                            else if (!string.IsNullOrEmpty(movimiento.MetodoPago))
+                                            {
+                                                <span class="financial-method">@movimiento.MetodoPago</span>
                                             }
                                             else
                                             {
-                                                @(movimiento.Estado ?? movimiento.MetodoPago ?? "—")
+                                                <span style="color:#a1a1a6;">—</span>
                                             }
                                         </td>
                                     </tr>
@@ -1097,6 +1314,7 @@
                             </tbody>
                         </table>
                     }
+                    </section>
                 </div>
             </div>
         }
