@@ -65,7 +65,7 @@ public class ClientesControllerTests
             IdCliente = cliente.Id,
             IdMetodoPago = metodoEfectivo.Id,
             Monto = 10m,
-            FechaPago = DateTime.UtcNow.AddDays(-1),
+            FechaPago = DateTime.UtcNow.AddDays(-2),
             Cliente = cliente,
             Pedido = pedidoConDeuda,
             MetodoPago = metodoEfectivo
@@ -81,12 +81,29 @@ public class ClientesControllerTests
         Assert.Equal(50m, model.HistorialFinanciero.DeudaTotal);
         Assert.Equal(20m, model.HistorialFinanciero.SaldoAFavor);
         Assert.Equal(2, model.HistorialFinanciero.CantidadDeudasActivas);
-        Assert.Equal(2, model.HistorialFinanciero.Deudas.Count);
-        Assert.Contains(model.HistorialFinanciero.Deudas, deuda =>
-            deuda.IdPedido == pedidoConDeuda.Id && deuda.Estado == EstadosDeuda.Vencida);
-        Assert.Equal(2, model.HistorialFinanciero.Pagos.Count);
-        Assert.Equal("Yape", model.HistorialFinanciero.Pagos[0].MetodoPago);
-        Assert.Equal(130m, model.HistorialFinanciero.Pagos[0].Monto);
-        Assert.Equal("Efectivo", model.HistorialFinanciero.Pagos[1].MetodoPago);
+        Assert.Equal(4, model.HistorialFinanciero.Movimientos.Count);
+        Assert.Contains(model.HistorialFinanciero.Movimientos, movimiento =>
+            movimiento.IdPedido == pedidoConDeuda.Id
+            && movimiento.Tipo == "Deuda"
+            && movimiento.Estado == EstadosDeuda.Vencida);
+        Assert.Contains(model.HistorialFinanciero.Movimientos, movimiento =>
+            movimiento.Tipo == "Pago" && movimiento.MetodoPago == "Yape" && movimiento.Monto == 130m);
+        Assert.Equal(
+            model.HistorialFinanciero.Movimientos.OrderByDescending(movimiento => movimiento.Fecha)
+                .Select(movimiento => movimiento.Fecha),
+            model.HistorialFinanciero.Movimientos.Select(movimiento => movimiento.Fecha));
+
+        var fechaPagoAntiguo = DateTime.UtcNow.AddDays(-2).Date;
+        var filtrado = await controller.Index(
+            search: null,
+            estado: null,
+            id: cliente.Id,
+            fechaDesde: fechaPagoAntiguo,
+            fechaHasta: fechaPagoAntiguo);
+        var modeloFiltrado = Assert.IsType<ClientesIndexViewModel>(Assert.IsType<ViewResult>(filtrado).Model);
+        var movimientoFiltrado = Assert.Single(modeloFiltrado.HistorialFinanciero.Movimientos);
+        Assert.Equal("Pago", movimientoFiltrado.Tipo);
+        Assert.Equal("Efectivo", movimientoFiltrado.MetodoPago);
+        Assert.Equal(10m, movimientoFiltrado.Monto);
     }
 }

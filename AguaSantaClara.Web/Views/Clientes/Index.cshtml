@@ -709,7 +709,7 @@
                         {
                             var seleccionado = Model.Seleccionado?.Id == c.Id;
                             <tr class="@(seleccionado ? "selected" : "")"
-                                onclick="if(event.target.closest('.status-select')) return; window.location='@Url.Action("Index", new { id = c.Id, search = Model.Search, estado = estadoActual })'">
+                                onclick="if(event.target.closest('.status-select')) return; window.location='@Url.Action("Index", new { id = c.Id, search = Model.Search, estado = estadoActual, fechaDesde = Model.HistorialFinanciero.FechaDesde, fechaHasta = Model.HistorialFinanciero.FechaHasta })'">
                                 <td>
                                     <div class="client-name">@c.Nombre</div>
                                 </td>
@@ -821,70 +821,6 @@
                             <span class="info-value">@sel.FechaCreacion.ToString("dd/MM/yyyy")</span>
                         </div>
                     </div>
-                    <div class="section-header" style="margin-top:24px;">
-                        <h3 class="section-title">Deudas</h3>
-                    </div>
-                    @if (!Model.HistorialFinanciero.Deudas.Any())
-                    {
-                        <p style="color:#6e6e73; font-size:13px;">Este cliente no tiene deudas registradas.</p>
-                    }
-                    else
-                    {
-                        <table class="clientes-table">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Pedido</th>
-                                    <th style="text-align:right;">Monto</th>
-                                    <th>Vencimiento</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var deuda in Model.HistorialFinanciero.Deudas)
-                                {
-                                    <tr>
-                                        <td>@deuda.Fecha.ToString("dd/MM/yyyy")</td>
-                                        <td><strong>#@deuda.IdPedido</strong></td>
-                                        <td style="text-align:right;">S/ @deuda.Monto.ToString("0.00")</td>
-                                        <td>@deuda.FechaVencimiento.ToString("dd/MM/yyyy")</td>
-                                        <td>@deuda.Estado</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                    <div class="section-header" style="margin-top:24px;">
-                        <h3 class="section-title">Pagos</h3>
-                    </div>
-                    @if (!Model.HistorialFinanciero.Pagos.Any())
-                    {
-                        <p style="color:#6e6e73; font-size:13px;">Este cliente no tiene pagos registrados.</p>
-                    }
-                    else
-                    {
-                        <table class="clientes-table">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Pedido</th>
-                                    <th style="text-align:right;">Monto</th>
-                                    <th>Método de pago</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var pago in Model.HistorialFinanciero.Pagos)
-                                {
-                                    <tr>
-                                        <td>@pago.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
-                                        <td><strong>#@pago.IdPedido</strong></td>
-                                        <td style="text-align:right;">S/ @pago.Monto.ToString("0.00")</td>
-                                        <td>@pago.MetodoPago</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
                 </div>
 
                 <div class="tab-pane" data-pane="direcciones">
@@ -1067,6 +1003,64 @@
                             <span class="info-value">@Model.HistorialFinanciero.CantidadDeudasActivas</span>
                         </div>
                     </div>
+                    <div class="section-header" style="margin-top:24px;">
+                        <h3 class="section-title">Movimientos financieros</h3>
+                    </div>
+                    <form method="get" asp-action="Index" class="toolbar-row">
+                        <input type="hidden" name="id" value="@sel.Id" />
+                        <input type="hidden" name="search" value="@Model.Search" />
+                        @if (Model.EstadoFiltro.HasValue)
+                        {
+                            <input type="hidden" name="estado" value="@Model.EstadoFiltro.Value.ToString().ToLowerInvariant()" />
+                        }
+                        <label>
+                            Desde
+                            <input type="date" name="fechaDesde" value="@Model.HistorialFinanciero.FechaDesde?.ToString("yyyy-MM-dd")" />
+                        </label>
+                        <label>
+                            Hasta
+                            <input type="date" name="fechaHasta" value="@Model.HistorialFinanciero.FechaHasta?.ToString("yyyy-MM-dd")" />
+                        </label>
+                        <button type="submit" class="btn-apple">Filtrar</button>
+                        <a asp-action="Index" asp-route-id="@sel.Id" asp-route-search="@Model.Search"
+                           asp-route-estado="@Model.EstadoFiltro" class="filter-pill">Limpiar</a>
+                    </form>
+                    @if (!string.IsNullOrEmpty(Model.HistorialFinanciero.ErrorFiltro))
+                    {
+                        <p role="alert" style="color:#b42318; font-size:13px;">@Model.HistorialFinanciero.ErrorFiltro</p>
+                    }
+                    else if (!Model.HistorialFinanciero.Movimientos.Any())
+                    {
+                        <p style="color:#6e6e73; font-size:13px;">No hay movimientos financieros para el período seleccionado.</p>
+                    }
+                    else
+                    {
+                        <table class="clientes-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Pedido</th>
+                                    <th style="text-align:right;">Monto</th>
+                                    <th>Vencimiento</th>
+                                    <th>Estado / método de pago</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var movimiento in Model.HistorialFinanciero.Movimientos)
+                                {
+                                    <tr>
+                                        <td>@movimiento.Fecha.ToString(movimiento.Tipo == "Pago" ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy")</td>
+                                        <td>@movimiento.Tipo</td>
+                                        <td><strong>#@movimiento.IdPedido</strong></td>
+                                        <td style="text-align:right;">S/ @movimiento.Monto.ToString("0.00")</td>
+                                        <td>@(movimiento.FechaVencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td>@(movimiento.Estado ?? movimiento.MetodoPago ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
                 </div>
             </div>
         }

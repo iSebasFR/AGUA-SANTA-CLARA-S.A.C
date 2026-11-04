@@ -18,7 +18,12 @@ public class ClientesController : Controller
     }
 
     // ==================== INDEX ====================
-    public async Task<IActionResult> Index(string? search, bool? estado, long? id)
+    public async Task<IActionResult> Index(
+        string? search,
+        bool? estado,
+        long? id,
+        DateTime? fechaDesde = null,
+        DateTime? fechaHasta = null)
     {
         var consulta = _context.Clientes
             .Include(c => c.Direcciones.Where(d => d.EstadoRegistro))
@@ -100,9 +105,10 @@ public class ClientesController : Controller
             historialFinanciero.SaldoAFavor = saldoAFavor;
             historialFinanciero.CantidadDeudasActivas = deudas.Count(d => d.Estado != EstadosDeuda.Pagada);
             var fechaActualPeru = DateTime.UtcNow.AddHours(-5).Date;
-            historialFinanciero.Deudas = deudas
-                .Select(deuda => new DeudaHistorialViewModel
+            var movimientos = deudas
+                .Select(deuda => new MovimientoFinancieroViewModel
                 {
+                    Tipo = "Deuda",
                     IdPedido = deuda.IdPedido,
                     Fecha = deuda.FechaCreacion,
                     Monto = deuda.Monto + deuda.MontoPagadoAlRegistrar,
@@ -113,18 +119,33 @@ public class ClientesController : Controller
                             ? EstadosDeuda.Vencida
                             : EstadosDeuda.Pendiente
                 })
-                .OrderByDescending(deuda => deuda.Fecha)
-                .ToList();
-            historialFinanciero.Pagos = pagos
-                .Select(pago => new PagoHistorialViewModel
+                .Concat(pagos.Select(pago => new MovimientoFinancieroViewModel
                 {
+                    Tipo = "Pago",
                     IdPedido = pago.IdPedido,
                     Fecha = pago.FechaPago,
                     Monto = pago.Monto,
                     MetodoPago = pago.MetodoPago.Nombre
-                })
-                .OrderByDescending(pago => pago.Fecha)
+                }))
                 .ToList();
+
+            historialFinanciero.FechaDesde = fechaDesde?.Date;
+            historialFinanciero.FechaHasta = fechaHasta?.Date;
+            if (fechaDesde.HasValue && fechaHasta.HasValue
+                && fechaDesde.Value.Date > fechaHasta.Value.Date)
+            {
+                historialFinanciero.ErrorFiltro = "La fecha inicial no puede ser posterior a la fecha final.";
+            }
+            else
+            {
+                historialFinanciero.Movimientos = movimientos
+                    .Where(movimiento =>
+                        (!fechaDesde.HasValue || movimiento.Fecha.Date >= fechaDesde.Value.Date)
+                        && (!fechaHasta.HasValue || movimiento.Fecha.Date <= fechaHasta.Value.Date))
+                    .OrderByDescending(movimiento => movimiento.Fecha)
+                    .ThenByDescending(movimiento => movimiento.Tipo)
+                    .ToList();
+            }
         }
 
         var model = new ClientesIndexViewModel
