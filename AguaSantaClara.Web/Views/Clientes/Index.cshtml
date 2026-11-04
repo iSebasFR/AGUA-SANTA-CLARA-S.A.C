@@ -358,6 +358,27 @@
     .tab-pane { display: none; }
     .tab-pane.active { display: block; }
 
+    .financial-overdue-alert {
+        margin-bottom: 18px;
+        padding: 12px 14px;
+        border: 1px solid #f5b7b1;
+        border-radius: 10px;
+        background: #fff1f0;
+        color: #b42318;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .financial-overdue-status {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 6px;
+        background: #ffebea;
+        color: #b42318;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
     .info-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -986,6 +1007,12 @@
                 </div>
 
                 <div class="tab-pane" data-pane="financiero">
+                    @if (Model.HistorialFinanciero.TieneDeudasVencidas)
+                    {
+                        <div class="financial-overdue-alert" role="alert">
+                            Alerta de morosidad: este cliente tiene deudas vencidas.
+                        </div>
+                    }
                     <div class="section-header">
                         <h3 class="section-title">Resumen financiero</h3>
                     </div>
@@ -1055,7 +1082,16 @@
                                         <td><strong>#@movimiento.IdPedido</strong></td>
                                         <td style="text-align:right;">S/ @movimiento.Monto.ToString("0.00")</td>
                                         <td>@(movimiento.FechaVencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
-                                        <td>@(movimiento.Estado ?? movimiento.MetodoPago ?? "—")</td>
+                                        <td>
+                                            @if (movimiento.Estado == "Vencida")
+                                            {
+                                                <span class="financial-overdue-status">@movimiento.Estado</span>
+                                            }
+                                            else
+                                            {
+                                                @(movimiento.Estado ?? movimiento.MetodoPago ?? "—")
+                                            }
+                                        </td>
                                     </tr>
                                 }
                             </tbody>

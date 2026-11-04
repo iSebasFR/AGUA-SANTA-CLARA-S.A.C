@@ -105,6 +105,9 @@ public class ClientesController : Controller
             historialFinanciero.SaldoAFavor = saldoAFavor;
             historialFinanciero.CantidadDeudasActivas = deudas.Count(d => d.Estado != EstadosDeuda.Pagada);
             var fechaActualPeru = DateTime.UtcNow.AddHours(-5).Date;
+            historialFinanciero.TieneDeudasVencidas = deudas.Any(deuda =>
+                deuda.Estado != EstadosDeuda.Pagada
+                && deuda.FechaVencimiento.Date < fechaActualPeru);
             var movimientos = deudas
                 .Select(deuda => new MovimientoFinancieroViewModel
                 {

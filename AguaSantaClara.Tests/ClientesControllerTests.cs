@@ -81,6 +81,7 @@ public class ClientesControllerTests
         Assert.Equal(50m, model.HistorialFinanciero.DeudaTotal);
         Assert.Equal(20m, model.HistorialFinanciero.SaldoAFavor);
         Assert.Equal(2, model.HistorialFinanciero.CantidadDeudasActivas);
+        Assert.True(model.HistorialFinanciero.TieneDeudasVencidas);
         Assert.Equal(4, model.HistorialFinanciero.Movimientos.Count);
         Assert.Contains(model.HistorialFinanciero.Movimientos, movimiento =>
             movimiento.IdPedido == pedidoConDeuda.Id
