@@ -18,7 +18,12 @@ public class ClientesController : Controller
     }
 
     // ==================== INDEX ====================
-    public async Task<IActionResult> Index(string? search, bool? estado, long? id)
+    public async Task<IActionResult> Index(
+        string? search,
+        bool? estado,
+        long? id,
+        DateTime? fechaDesde = null,
+        DateTime? fechaHasta = null)
     {
         var consulta = _context.Clientes
             .Include(c => c.Direcciones.Where(d => d.EstadoRegistro))
@@ -48,6 +53,7 @@ public class ClientesController : Controller
 
         var pedidos = new List<Pedido>();
         var autorizacionesPlazo = new List<AutorizacionPlazo>();
+        var historialFinanciero = new HistorialFinancieroViewModel();
         if (seleccionado != null)
         {
             autorizacionesPlazo = await _context.AutorizacionesPlazo
@@ -66,6 +72,83 @@ public class ClientesController : Controller
                 .Where(p => p.EstadoRegistro && p.Clientes.Any(pc => pc.IdCliente == seleccionado.Id))
                 .OrderByDescending(p => p.FechaCreacion)
                 .ToListAsync();
+
+            var deudas = await _context.Deudas
+                .AsNoTracking()
+                .Where(d => d.EstadoRegistro && d.IdCliente == seleccionado.Id)
+                .ToListAsync();
+            var pagos = await _context.Pagos
+                .AsNoTracking()
+                .Where(p => p.EstadoRegistro && p.IdCliente == seleccionado.Id)
+                .Include(p => p.MetodoPago)
+                .ToListAsync();
+            var pagosPorPedido = pagos
+                .GroupBy(p => p.IdPedido)
+                .ToDictionary(grupo => grupo.Key, grupo => grupo.Sum(p => p.Monto));
+            var deudaTotal = 0m;
+            var saldoAFavor = 0m;
+
+            foreach (var deuda in deudas)
+            {
+                var montoTotal = deuda.Monto + deuda.MontoPagadoAlRegistrar;
+                var montoPagado = pagosPorPedido.GetValueOrDefault(deuda.IdPedido);
+                var saldoDeuda = montoTotal - montoPagado;
+
+                if (deuda.Estado != EstadosDeuda.Pagada)
+                {
+                    deudaTotal += Math.Max(0m, saldoDeuda);
+                    saldoAFavor += Math.Max(0m, -saldoDeuda);
+                }
+            }
+
+            historialFinanciero.DeudaTotal = deudaTotal;
+            historialFinanciero.SaldoAFavor = saldoAFavor;
+            historialFinanciero.CantidadDeudasActivas = deudas.Count(d => d.Estado != EstadosDeuda.Pagada);
+            var fechaActualPeru = DateTime.UtcNow.AddHours(-5).Date;
+            historialFinanciero.TieneDeudasVencidas = deudas.Any(deuda =>
+                deuda.Estado != EstadosDeuda.Pagada
+                && deuda.FechaVencimiento.Date < fechaActualPeru);
+            var movimientos = deudas
+                .Select(deuda => new MovimientoFinancieroViewModel
+                {
+                    Tipo = "Deuda",
+                    IdPedido = deuda.IdPedido,
+                    Fecha = deuda.FechaCreacion,
+                    Monto = deuda.Monto + deuda.MontoPagadoAlRegistrar,
+                    FechaVencimiento = deuda.FechaVencimiento,
+                    Estado = deuda.Estado == EstadosDeuda.Pagada
+                        ? EstadosDeuda.Pagada
+                        : deuda.FechaVencimiento.Date < fechaActualPeru
+                            ? EstadosDeuda.Vencida
+                            : EstadosDeuda.Pendiente
+                })
+                .Concat(pagos.Select(pago => new MovimientoFinancieroViewModel
+                {
+                    Tipo = "Pago",
+                    IdPedido = pago.IdPedido,
+                    Fecha = pago.FechaPago,
+                    Monto = pago.Monto,
+                    MetodoPago = pago.MetodoPago.Nombre
+                }))
+                .ToList();
+
+            historialFinanciero.FechaDesde = fechaDesde?.Date;
+            historialFinanciero.FechaHasta = fechaHasta?.Date;
+            if (fechaDesde.HasValue && fechaHasta.HasValue
+                && fechaDesde.Value.Date > fechaHasta.Value.Date)
+            {
+                historialFinanciero.ErrorFiltro = "La fecha inicial no puede ser posterior a la fecha final.";
+            }
+            else
+            {
+                historialFinanciero.Movimientos = movimientos
+                    .Where(movimiento =>
+                        (!fechaDesde.HasValue || movimiento.Fecha.Date >= fechaDesde.Value.Date)
+                        && (!fechaHasta.HasValue || movimiento.Fecha.Date <= fechaHasta.Value.Date))
+                    .OrderByDescending(movimiento => movimiento.Fecha)
+                    .ThenByDescending(movimiento => movimiento.Tipo)
+                    .ToList();
+            }
         }
 
         var model = new ClientesIndexViewModel
@@ -74,6 +157,7 @@ public class ClientesController : Controller
             Seleccionado = seleccionado,
             Pedidos = pedidos,
             AutorizacionesPlazo = autorizacionesPlazo,
+            HistorialFinanciero = historialFinanciero,
             Search = search,
             EstadoFiltro = estado
         };

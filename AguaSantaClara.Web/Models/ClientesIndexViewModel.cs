@@ -17,6 +17,8 @@ public class ClientesIndexViewModel
     // ===== HISTORIAL DE DEUDAS (AUTORIZACIONES DE PLAZO) DEL CLIENTE SELECCIONADO =====
     public List<AutorizacionPlazo> AutorizacionesPlazo { get; set; } = new();
 
+    public HistorialFinancieroViewModel HistorialFinanciero { get; set; } = new();
+
     // ===== FILTROS =====
     public string? Search { get; set; }
     public bool? EstadoFiltro { get; set; }
