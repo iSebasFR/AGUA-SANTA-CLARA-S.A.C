@@ -48,6 +48,7 @@ public class ClientesController : Controller
 
         var pedidos = new List<Pedido>();
         var autorizacionesPlazo = new List<AutorizacionPlazo>();
+        var historialFinanciero = new HistorialFinancieroViewModel();
         if (seleccionado != null)
         {
             autorizacionesPlazo = await _context.AutorizacionesPlazo
@@ -66,6 +67,38 @@ public class ClientesController : Controller
                 .Where(p => p.EstadoRegistro && p.Clientes.Any(pc => pc.IdCliente == seleccionado.Id))
                 .OrderByDescending(p => p.FechaCreacion)
                 .ToListAsync();
+
+            var deudas = await _context.Deudas
+                .AsNoTracking()
+                .Where(d => d.EstadoRegistro && d.IdCliente == seleccionado.Id)
+                .ToListAsync();
+            var pagos = await _context.Pagos
+                .AsNoTracking()
+                .Where(p => p.EstadoRegistro && p.IdCliente == seleccionado.Id)
+                .Include(p => p.MetodoPago)
+                .ToListAsync();
+            var pagosPorPedido = pagos
+                .GroupBy(p => p.IdPedido)
+                .ToDictionary(grupo => grupo.Key, grupo => grupo.Sum(p => p.Monto));
+            var deudaTotal = 0m;
+            var saldoAFavor = 0m;
+
+            foreach (var deuda in deudas)
+            {
+                var montoTotal = deuda.Monto + deuda.MontoPagadoAlRegistrar;
+                var montoPagado = pagosPorPedido.GetValueOrDefault(deuda.IdPedido);
+                var saldoDeuda = montoTotal - montoPagado;
+
+                if (deuda.Estado != EstadosDeuda.Pagada)
+                {
+                    deudaTotal += Math.Max(0m, saldoDeuda);
+                    saldoAFavor += Math.Max(0m, -saldoDeuda);
+                }
+            }
+
+            historialFinanciero.DeudaTotal = deudaTotal;
+            historialFinanciero.SaldoAFavor = saldoAFavor;
+            historialFinanciero.CantidadDeudasActivas = deudas.Count(d => d.Estado != EstadosDeuda.Pagada);
         }
 
         var model = new ClientesIndexViewModel
@@ -74,6 +107,7 @@ public class ClientesController : Controller
             Seleccionado = seleccionado,
             Pedidos = pedidos,
             AutorizacionesPlazo = autorizacionesPlazo,
+            HistorialFinanciero = historialFinanciero,
             Search = search,
             EstadoFiltro = estado
         };

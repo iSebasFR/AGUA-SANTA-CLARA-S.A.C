@@ -768,6 +768,7 @@
                 </button>
                 <button type="button" class="detail-tab" data-tab="historial">Historial de pedidos</button>
                 <button type="button" class="detail-tab" data-tab="deudas">Historial de deudas</button>
+                <button type="button" class="detail-tab" data-tab="financiero">Historial financiero</button>
             </div>
 
             <div class="tab-content">
@@ -982,6 +983,26 @@
                             </tbody>
                         </table>
                     }
+                </div>
+
+                <div class="tab-pane" data-pane="financiero">
+                    <div class="section-header">
+                        <h3 class="section-title">Resumen financiero</h3>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Deuda total pendiente</span>
+                            <span class="info-value">S/ @Model.HistorialFinanciero.DeudaTotal.ToString("0.00")</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Saldo a favor</span>
+                            <span class="info-value">S/ @Model.HistorialFinanciero.SaldoAFavor.ToString("0.00")</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Deudas activas</span>
+                            <span class="info-value">@Model.HistorialFinanciero.CantidadDeudasActivas</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         }
