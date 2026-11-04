@@ -19,11 +19,12 @@ public class ClientesControllerTests
         var cliente = new Cliente { Id = 1, Nombre = "Ana Cliente", Telefono = "900000001" };
         var pedidoConSaldoAFavor = new Pedido { Id = 10, Total = 100m };
         var pedidoConDeuda = new Pedido { Id = 11, Total = 60m };
-        var metodoPago = new MetodoPago { Id = 1, Nombre = "Yape" };
+        var metodoYape = new MetodoPago { Id = 1, Nombre = "Yape" };
+        var metodoEfectivo = new MetodoPago { Id = 2, Nombre = "Efectivo" };
 
         db.Clientes.Add(cliente);
         db.Pedidos.AddRange(pedidoConSaldoAFavor, pedidoConDeuda);
-        db.MetodosPago.Add(metodoPago);
+        db.MetodosPago.AddRange(metodoYape, metodoEfectivo);
         db.Deudas.AddRange(
             new Deuda
             {
@@ -51,11 +52,23 @@ public class ClientesControllerTests
             Id = 1,
             IdPedido = pedidoConSaldoAFavor.Id,
             IdCliente = cliente.Id,
-            IdMetodoPago = metodoPago.Id,
+            IdMetodoPago = metodoYape.Id,
             Monto = 130m,
             Cliente = cliente,
             Pedido = pedidoConSaldoAFavor,
-            MetodoPago = metodoPago
+            MetodoPago = metodoYape
+        });
+        db.Pagos.Add(new Pago
+        {
+            Id = 2,
+            IdPedido = pedidoConDeuda.Id,
+            IdCliente = cliente.Id,
+            IdMetodoPago = metodoEfectivo.Id,
+            Monto = 10m,
+            FechaPago = DateTime.UtcNow.AddDays(-1),
+            Cliente = cliente,
+            Pedido = pedidoConDeuda,
+            MetodoPago = metodoEfectivo
         });
         await db.SaveChangesAsync();
 
@@ -65,11 +78,15 @@ public class ClientesControllerTests
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<ClientesIndexViewModel>(view.Model);
-        Assert.Equal(60m, model.HistorialFinanciero.DeudaTotal);
+        Assert.Equal(50m, model.HistorialFinanciero.DeudaTotal);
         Assert.Equal(20m, model.HistorialFinanciero.SaldoAFavor);
         Assert.Equal(2, model.HistorialFinanciero.CantidadDeudasActivas);
         Assert.Equal(2, model.HistorialFinanciero.Deudas.Count);
         Assert.Contains(model.HistorialFinanciero.Deudas, deuda =>
             deuda.IdPedido == pedidoConDeuda.Id && deuda.Estado == EstadosDeuda.Vencida);
+        Assert.Equal(2, model.HistorialFinanciero.Pagos.Count);
+        Assert.Equal("Yape", model.HistorialFinanciero.Pagos[0].MetodoPago);
+        Assert.Equal(130m, model.HistorialFinanciero.Pagos[0].Monto);
+        Assert.Equal("Efectivo", model.HistorialFinanciero.Pagos[1].MetodoPago);
     }
 }

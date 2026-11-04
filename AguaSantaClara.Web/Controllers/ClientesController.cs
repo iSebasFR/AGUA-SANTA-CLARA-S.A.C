@@ -115,6 +115,16 @@ public class ClientesController : Controller
                 })
                 .OrderByDescending(deuda => deuda.Fecha)
                 .ToList();
+            historialFinanciero.Pagos = pagos
+                .Select(pago => new PagoHistorialViewModel
+                {
+                    IdPedido = pago.IdPedido,
+                    Fecha = pago.FechaPago,
+                    Monto = pago.Monto,
+                    MetodoPago = pago.MetodoPago.Nombre
+                })
+                .OrderByDescending(pago => pago.Fecha)
+                .ToList();
         }
 
         var model = new ClientesIndexViewModel

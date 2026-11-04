@@ -854,6 +854,37 @@
                             </tbody>
                         </table>
                     }
+                    <div class="section-header" style="margin-top:24px;">
+                        <h3 class="section-title">Pagos</h3>
+                    </div>
+                    @if (!Model.HistorialFinanciero.Pagos.Any())
+                    {
+                        <p style="color:#6e6e73; font-size:13px;">Este cliente no tiene pagos registrados.</p>
+                    }
+                    else
+                    {
+                        <table class="clientes-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Pedido</th>
+                                    <th style="text-align:right;">Monto</th>
+                                    <th>Método de pago</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pago in Model.HistorialFinanciero.Pagos)
+                                {
+                                    <tr>
+                                        <td>@pago.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td><strong>#@pago.IdPedido</strong></td>
+                                        <td style="text-align:right;">S/ @pago.Monto.ToString("0.00")</td>
+                                        <td>@pago.MetodoPago</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
                 </div>
 
                 <div class="tab-pane" data-pane="direcciones">
