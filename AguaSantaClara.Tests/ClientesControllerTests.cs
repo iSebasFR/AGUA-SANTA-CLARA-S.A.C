@@ -42,7 +42,7 @@ public class ClientesControllerTests
                 IdPedido = pedidoConDeuda.Id,
                 IdCliente = cliente.Id,
                 Monto = 60m,
-                FechaVencimiento = DateTime.UtcNow.AddDays(10),
+                FechaVencimiento = DateTime.UtcNow.AddDays(-1),
                 Cliente = cliente,
                 Pedido = pedidoConDeuda
             });
@@ -68,5 +68,8 @@ public class ClientesControllerTests
         Assert.Equal(60m, model.HistorialFinanciero.DeudaTotal);
         Assert.Equal(20m, model.HistorialFinanciero.SaldoAFavor);
         Assert.Equal(2, model.HistorialFinanciero.CantidadDeudasActivas);
+        Assert.Equal(2, model.HistorialFinanciero.Deudas.Count);
+        Assert.Contains(model.HistorialFinanciero.Deudas, deuda =>
+            deuda.IdPedido == pedidoConDeuda.Id && deuda.Estado == EstadosDeuda.Vencida);
     }
 }

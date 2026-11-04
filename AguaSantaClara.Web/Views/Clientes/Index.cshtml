@@ -821,6 +821,39 @@
                             <span class="info-value">@sel.FechaCreacion.ToString("dd/MM/yyyy")</span>
                         </div>
                     </div>
+                    <div class="section-header" style="margin-top:24px;">
+                        <h3 class="section-title">Deudas</h3>
+                    </div>
+                    @if (!Model.HistorialFinanciero.Deudas.Any())
+                    {
+                        <p style="color:#6e6e73; font-size:13px;">Este cliente no tiene deudas registradas.</p>
+                    }
+                    else
+                    {
+                        <table class="clientes-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Pedido</th>
+                                    <th style="text-align:right;">Monto</th>
+                                    <th>Vencimiento</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var deuda in Model.HistorialFinanciero.Deudas)
+                                {
+                                    <tr>
+                                        <td>@deuda.Fecha.ToString("dd/MM/yyyy")</td>
+                                        <td><strong>#@deuda.IdPedido</strong></td>
+                                        <td style="text-align:right;">S/ @deuda.Monto.ToString("0.00")</td>
+                                        <td>@deuda.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                                        <td>@deuda.Estado</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
                 </div>
 
                 <div class="tab-pane" data-pane="direcciones">

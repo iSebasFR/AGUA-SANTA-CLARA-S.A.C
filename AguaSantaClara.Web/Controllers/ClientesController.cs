@@ -99,6 +99,22 @@ public class ClientesController : Controller
             historialFinanciero.DeudaTotal = deudaTotal;
             historialFinanciero.SaldoAFavor = saldoAFavor;
             historialFinanciero.CantidadDeudasActivas = deudas.Count(d => d.Estado != EstadosDeuda.Pagada);
+            var fechaActualPeru = DateTime.UtcNow.AddHours(-5).Date;
+            historialFinanciero.Deudas = deudas
+                .Select(deuda => new DeudaHistorialViewModel
+                {
+                    IdPedido = deuda.IdPedido,
+                    Fecha = deuda.FechaCreacion,
+                    Monto = deuda.Monto + deuda.MontoPagadoAlRegistrar,
+                    FechaVencimiento = deuda.FechaVencimiento,
+                    Estado = deuda.Estado == EstadosDeuda.Pagada
+                        ? EstadosDeuda.Pagada
+                        : deuda.FechaVencimiento.Date < fechaActualPeru
+                            ? EstadosDeuda.Vencida
+                            : EstadosDeuda.Pendiente
+                })
+                .OrderByDescending(deuda => deuda.Fecha)
+                .ToList();
         }
 
         var model = new ClientesIndexViewModel
