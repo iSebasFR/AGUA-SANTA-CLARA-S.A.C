@@ -180,14 +180,24 @@
         </div>
     </section>
 
-    <!-- Alertas de stock -->
-    <section class="dashboard-section">
-        <h2>Alertas de stock</h2>
+<!-- Alertas de stock -->
+<section class="dashboard-section">
+    <h2>Alertas de stock</h2>
 
-        <div class="dashboard-card">
-            <!-- Próximamente: productos con stock bajo -->
+    <div class="dashboard-card">
+        <div class="alert alert-warning d-flex align-items-center mb-0">
+            <i class="bi bi-exclamation-triangle-fill me-3"></i>
+
+            <div>
+                <strong>Atención: productos con stock bajo</strong>
+                <p class="mb-0">
+                    Se encontraron @Model.ProductosStockBajo productos
+                    que requieren revisión de inventario.
+                </p>
+            </div>
         </div>
-    </section>
+    </div>
+</section>
 
 </div>
 
