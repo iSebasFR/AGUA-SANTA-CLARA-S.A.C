@@ -52,6 +52,12 @@ public class IndicadoresController : Controller
         // Calcular ventas del mes
         var ventasDelMes = pedidosDelMes.Sum(p => p.Total);
 
+        var productosStockBajo = await _context.Productos
+        .AsNoTracking()
+        .CountAsync(p => p.EstadoRegistro &&
+                        p.Estado &&
+                        p.StockActual <= p.StockMinimo);
+
         // Consultar deuda total activa no pagada
         var totalDeuda = await _context.Deudas
             .AsNoTracking()
@@ -92,7 +98,8 @@ public class IndicadoresController : Controller
         {
             VentasDelMes = ventasDelMes,
             PedidosDelDia = pedidosDelDia,
-            IndiceMorosidad = indiceMorosidad
+            IndiceMorosidad = indiceMorosidad,
+            ProductosStockBajo = productosStockBajo
         };
 
         return View(modelo);

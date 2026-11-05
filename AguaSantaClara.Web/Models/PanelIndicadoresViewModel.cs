@@ -7,4 +7,5 @@ public class PanelIndicadoresViewModel
     public int PedidosDelDia { get; set; }
 
     public decimal IndiceMorosidad { get; set; }
+    public int ProductosStockBajo { get; set; }
 }
