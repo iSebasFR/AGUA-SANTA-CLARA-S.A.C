@@ -78,7 +78,7 @@
         <h2>Evolución de ventas</h2>
 
         <div class="dashboard-card">
-            <!-- Próximamente: gráfico de ventas -->
+            <canvas id="graficoVentas"></canvas>
         </div>
     </section>
 
@@ -101,3 +101,37 @@
     </section>
 
 </div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const meses = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MesesVentas));
+    const ventas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.VentasUltimosSeisMeses));
+
+    const contexto = document.getElementById('graficoVentas');
+
+    new Chart(contexto, {
+        type: 'line',
+        data: {
+            labels: meses,
+            datasets: [{
+                label: 'Ventas (S/)',
+                data: ventas,
+                borderWidth: 3,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+

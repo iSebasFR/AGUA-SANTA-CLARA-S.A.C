@@ -49,14 +49,14 @@ public class IndicadoresController : Controller
             })
             .ToListAsync();
 
-        // Calcular ventas del mes
         var ventasDelMes = pedidosDelMes.Sum(p => p.Total);
 
+        // Consultar productos con stock bajo
         var productosStockBajo = await _context.Productos
-        .AsNoTracking()
-        .CountAsync(p => p.EstadoRegistro &&
-                        p.Estado &&
-                        p.StockActual <= p.StockMinimo);
+            .AsNoTracking()
+            .CountAsync(p => p.EstadoRegistro &&
+                             p.Estado &&
+                             p.StockActual <= p.StockMinimo);
 
         // Consultar deuda total activa no pagada
         var totalDeuda = await _context.Deudas
@@ -93,13 +93,63 @@ public class IndicadoresController : Controller
                              p.FechaCreacion >= inicioDia &&
                              p.FechaCreacion < inicioDiaSiguiente);
 
+        // Consultar ventas de los últimos seis meses
+        var inicioPeriodo = new DateOnly(
+            hoy.Year,
+            hoy.Month,
+            1).AddMonths(-5);
+
+        var inicioPeriodoUtc = DateTime.SpecifyKind(
+            inicioPeriodo.ToDateTime(TimeOnly.MinValue),
+            DateTimeKind.Local).ToUniversalTime();
+
+        var ventasPorMes = await _context.Pedidos
+            .AsNoTracking()
+            .Where(p => p.EstadoRegistro &&
+                        p.FechaCreacion >= inicioPeriodoUtc &&
+                        p.FechaCreacion < finUtc)
+            .GroupBy(p => new
+            {
+                p.FechaCreacion.Year,
+                p.FechaCreacion.Month
+            })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Total = g.Sum(p => p.Total)
+            })
+            .ToListAsync();
+
+        var mesesVentas = new List<string>();
+        var ventasUltimosSeisMeses = new List<decimal>();
+
+        for (int i = 0; i < 6; i++)
+        {
+            var mes = inicioPeriodo.AddMonths(i);
+
+            mesesVentas.Add(
+                mes.ToDateTime(TimeOnly.MinValue)
+                    .ToString("MMM yyyy"));
+
+            var ventaMes = ventasPorMes
+                .FirstOrDefault(v =>
+                    v.Year == mes.Year &&
+                    v.Month == mes.Month);
+
+            ventasUltimosSeisMeses.Add(
+                ventaMes?.Total ?? 0m);
+        }
+
         // Enviar indicadores a la vista
         var modelo = new PanelIndicadoresViewModel
         {
             VentasDelMes = ventasDelMes,
             PedidosDelDia = pedidosDelDia,
             IndiceMorosidad = indiceMorosidad,
-            ProductosStockBajo = productosStockBajo
+            ProductosStockBajo = productosStockBajo,
+            MesesVentas = mesesVentas,
+            VentasUltimosSeisMeses = ventasUltimosSeisMeses
         };
 
         return View(modelo);
