@@ -1,6 +1,7 @@
 
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models;
+using AguaSantaClara.Web.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ public class IndicadoresController : Controller
     {
         var hoy = DateOnly.FromDateTime(DateTime.Today);
 
+        // Fechas del mes actual
         var inicioMes = new DateOnly(hoy.Year, hoy.Month, 1);
         var inicioMesSiguiente = inicioMes.AddMonths(1);
 
@@ -32,6 +34,7 @@ public class IndicadoresController : Controller
             inicioMesSiguiente.ToDateTime(TimeOnly.MinValue),
             DateTimeKind.Local).ToUniversalTime();
 
+        // Consultar pedidos del mes
         var pedidosDelMes = await _context.Pedidos
             .AsNoTracking()
             .Where(p => p.EstadoRegistro &&
@@ -46,27 +49,51 @@ public class IndicadoresController : Controller
             })
             .ToListAsync();
 
+        // Calcular ventas del mes
         var ventasDelMes = pedidosDelMes.Sum(p => p.Total);
 
+        // Consultar deuda total activa no pagada
+        var totalDeuda = await _context.Deudas
+            .AsNoTracking()
+            .Where(d => d.EstadoRegistro &&
+                        d.Estado != EstadosDeuda.Pagada)
+            .SumAsync(d => (decimal?)d.Monto) ?? 0m;
+
+        // Consultar deuda vencida
+        var deudaVencida = await _context.Deudas
+            .AsNoTracking()
+            .Where(d => d.EstadoRegistro &&
+                        d.Estado == EstadosDeuda.Vencida)
+            .SumAsync(d => (decimal?)d.Monto) ?? 0m;
+
+        // Calcular índice de morosidad
+        var indiceMorosidad = totalDeuda > 0
+            ? (deudaVencida / totalDeuda) * 100
+            : 0m;
+
+        // Fechas del día actual
         var inicioDia = DateTime.SpecifyKind(
-    hoy.ToDateTime(TimeOnly.MinValue),
-    DateTimeKind.Local).ToUniversalTime();
+            hoy.ToDateTime(TimeOnly.MinValue),
+            DateTimeKind.Local).ToUniversalTime();
 
-var inicioDiaSiguiente = DateTime.SpecifyKind(
-    hoy.AddDays(1).ToDateTime(TimeOnly.MinValue),
-    DateTimeKind.Local).ToUniversalTime();
+        var inicioDiaSiguiente = DateTime.SpecifyKind(
+            hoy.AddDays(1).ToDateTime(TimeOnly.MinValue),
+            DateTimeKind.Local).ToUniversalTime();
 
-var pedidosDelDia = await _context.Pedidos
-    .AsNoTracking()
-    .CountAsync(p => p.EstadoRegistro &&
-                     p.FechaCreacion >= inicioDia &&
-                     p.FechaCreacion < inicioDiaSiguiente);
+        // Consultar pedidos del día
+        var pedidosDelDia = await _context.Pedidos
+            .AsNoTracking()
+            .CountAsync(p => p.EstadoRegistro &&
+                             p.FechaCreacion >= inicioDia &&
+                             p.FechaCreacion < inicioDiaSiguiente);
 
-var modelo = new PanelIndicadoresViewModel
-{
-    VentasDelMes = ventasDelMes,
-    PedidosDelDia = pedidosDelDia
-};
+        // Enviar indicadores a la vista
+        var modelo = new PanelIndicadoresViewModel
+        {
+            VentasDelMes = ventasDelMes,
+            PedidosDelDia = pedidosDelDia,
+            IndiceMorosidad = indiceMorosidad
+        };
 
         return View(modelo);
     }
