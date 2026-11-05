@@ -1,0 +1,236 @@
+
+@{
+    ViewData["Title"] = "Panel de indicadores";
+}
+
+<div class="container-fluid dashboard-container">
+
+    <div class="dashboard-header">
+        <div>
+            <h1>Panel de indicadores</h1>
+            <p>Supervisión general del negocio - Agua Santa Clara S.A.C.</p>
+        </div>
+    </div>
+
+<!-- Filtro por fechas -->
+
+<section class="dashboard-section">
+    <h2>Filtrar indicadores</h2>
+
+<div class="dashboard-card">
+    <form method="get" asp-controller="Indicadores" asp-action="Index">
+
+        <div class="row align-items-end">
+
+            <div class="col-md-4">
+                <label for="fechaInicio" class="form-label">
+                    Fecha inicial
+                </label>
+
+            <input type="date" id="fechaInicio" name="fechaInicio"
+                class="form-control"
+                value="@Context.Request.Query["fechaInicio"]" />
+            </div>
+
+            <div class="col-md-4">
+                <label for="fechaFin" class="form-label">
+                    Fecha final
+                </label>
+
+            <input type="date" id="fechaFin" name="fechaFin"
+                class="form-control"
+                value="@Context.Request.Query["fechaFin"]" />
+            </div>
+
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-filter"></i>
+                    Aplicar filtros
+                </button>
+
+                <a asp-controller="Indicadores"
+                   asp-action="Index"
+                   class="btn btn-secondary">
+                    Limpiar
+                </a>
+            </div>
+
+        </div>
+
+    </form>
+</div>
+
+</section>
+
+<!-- Indicadores principales -->
+<section class="dashboard-section">
+    <h2>Indicadores principales</h2>
+
+    <div class="dashboard-kpi-grid">
+
+        <!-- Ventas del mes -->
+        <div class="dashboard-kpi-card">
+            <div class="kpi-icon kpi-sales">
+                <i class="bi bi-currency-dollar"></i>
+            </div>
+
+            <div class="kpi-information">
+                <span class="kpi-title">Ventas del período</span>
+               <h3>S/ @Model.VentasDelMes.ToString("N2")</h3>
+                <p>Total de ventas</p>
+            </div>
+        </div>
+
+        <!-- Pedidos del día -->
+        <div class="dashboard-kpi-card">
+            <div class="kpi-icon kpi-orders">
+                <i class="bi bi-cart-check"></i>
+            </div>
+
+            <div class="kpi-information">
+                <span class="kpi-title">Pedidos del período</span>
+                <h3>@Model.PedidosDelDia</h3>
+                <p>Pedidos registrados</p>
+            </div>
+        </div>
+
+        <!-- Índice de morosidad -->
+        <div class="dashboard-kpi-card">
+            <div class="kpi-icon kpi-debt">
+                <i class="bi bi-exclamation-circle"></i>
+            </div>
+
+            <div class="kpi-information">
+                <span class="kpi-title">Índice de morosidad</span>
+                <h3>@Model.IndiceMorosidad.ToString("N2")%</h3>
+                <p>Deudas vencidas</p>
+            </div>
+        </div>
+
+        <!-- Alertas de stock -->
+        <div class="dashboard-kpi-card">
+            <div class="kpi-icon kpi-stock">
+                <i class="bi bi-box-seam"></i>
+            </div>
+
+            <div class="kpi-information">
+                <span class="kpi-title">Stock bajo</span>
+                <h3>@Model.ProductosStockBajo</h3>
+                <p>Productos por revisar</p>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+    <!-- Evolución de ventas -->
+    <section class="dashboard-section">
+        <h2>Evolución de ventas</h2>
+
+        <div class="dashboard-card">
+            <canvas id="graficoVentas"></canvas>
+        </div>
+    </section>
+
+    <!-- Clientes -->
+    <section class="dashboard-section">
+        <h2>Indicadores de clientes</h2>
+
+        <div class="dashboard-kpi-grid">
+
+            <!-- Clientes activos -->
+            <div class="dashboard-kpi-card">
+                <div class="kpi-icon kpi-orders">
+                    <i class="bi bi-people"></i>
+                </div>
+
+                <div class="kpi-information">
+                    <span class="kpi-title">Clientes activos</span>
+                    <h3>@Model.ClientesActivos</h3>
+                    <p>Clientes registrados activos</p>
+                </div>
+            </div>
+
+            <!-- Clientes nuevos del mes -->
+            <div class="dashboard-kpi-card">
+                <div class="kpi-icon kpi-sales">
+                    <i class="bi bi-person-plus"></i>
+                </div>
+
+                <div class="kpi-information">
+                    <span class="kpi-title">Clientes nuevos del período</span>
+                    <h3>@Model.ClientesNuevosDelMes</h3>
+                    <p>Nuevos clientes registrados</p>
+                </div>
+            </div>
+
+            <!-- Clientes frecuentes -->
+            <div class="dashboard-kpi-card">
+                <div class="kpi-icon kpi-stock">
+                    <i class="bi bi-person-check"></i>
+                </div>
+
+                <div class="kpi-information">
+                    <span class="kpi-title">Clientes frecuentes</span>
+                    <h3>@Model.ClientesFrecuentes</h3>
+                    <p>Clientes con 5 o más pedidos</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+<!-- Alertas de stock -->
+<section class="dashboard-section">
+    <h2>Alertas de stock</h2>
+
+    <div class="dashboard-card">
+        <div class="alert alert-warning d-flex align-items-center mb-0">
+            <i class="bi bi-exclamation-triangle-fill me-3"></i>
+
+            <div>
+                <strong>Atención: productos con stock bajo</strong>
+                <p class="mb-0">
+                    Se encontraron @Model.ProductosStockBajo productos
+                    que requieren revisión de inventario.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const meses = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MesesVentas));
+    const ventas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.VentasUltimosSeisMeses));
+
+    const contexto = document.getElementById('graficoVentas');
+
+    new Chart(contexto, {
+        type: 'line',
+        data: {
+            labels: meses,
+            datasets: [{
+                label: 'Ventas (S/)',
+                data: ventas,
+                borderWidth: 3,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+

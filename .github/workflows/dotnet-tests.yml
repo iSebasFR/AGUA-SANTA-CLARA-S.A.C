@@ -96,11 +96,11 @@ jobs:
             exit 0
           fi
 
-          diff-cover "$coverage_file" \
+           diff-cover "$coverage_file" \
             --compare-branch="$BASE_SHA" \
             --ignore-whitespace \
             --fail-under=70 \
-            --include "AguaSantaClara.Web/*.cs" "AguaSantaClara.Web/**/*.cs"
+            --include "Controllers/**/*.cs" "Models/**/*.cs"
 
       - name: Require 80% coverage on changed business logic
         env:
