@@ -96,7 +96,7 @@ jobs:
             exit 0
           fi
 
-        diff-cover "$coverage_file" \
+           diff-cover "$coverage_file" \
             --compare-branch="$BASE_SHA" \
             --ignore-whitespace \
             --fail-under=70 \
