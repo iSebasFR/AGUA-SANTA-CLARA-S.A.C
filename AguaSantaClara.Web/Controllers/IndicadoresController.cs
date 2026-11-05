@@ -48,10 +48,25 @@ public class IndicadoresController : Controller
 
         var ventasDelMes = pedidosDelMes.Sum(p => p.Total);
 
-        var modelo = new PanelIndicadoresViewModel
-        {
-            VentasDelMes = ventasDelMes
-        };
+        var inicioDia = DateTime.SpecifyKind(
+    hoy.ToDateTime(TimeOnly.MinValue),
+    DateTimeKind.Local).ToUniversalTime();
+
+var inicioDiaSiguiente = DateTime.SpecifyKind(
+    hoy.AddDays(1).ToDateTime(TimeOnly.MinValue),
+    DateTimeKind.Local).ToUniversalTime();
+
+var pedidosDelDia = await _context.Pedidos
+    .AsNoTracking()
+    .CountAsync(p => p.EstadoRegistro &&
+                     p.FechaCreacion >= inicioDia &&
+                     p.FechaCreacion < inicioDiaSiguiente);
+
+var modelo = new PanelIndicadoresViewModel
+{
+    VentasDelMes = ventasDelMes,
+    PedidosDelDia = pedidosDelDia
+};
 
         return View(modelo);
     }
