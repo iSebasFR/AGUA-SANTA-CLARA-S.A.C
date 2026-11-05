@@ -1,4 +1,4 @@
-@{
+﻿@{
     var isAuthenticated = User.Identity?.IsAuthenticated == true;
     var userName = User.FindFirst("NombreCompleto")?.Value ?? User.Identity?.Name;
     var roleName = User.IsInRole("Vendedora") ? "Vendedora"
@@ -43,6 +43,10 @@
                         <div class="sidebar-section-title sidebar-label">General</div>
                         <a asp-controller="Home" asp-action="Index" class="sidebar-link">
                             <i class="bi bi-speedometer2"></i><span class="sidebar-label">Inicio</span>
+                        </a>
+
+                        <a asp-controller="Indicadores" asp-action="Index" class="sidebar-link">
+                            <i class="bi bi-bar-chart-line"></i><span class="sidebar-label">Panel de indicadores</span>
                         </a>
 
                         <div class="sidebar-section-title sidebar-label">Administración</div>
