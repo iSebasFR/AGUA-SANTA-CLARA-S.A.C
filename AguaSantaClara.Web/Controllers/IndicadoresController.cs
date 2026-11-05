@@ -17,8 +17,9 @@ public class IndicadoresController : Controller
     {
         _context = context;
     }
-
-    public async Task<IActionResult> Index()
+public async Task<IActionResult> Index(
+    DateTime? fechaInicio,
+    DateTime? fechaFin)
     {
         var hoy = DateOnly.FromDateTime(DateTime.Today);
 

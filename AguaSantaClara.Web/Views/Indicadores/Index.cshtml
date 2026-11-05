@@ -12,6 +12,58 @@
         </div>
     </div>
 
+<!-- Filtro por fechas -->
+
+<section class="dashboard-section">
+    <h2>Filtrar indicadores</h2>
+
+<div class="dashboard-card">
+    <form method="get" asp-controller="Indicadores" asp-action="Index">
+
+        <div class="row align-items-end">
+
+            <div class="col-md-4">
+                <label for="fechaInicio" class="form-label">
+                    Fecha inicial
+                </label>
+
+                <input type="date"
+                       id="fechaInicio"
+                       name="fechaInicio"
+                       class="form-control" />
+            </div>
+
+            <div class="col-md-4">
+                <label for="fechaFin" class="form-label">
+                    Fecha final
+                </label>
+
+                <input type="date"
+                       id="fechaFin"
+                       name="fechaFin"
+                       class="form-control" />
+            </div>
+
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-filter"></i>
+                    Aplicar filtros
+                </button>
+
+                <a asp-controller="Indicadores"
+                   asp-action="Index"
+                   class="btn btn-secondary">
+                    Limpiar
+                </a>
+            </div>
+
+        </div>
+
+    </form>
+</div>
+
+</section>
+
 <!-- Indicadores principales -->
 <section class="dashboard-section">
     <h2>Indicadores principales</h2>
