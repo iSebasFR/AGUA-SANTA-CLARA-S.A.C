@@ -13,4 +13,10 @@ public class PanelIndicadoresViewModel
     public List<string> MesesVentas { get; set; } = new();
 
     public List<decimal> VentasUltimosSeisMeses { get; set; } = new();
+
+    public int ClientesActivos { get; set; }
+
+    public int ClientesNuevosDelMes { get; set; }
+
+    public int ClientesFrecuentes { get; set; }
 }

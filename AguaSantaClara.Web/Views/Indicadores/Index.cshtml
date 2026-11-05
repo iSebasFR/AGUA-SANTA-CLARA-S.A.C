@@ -87,7 +87,46 @@
         <h2>Indicadores de clientes</h2>
 
         <div class="dashboard-kpi-grid">
-            <!-- Próximamente: indicadores de clientes -->
+
+            <!-- Clientes activos -->
+            <div class="dashboard-kpi-card">
+                <div class="kpi-icon kpi-orders">
+                    <i class="bi bi-people"></i>
+                </div>
+
+                <div class="kpi-information">
+                    <span class="kpi-title">Clientes activos</span>
+                    <h3>@Model.ClientesActivos</h3>
+                    <p>Clientes registrados activos</p>
+                </div>
+            </div>
+
+            <!-- Clientes nuevos del mes -->
+            <div class="dashboard-kpi-card">
+                <div class="kpi-icon kpi-sales">
+                    <i class="bi bi-person-plus"></i>
+                </div>
+
+                <div class="kpi-information">
+                    <span class="kpi-title">Clientes nuevos del mes</span>
+                    <h3>@Model.ClientesNuevosDelMes</h3>
+                    <p>Nuevos clientes registrados</p>
+                </div>
+            </div>
+
+            <!-- Clientes frecuentes -->
+            <div class="dashboard-kpi-card">
+                <div class="kpi-icon kpi-stock">
+                    <i class="bi bi-person-check"></i>
+                </div>
+
+                <div class="kpi-information">
+                    <span class="kpi-title">Clientes frecuentes</span>
+                    <h3>@Model.ClientesFrecuentes</h3>
+                    <p>Clientes con 5 o más pedidos</p>
+                </div>
+            </div>
+
         </div>
     </section>
 

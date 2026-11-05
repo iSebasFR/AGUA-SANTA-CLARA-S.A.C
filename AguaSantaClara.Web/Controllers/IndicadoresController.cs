@@ -140,6 +140,26 @@ public class IndicadoresController : Controller
             ventasUltimosSeisMeses.Add(
                 ventaMes?.Total ?? 0m);
         }
+        
+        // Consultar clientes activos
+        var clientesActivos = await _context.Clientes
+            .AsNoTracking()
+            .CountAsync(c => c.EstadoRegistro && c.Estado);
+
+        // Consultar clientes nuevos del mes
+        var clientesNuevosDelMes = await _context.Clientes
+            .AsNoTracking()
+            .CountAsync(c => c.EstadoRegistro &&
+                            c.FechaCreacion >= inicioUtc &&
+                            c.FechaCreacion < finUtc);
+
+// Consultar clientes frecuentes
+var clientesFrecuentes = await _context.PedidosCliente
+    .AsNoTracking()
+    .Where(pc => pc.EstadoRegistro &&
+                 pc.Pedido.EstadoRegistro)
+    .GroupBy(pc => pc.IdCliente)
+    .CountAsync(g => g.Count() >= 5);
 
         // Enviar indicadores a la vista
         var modelo = new PanelIndicadoresViewModel
@@ -148,8 +168,13 @@ public class IndicadoresController : Controller
             PedidosDelDia = pedidosDelDia,
             IndiceMorosidad = indiceMorosidad,
             ProductosStockBajo = productosStockBajo,
+
             MesesVentas = mesesVentas,
-            VentasUltimosSeisMeses = ventasUltimosSeisMeses
+            VentasUltimosSeisMeses = ventasUltimosSeisMeses,
+
+            ClientesActivos = clientesActivos,
+            ClientesNuevosDelMes = clientesNuevosDelMes,
+            ClientesFrecuentes = clientesFrecuentes
         };
 
         return View(modelo);
