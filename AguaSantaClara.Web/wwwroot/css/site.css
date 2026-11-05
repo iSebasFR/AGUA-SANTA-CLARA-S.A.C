@@ -663,3 +663,79 @@ body.sidebar-collapsed .sidebar-chevron {
         grid-template-columns: 1fr;
     }
 }
+
+/* ===== TARJETAS KPI HU-20 ===== */
+
+.dashboard-kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 22px;
+    min-height: 145px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 55px;
+    height: 55px;
+    border-radius: 12px;
+    font-size: 25px;
+}
+
+.kpi-sales {
+    background: #e0f2fe;
+    color: #0284c7;
+}
+
+.kpi-orders {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.kpi-debt {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.kpi-stock {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.kpi-information {
+    min-width: 0;
+}
+
+.kpi-title {
+    display: block;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.kpi-information h3 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 5px;
+}
+
+.kpi-information p {
+    color: #9ca3af;
+    font-size: 12px;
+    margin: 0;
+}
+
