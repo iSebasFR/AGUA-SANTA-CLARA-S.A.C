@@ -17,40 +17,48 @@ public class IndicadoresController : Controller
     {
         _context = context;
     }
-public async Task<IActionResult> Index(
-    DateTime? fechaInicio,
-    DateTime? fechaFin)
+
+    public async Task<IActionResult> Index(
+        DateTime? fechaInicio,
+        DateTime? fechaFin)
     {
         var hoy = DateOnly.FromDateTime(DateTime.Today);
 
-        // Fechas del mes actual
-        var inicioMes = new DateOnly(hoy.Year, hoy.Month, 1);
-        var inicioMesSiguiente = inicioMes.AddMonths(1);
+        // Definir el rango de fechas
+        var inicioPeriodo = fechaInicio.HasValue && fechaFin.HasValue
+            ? DateOnly.FromDateTime(fechaInicio.Value)
+            : new DateOnly(hoy.Year, hoy.Month, 1);
+
+        var finPeriodo = fechaInicio.HasValue && fechaFin.HasValue
+            ? DateOnly.FromDateTime(fechaFin.Value)
+            : hoy;
+
+        // Si las fechas son inválidas, usar el mes actual
+        if (inicioPeriodo > finPeriodo)
+        {
+            inicioPeriodo = new DateOnly(hoy.Year, hoy.Month, 1);
+            finPeriodo = hoy;
+        }
 
         var inicioUtc = DateTime.SpecifyKind(
-            inicioMes.ToDateTime(TimeOnly.MinValue),
+            inicioPeriodo.ToDateTime(TimeOnly.MinValue),
             DateTimeKind.Local).ToUniversalTime();
 
         var finUtc = DateTime.SpecifyKind(
-            inicioMesSiguiente.ToDateTime(TimeOnly.MinValue),
+            finPeriodo.AddDays(1).ToDateTime(TimeOnly.MinValue),
             DateTimeKind.Local).ToUniversalTime();
 
-        // Consultar pedidos del mes
-        var pedidosDelMes = await _context.Pedidos
+        // Consultar pedidos del período
+        var pedidosDelPeriodo = await _context.Pedidos
             .AsNoTracking()
             .Where(p => p.EstadoRegistro &&
                         p.FechaCreacion >= inicioUtc &&
                         p.FechaCreacion < finUtc)
-            .Select(p => new
-            {
-                p.Id,
-                p.FechaCreacion,
-                p.Total,
-                p.Estado
-            })
             .ToListAsync();
 
-        var ventasDelMes = pedidosDelMes.Sum(p => p.Total);
+        var ventasDelMes = pedidosDelPeriodo.Sum(p => p.Total);
+
+        var pedidosDelDia = pedidosDelPeriodo.Count;
 
         // Consultar productos con stock bajo
         var productosStockBajo = await _context.Productos
@@ -59,18 +67,22 @@ public async Task<IActionResult> Index(
                              p.Estado &&
                              p.StockActual <= p.StockMinimo);
 
-        // Consultar deuda total activa no pagada
+        // Consultar deuda total del período
         var totalDeuda = await _context.Deudas
             .AsNoTracking()
             .Where(d => d.EstadoRegistro &&
-                        d.Estado != EstadosDeuda.Pagada)
+                        d.Estado != EstadosDeuda.Pagada &&
+                        d.FechaCreacion >= inicioUtc &&
+                        d.FechaCreacion < finUtc)
             .SumAsync(d => (decimal?)d.Monto) ?? 0m;
 
-        // Consultar deuda vencida
+        // Consultar deuda vencida del período
         var deudaVencida = await _context.Deudas
             .AsNoTracking()
             .Where(d => d.EstadoRegistro &&
-                        d.Estado == EstadosDeuda.Vencida)
+                        d.Estado == EstadosDeuda.Vencida &&
+                        d.FechaCreacion >= inicioUtc &&
+                        d.FechaCreacion < finUtc)
             .SumAsync(d => (decimal?)d.Monto) ?? 0m;
 
         // Calcular índice de morosidad
@@ -78,36 +90,11 @@ public async Task<IActionResult> Index(
             ? (deudaVencida / totalDeuda) * 100
             : 0m;
 
-        // Fechas del día actual
-        var inicioDia = DateTime.SpecifyKind(
-            hoy.ToDateTime(TimeOnly.MinValue),
-            DateTimeKind.Local).ToUniversalTime();
-
-        var inicioDiaSiguiente = DateTime.SpecifyKind(
-            hoy.AddDays(1).ToDateTime(TimeOnly.MinValue),
-            DateTimeKind.Local).ToUniversalTime();
-
-        // Consultar pedidos del día
-        var pedidosDelDia = await _context.Pedidos
-            .AsNoTracking()
-            .CountAsync(p => p.EstadoRegistro &&
-                             p.FechaCreacion >= inicioDia &&
-                             p.FechaCreacion < inicioDiaSiguiente);
-
-        // Consultar ventas de los últimos seis meses
-        var inicioPeriodo = new DateOnly(
-            hoy.Year,
-            hoy.Month,
-            1).AddMonths(-5);
-
-        var inicioPeriodoUtc = DateTime.SpecifyKind(
-            inicioPeriodo.ToDateTime(TimeOnly.MinValue),
-            DateTimeKind.Local).ToUniversalTime();
-
+        // Consultar ventas agrupadas por mes
         var ventasPorMes = await _context.Pedidos
             .AsNoTracking()
             .Where(p => p.EstadoRegistro &&
-                        p.FechaCreacion >= inicioPeriodoUtc &&
+                        p.FechaCreacion >= inicioUtc &&
                         p.FechaCreacion < finUtc)
             .GroupBy(p => new
             {
@@ -125,7 +112,11 @@ public async Task<IActionResult> Index(
         var mesesVentas = new List<string>();
         var ventasUltimosSeisMeses = new List<decimal>();
 
-        for (int i = 0; i < 6; i++)
+        var cantidadMeses =
+            ((finPeriodo.Year - inicioPeriodo.Year) * 12)
+            + finPeriodo.Month - inicioPeriodo.Month + 1;
+
+        for (int i = 0; i < cantidadMeses; i++)
         {
             var mes = inicioPeriodo.AddMonths(i);
 
@@ -133,34 +124,35 @@ public async Task<IActionResult> Index(
                 mes.ToDateTime(TimeOnly.MinValue)
                     .ToString("MMM yyyy"));
 
-            var ventaMes = ventasPorMes
-                .FirstOrDefault(v =>
-                    v.Year == mes.Year &&
-                    v.Month == mes.Month);
+            var ventaMes = ventasPorMes.FirstOrDefault(v =>
+                v.Year == mes.Year &&
+                v.Month == mes.Month);
 
             ventasUltimosSeisMeses.Add(
                 ventaMes?.Total ?? 0m);
         }
-        
+
         // Consultar clientes activos
         var clientesActivos = await _context.Clientes
             .AsNoTracking()
             .CountAsync(c => c.EstadoRegistro && c.Estado);
 
-        // Consultar clientes nuevos del mes
+        // Consultar clientes nuevos del período
         var clientesNuevosDelMes = await _context.Clientes
             .AsNoTracking()
             .CountAsync(c => c.EstadoRegistro &&
-                            c.FechaCreacion >= inicioUtc &&
-                            c.FechaCreacion < finUtc);
+                             c.FechaCreacion >= inicioUtc &&
+                             c.FechaCreacion < finUtc);
 
-// Consultar clientes frecuentes
-var clientesFrecuentes = await _context.PedidosCliente
-    .AsNoTracking()
-    .Where(pc => pc.EstadoRegistro &&
-                 pc.Pedido.EstadoRegistro)
-    .GroupBy(pc => pc.IdCliente)
-    .CountAsync(g => g.Count() >= 5);
+        // Consultar clientes frecuentes del período
+        var clientesFrecuentes = await _context.PedidosCliente
+            .AsNoTracking()
+            .Where(pc => pc.EstadoRegistro &&
+                         pc.Pedido.EstadoRegistro &&
+                         pc.Pedido.FechaCreacion >= inicioUtc &&
+                         pc.Pedido.FechaCreacion < finUtc)
+            .GroupBy(pc => pc.IdCliente)
+            .CountAsync(g => g.Count() >= 5);
 
         // Enviar indicadores a la vista
         var modelo = new PanelIndicadoresViewModel
