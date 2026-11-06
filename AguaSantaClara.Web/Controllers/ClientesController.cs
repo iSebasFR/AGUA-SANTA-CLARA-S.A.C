@@ -1,6 +1,7 @@
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models;
 using AguaSantaClara.Web.Models.Entities;
+using AguaSantaClara.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,12 @@ namespace AguaSantaClara.Web.Controllers;
 public class ClientesController : Controller
 {
     private readonly AppDbContext _context;
+    private readonly IHistorialComprasService _historialComprasService;
 
-    public ClientesController(AppDbContext context)
+    public ClientesController(AppDbContext context, IHistorialComprasService historialComprasService)
     {
         _context = context;
+        _historialComprasService = historialComprasService;
     }
 
     // ==================== INDEX ====================
@@ -54,8 +57,13 @@ public class ClientesController : Controller
         var pedidos = new List<Pedido>();
         var autorizacionesPlazo = new List<AutorizacionPlazo>();
         var historialFinanciero = new HistorialFinancieroViewModel();
+        var historialCompras = new HistorialComprasViewModel(); // HU-19
         if (seleccionado != null)
         {
+            // HU-19: el historial de compras solo se consulta para la Administradora
+            if (User.IsInRole("Administradora"))
+                historialCompras = await _historialComprasService.ObtenerAsync(seleccionado.Id);
+
             autorizacionesPlazo = await _context.AutorizacionesPlazo
                 .Include(a => a.Deuda)
                 .Where(a => a.EstadoRegistro && a.Deuda.IdCliente == seleccionado.Id)
@@ -158,6 +166,7 @@ public class ClientesController : Controller
             Pedidos = pedidos,
             AutorizacionesPlazo = autorizacionesPlazo,
             HistorialFinanciero = historialFinanciero,
+            HistorialCompras = historialCompras,
             Search = search,
             EstadoFiltro = estado
         };

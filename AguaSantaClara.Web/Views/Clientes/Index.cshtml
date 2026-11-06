@@ -1401,9 +1401,50 @@
                                 <h3 class="section-title">Pedidos del cliente</h3>
                                 <p class="panel-subtitle">Del más reciente al más antiguo</p>
                             </div>
-                            <span class="financial-section-count">0</span>
+                            <span class="financial-section-count">@Model.HistorialCompras.Pedidos.Count</span>
                         </div>
-                        <div class="financial-empty">No hay compras para el período seleccionado.</div>
+
+                        @if (!Model.HistorialCompras.Pedidos.Any())
+                        {
+                            <div class="financial-empty">No hay compras para el período seleccionado.</div>
+                        }
+                        else
+                        {
+                            <table class="clientes-table">
+                                <thead>
+                                    <tr>
+                                        <th>N°</th>
+                                        <th>Fecha</th>
+                                        <th style="text-align:right;">Monto</th>
+                                        <th style="text-align:center;">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var compra in Model.HistorialCompras.Pedidos)
+                                    {
+                                        var claseEstadoCompra = compra.Estado switch
+                                        {
+                                            "Pendiente" => "pendiente",
+                                            "Enviado" => "enviado",
+                                            "Entregado" => "entregado",
+                                            "Con Incidencia" => "con-incidencia",
+                                            "Pagado" => "pagado",
+                                            "Pago Parcial" => "pago-parcial",
+                                            _ => ""
+                                        };
+
+                                        <tr>
+                                            <td><strong>#@compra.IdPedido</strong></td>
+                                            <td>@compra.Fecha.ToString("dd/MM/yyyy")</td>
+                                            <td style="text-align:right; font-weight:600;">S/ @compra.Monto.ToString("N2", culturaPe)</td>
+                                            <td style="text-align:center;">
+                                                <span class="status-badge @claseEstadoCompra">@compra.Estado</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
                     </section>
                 </div>
                 }
