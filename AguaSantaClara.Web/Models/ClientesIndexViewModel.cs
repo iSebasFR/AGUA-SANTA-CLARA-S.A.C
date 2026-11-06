@@ -19,6 +19,9 @@ public class ClientesIndexViewModel
 
     public HistorialFinancieroViewModel HistorialFinanciero { get; set; } = new();
 
+        // ===== HU-19: HISTORIAL DE COMPRAS DEL CLIENTE SELECCIONADO =====
+    public HistorialComprasViewModel HistorialCompras { get; set; } = new();
+
     // ===== FILTROS =====
     public string? Search { get; set; }
     public bool? EstadoFiltro { get; set; }
