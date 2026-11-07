@@ -1,5 +1,6 @@
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models;
+using AguaSantaClara.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Web.Services;
@@ -7,6 +8,15 @@ namespace AguaSantaClara.Web.Services;
 public class HistorialComprasService : IHistorialComprasService
 {
     private readonly AppDbContext _context;
+
+    // HU-19 T28: estados que cuentan para el resumen (se excluyen Pendiente y Con Incidencia)
+    private static readonly string[] EstadosQueCuentan =
+    {
+        EstadosPedido.Enviado,
+        EstadosPedido.Entregado,
+        EstadosPedido.Pagado,
+        EstadosPedido.PagoParcial
+    };
 
     public HistorialComprasService(AppDbContext context) => _context = context;
 
@@ -62,8 +72,18 @@ public class HistorialComprasService : IHistorialComprasService
                     Subtotal = d.Subtotal
                 }).ToList());
 
+        // HU-19 T28: resumen calculado solo con los pedidos de estados válidos
+        var pedidosQueCuentan = pedidos
+            .Where(p => EstadosQueCuentan.Contains(p.Estado))
+            .ToList();
+
         return new HistorialComprasViewModel
         {
+            TotalGastado = pedidosQueCuentan.Sum(p => p.Monto),
+            CantidadPedidos = pedidosQueCuentan.Count,
+            FechaUltimaCompra = pedidosQueCuentan.Count > 0
+                ? pedidosQueCuentan.Max(p => p.FechaCreacion).AddHours(-5) // hora de Perú (UTC-5)
+                : null,
             Pedidos = pedidos
                 .Select(p => new PedidoCompraViewModel
                 {
