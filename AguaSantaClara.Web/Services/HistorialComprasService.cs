@@ -18,6 +18,9 @@ public class HistorialComprasService : IHistorialComprasService
         EstadosPedido.PagoParcial
     };
 
+    // HU-19 T31: "Cliente frecuente" = más de 3 pedidos en el período (es decir, 4 o más)
+    private const int MinimoPedidosClienteFrecuente = 4;
+
     public HistorialComprasService(AppDbContext context) => _context = context;
 
     public async Task<HistorialComprasViewModel> ObtenerAsync(
@@ -106,6 +109,10 @@ public class HistorialComprasService : IHistorialComprasService
 
         resultado.TotalGastado = pedidosQueCuentan.Sum(p => p.Monto);
         resultado.CantidadPedidos = pedidosQueCuentan.Count;
+
+        // HU-19 T31: se calcula sobre los pedidos que cuentan, dentro del período filtrado
+        resultado.EsClienteFrecuente = resultado.CantidadPedidos >= MinimoPedidosClienteFrecuente;
+
         resultado.FechaUltimaCompra = pedidosQueCuentan.Count > 0
             ? pedidosQueCuentan.Max(p => p.FechaCreacion).AddHours(-5) // hora de Perú (UTC-5)
             : null;
