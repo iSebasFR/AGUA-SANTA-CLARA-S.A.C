@@ -909,6 +909,84 @@
         color: #6e6e73;
         font-size: 11.5px;
     }
+
+    /* ============================================================
+       HU-19 T30: DETALLE DE PRODUCTOS POR PEDIDO (expandible)
+       ============================================================ */
+    .compra-toggle {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: #6e6e73;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .compra-toggle:hover { background: #f2f2f4; color: #1d1d1f; }
+
+    .compra-toggle::before {
+        content: "\25B8";
+        font-size: 14px;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .compra-toggle[aria-expanded="true"]::before { transform: rotate(90deg); }
+
+    .clientes-table tbody tr.compra-detalle-row,
+    .clientes-table tbody tr.compra-detalle-row:hover { background: #fbfcfd; cursor: default; }
+    .clientes-table tbody tr.compra-detalle-row[hidden] { display: none; }
+    .clientes-table tbody tr.compra-detalle-row > td { padding: 4px 12px 16px; }
+
+    .compra-productos {
+        width: 100%;
+        border-collapse: collapse;
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 10px;
+    }
+
+    .compra-productos th {
+        padding: 8px 12px;
+        text-align: left;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        color: #6e6e73;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid #e5e5ea;
+    }
+
+    .clientes-table .compra-productos tbody tr { cursor: default; }
+    .clientes-table .compra-productos tbody tr:hover { background: transparent; }
+
+    .clientes-table .compra-productos tbody td {
+        padding: 8px 12px;
+        font-size: 12.5px;
+        color: #1d1d1f;
+        border-bottom: 1px solid #f0f0f2;
+    }
+
+    .clientes-table .compra-productos tbody tr:last-child td { border-bottom: none; }
+
+    .compra-descuento {
+        display: block;
+        margin-top: 2px;
+        font-size: 11.5px;
+        color: #1a8a3a;
+    }
+
+    .compra-sin-productos {
+        margin: 0;
+        padding: 10px 4px;
+        font-size: 12.5px;
+        color: #6e6e73;
+    }
 </style>
 
 <div class="clientes-layout">
@@ -1461,6 +1539,7 @@
                             <table class="clientes-table">
                                 <thead>
                                     <tr>
+                                        <th style="width:36px;"></th>
                                         <th>N°</th>
                                         <th>Fecha</th>
                                         <th style="text-align:right;">Monto</th>
@@ -1482,11 +1561,55 @@
                                         };
 
                                         <tr>
+                                            <td>
+                                                <button type="button" class="compra-toggle"
+                                                        aria-expanded="false"
+                                                        aria-controls="detalle-compra-@compra.IdPedido"
+                                                        aria-label="Ver productos del pedido #@compra.IdPedido"></button>
+                                            </td>
                                             <td><strong>#@compra.IdPedido</strong></td>
                                             <td>@compra.Fecha.ToString("dd/MM/yyyy")</td>
                                             <td style="text-align:right; font-weight:600;">S/ @compra.Monto.ToString("N2", culturaPe)</td>
                                             <td style="text-align:center;">
                                                 <span class="status-badge @claseEstadoCompra">@compra.Estado</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="compra-detalle-row" id="detalle-compra-@compra.IdPedido" hidden>
+                                            <td colspan="5">
+                                                @if (!compra.Productos.Any())
+                                                {
+                                                    <p class="compra-sin-productos">Este pedido no tiene productos registrados.</p>
+                                                }
+                                                else
+                                                {
+                                                    <table class="compra-productos">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Producto</th>
+                                                                <th style="text-align:right;">Cant.</th>
+                                                                <th style="text-align:right;">P. unit.</th>
+                                                                <th style="text-align:right;">Subtotal</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var producto in compra.Productos)
+                                                            {
+                                                                <tr>
+                                                                    <td>
+                                                                        @producto.Producto
+                                                                        @if (producto.DescuentoMonto > 0)
+                                                                        {
+                                                                            <span class="compra-descuento">Descuento: − S/ @producto.DescuentoMonto.ToString("N2", culturaPe)</span>
+                                                                        }
+                                                                    </td>
+                                                                    <td style="text-align:right;">@producto.Cantidad</td>
+                                                                    <td style="text-align:right;">S/ @producto.PrecioUnitario.ToString("N2", culturaPe)</td>
+                                                                    <td style="text-align:right; font-weight:600;">S/ @producto.Subtotal.ToString("N2", culturaPe)</td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                }
                                             </td>
                                         </tr>
                                     }
@@ -1551,6 +1674,20 @@
         if (new URLSearchParams(window.location.search).get('tab') === 'compras') {
             document.querySelector('.detail-tab[data-tab="compras"]')?.click();
         }
+
+        // HU-19 T30: expandir/contraer el detalle de productos de un pedido (delegado)
+        document.addEventListener('click', function (e) {
+            const fila = e.target.closest('[data-pane="compras"] tbody tr');
+            const boton = fila?.querySelector('.compra-toggle');
+            if (!boton) return;
+
+            const detalle = document.getElementById(boton.getAttribute('aria-controls'));
+            if (!detalle) return;
+
+            const abrir = boton.getAttribute('aria-expanded') !== 'true';
+            boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+            detalle.hidden = !abrir;
+        });
 
         // ==================== MODAL CONFIRMACIÓN ====================
         let accionPendiente = null;
