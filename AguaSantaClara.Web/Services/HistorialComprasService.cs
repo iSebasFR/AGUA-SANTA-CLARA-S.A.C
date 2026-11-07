@@ -28,6 +28,40 @@ public class HistorialComprasService : IHistorialComprasService
             })
             .ToListAsync();
 
+        // HU-19 T27: productos comprados por este cliente en esos pedidos
+        var idsPedidos = pedidos.Select(p => p.Id).ToList();
+
+        var detalles = await _context.DetallesPedido
+            .AsNoTracking()
+            .Where(d => d.EstadoRegistro
+                && d.PedidoCliente.EstadoRegistro
+                && d.PedidoCliente.IdCliente == idCliente
+                && idsPedidos.Contains(d.PedidoCliente.IdPedido))
+            .OrderBy(d => d.Id)
+            .Select(d => new
+            {
+                d.PedidoCliente.IdPedido,
+                Producto = d.Producto.Nombre,
+                d.Cantidad,
+                d.PrecioUnitario,
+                d.DescuentoMonto,
+                d.Subtotal
+            })
+            .ToListAsync();
+
+        var productosPorPedido = detalles
+            .GroupBy(d => d.IdPedido)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(d => new ProductoCompraViewModel
+                {
+                    Producto = d.Producto,
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario,
+                    DescuentoMonto = d.DescuentoMonto,
+                    Subtotal = d.Subtotal
+                }).ToList());
+
         return new HistorialComprasViewModel
         {
             Pedidos = pedidos
@@ -36,7 +70,8 @@ public class HistorialComprasService : IHistorialComprasService
                     IdPedido = p.Id,
                     Fecha = p.FechaCreacion.AddHours(-5), // hora de Perú (UTC-5)
                     Monto = p.Monto,
-                    Estado = p.Estado
+                    Estado = p.Estado,
+                    Productos = productosPorPedido.GetValueOrDefault(p.Id) ?? []
                 })
                 .ToList()
         };
