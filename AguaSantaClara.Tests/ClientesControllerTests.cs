@@ -1,7 +1,10 @@
+using System.Security.Claims; // CAMBIO 1: using nuevo
 using AguaSantaClara.Web.Controllers;
 using AguaSantaClara.Web.Data;
 using AguaSantaClara.Web.Models;
 using AguaSantaClara.Web.Models.Entities;
+using AguaSantaClara.Web.Services; // CAMBIO 2: using nuevo
+using Microsoft.AspNetCore.Http; // CAMBIO 3: para DefaultHttpContext
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,7 +46,7 @@ public class ClientesControllerTests
                 IdPedido = pedidoConDeuda.Id,
                 IdCliente = cliente.Id,
                 Monto = 60m,
-                FechaVencimiento = DateTime.UtcNow.AddDays(-1),
+                FechaVencimiento = DateTime.UtcNow.AddDays(-2),
                 Cliente = cliente,
                 Pedido = pedidoConDeuda
             });
@@ -72,7 +75,18 @@ public class ClientesControllerTests
         });
         await db.SaveChangesAsync();
 
-        var controller = new ClientesController(db);
+        // CAMBIO 4: el controlador recibe el servicio y un usuario falso con rol Gerente
+        var controller = new ClientesController(db, new HistorialComprasService(db))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        new[] { new Claim(ClaimTypes.Role, "Gerente") }, "test"))
+                }
+            }
+        };
 
         var result = await controller.Index(search: null, estado: null, id: cliente.Id);
 
