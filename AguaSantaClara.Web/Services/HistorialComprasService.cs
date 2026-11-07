@@ -117,6 +117,9 @@ public class HistorialComprasService : IHistorialComprasService
             ? pedidosQueCuentan.Max(p => p.FechaCreacion).AddHours(-5) // hora de Perú (UTC-5)
             : null;
         resultado.Pedidos = pedidos
+            // HU-19 T32: del más reciente al más antiguo (si empatan en fecha, el de mayor N° primero)
+            .OrderByDescending(p => p.FechaCreacion)
+            .ThenByDescending(p => p.Id)
             .Select(p => new PedidoCompraViewModel
             {
                 IdPedido = p.Id,
