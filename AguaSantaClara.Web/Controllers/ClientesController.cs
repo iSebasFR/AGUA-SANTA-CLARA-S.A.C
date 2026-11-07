@@ -26,7 +26,9 @@ public class ClientesController : Controller
         bool? estado,
         long? id,
         DateTime? fechaDesde = null,
-        DateTime? fechaHasta = null)
+        DateTime? fechaHasta = null,
+        DateTime? comprasDesde = null,   // HU-19 T29: filtro del historial de compras
+        DateTime? comprasHasta = null)   // HU-19 T29
     {
         var consulta = _context.Clientes
             .Include(c => c.Direcciones.Where(d => d.EstadoRegistro))
@@ -62,7 +64,8 @@ public class ClientesController : Controller
         {
             // HU-19: el historial de compras solo se consulta para la Administradora
             if (User.IsInRole("Administradora"))
-                historialCompras = await _historialComprasService.ObtenerAsync(seleccionado.Id);
+                historialCompras = await _historialComprasService.ObtenerAsync(
+                    seleccionado.Id, comprasDesde, comprasHasta);
 
             autorizacionesPlazo = await _context.AutorizacionesPlazo
                 .Include(a => a.Deuda)

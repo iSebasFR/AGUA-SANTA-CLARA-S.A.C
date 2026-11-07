@@ -7,6 +7,11 @@ public sealed class HistorialComprasViewModel
     public DateTime? FechaUltimaCompra { get; set; }
     public bool EsClienteFrecuente { get; set; }
     public List<PedidoCompraViewModel> Pedidos { get; set; } = [];
+
+    // HU-19 T29: filtro por rango de fechas (fechas de Perú, sin hora)
+    public DateTime? FechaDesde { get; set; }
+    public DateTime? FechaHasta { get; set; }
+    public string? ErrorFiltro { get; set; }
 }
 
 public sealed class PedidoCompraViewModel

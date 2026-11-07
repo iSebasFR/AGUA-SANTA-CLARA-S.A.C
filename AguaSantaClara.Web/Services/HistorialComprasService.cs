@@ -20,10 +20,26 @@ public class HistorialComprasService : IHistorialComprasService
 
     public HistorialComprasService(AppDbContext context) => _context = context;
 
-    public async Task<HistorialComprasViewModel> ObtenerAsync(long idCliente)
+    public async Task<HistorialComprasViewModel> ObtenerAsync(
+        long idCliente,
+        DateTime? desde = null,
+        DateTime? hasta = null)
     {
+        var resultado = new HistorialComprasViewModel
+        {
+            FechaDesde = desde?.Date,
+            FechaHasta = hasta?.Date
+        };
+
+        // HU-19 T29: validación del rango de fechas
+        if (desde.HasValue && hasta.HasValue && desde.Value.Date > hasta.Value.Date)
+        {
+            resultado.ErrorFiltro = "La fecha inicial no puede ser posterior a la fecha final.";
+            return resultado;
+        }
+
         // Solo lectura: sin tracking y solo las columnas necesarias.
-        var pedidos = await _context.Pedidos
+        var todosLosPedidos = await _context.Pedidos
             .AsNoTracking()
             .Where(p => p.EstadoRegistro
                 && p.Clientes.Any(pc => pc.EstadoRegistro && pc.IdCliente == idCliente))
@@ -38,7 +54,17 @@ public class HistorialComprasService : IHistorialComprasService
             })
             .ToListAsync();
 
-        // HU-19 T27: productos comprados por este cliente en esos pedidos
+        // HU-19 T29: se filtra por la fecha de Perú (UTC-5), igual que se muestra en pantalla
+        var pedidos = todosLosPedidos
+            .Where(p =>
+            {
+                var fechaPeru = p.FechaCreacion.AddHours(-5).Date;
+                return (!desde.HasValue || fechaPeru >= desde.Value.Date)
+                    && (!hasta.HasValue || fechaPeru <= hasta.Value.Date);
+            })
+            .ToList();
+
+        // HU-19 T27: productos comprados por este cliente en los pedidos del período
         var idsPedidos = pedidos.Select(p => p.Id).ToList();
 
         var detalles = await _context.DetallesPedido
@@ -73,27 +99,27 @@ public class HistorialComprasService : IHistorialComprasService
                 }).ToList());
 
         // HU-19 T28: resumen calculado solo con los pedidos de estados válidos
+        // (T29: ahora sobre el período filtrado)
         var pedidosQueCuentan = pedidos
             .Where(p => EstadosQueCuentan.Contains(p.Estado))
             .ToList();
 
-        return new HistorialComprasViewModel
-        {
-            TotalGastado = pedidosQueCuentan.Sum(p => p.Monto),
-            CantidadPedidos = pedidosQueCuentan.Count,
-            FechaUltimaCompra = pedidosQueCuentan.Count > 0
-                ? pedidosQueCuentan.Max(p => p.FechaCreacion).AddHours(-5) // hora de Perú (UTC-5)
-                : null,
-            Pedidos = pedidos
-                .Select(p => new PedidoCompraViewModel
-                {
-                    IdPedido = p.Id,
-                    Fecha = p.FechaCreacion.AddHours(-5), // hora de Perú (UTC-5)
-                    Monto = p.Monto,
-                    Estado = p.Estado,
-                    Productos = productosPorPedido.GetValueOrDefault(p.Id) ?? []
-                })
-                .ToList()
-        };
+        resultado.TotalGastado = pedidosQueCuentan.Sum(p => p.Monto);
+        resultado.CantidadPedidos = pedidosQueCuentan.Count;
+        resultado.FechaUltimaCompra = pedidosQueCuentan.Count > 0
+            ? pedidosQueCuentan.Max(p => p.FechaCreacion).AddHours(-5) // hora de Perú (UTC-5)
+            : null;
+        resultado.Pedidos = pedidos
+            .Select(p => new PedidoCompraViewModel
+            {
+                IdPedido = p.Id,
+                Fecha = p.FechaCreacion.AddHours(-5), // hora de Perú (UTC-5)
+                Monto = p.Monto,
+                Estado = p.Estado,
+                Productos = productosPorPedido.GetValueOrDefault(p.Id) ?? []
+            })
+            .ToList();
+
+        return resultado;
     }
 }
