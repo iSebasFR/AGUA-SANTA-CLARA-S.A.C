@@ -1,0 +1,52 @@
+@model AguaSantaClara.Web.Models.RentabilidadViewModel
+@{
+    ViewData["Title"] = "Rentabilidad por línea";
+}
+
+<link rel="stylesheet" href="~/css/reporte-ventas.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/rentabilidad.css" asp-append-version="true" />
+
+<div class="reporte-ventas-container" id="rentabilidad" data-url="@Url.Action("Index", "Rentabilidad")">
+    <div class="reporte-ventas-header d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="reporte-title mb-1">RENTABILIDAD POR LÍNEA DE PRODUCTO</h1>
+            <p class="reporte-subtitle mb-0">Ingresos netos, costos y margen de las ventas del período seleccionado.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 date-range-picker">
+            <input type="date" id="inputFechaDesde" class="form-control form-control-sm date-input" aria-label="Fecha desde"
+                   value="@Model.FechaDesde.ToString("yyyy-MM-dd")" />
+            <span class="text-muted small">hasta</span>
+            <input type="date" id="inputFechaHasta" class="form-control form-control-sm date-input" aria-label="Fecha hasta"
+                   value="@Model.FechaHasta.ToString("yyyy-MM-dd")" />
+        </div>
+    </div>
+
+    <div id="alertaError" class="alert alert-danger d-none" role="alert">No se pudo actualizar la rentabilidad. Intenta nuevamente.</div>
+    <div id="alertaOtros" class="alert alert-warning d-none" role="alert"></div>
+
+    <div class="row g-3 mb-4" id="tarjetasLineas"></div>
+
+    <div class="reporte-section-card mb-4">
+        <div class="reporte-section-header">
+            <h2 class="section-heading-title">MARGEN POR LÍNEA</h2>
+        </div>
+        <div class="rentabilidad-grafico">
+            <canvas id="graficoMargen" aria-label="Gráfico comparativo de margen por línea" role="img"></canvas>
+        </div>
+    </div>
+
+    <div id="detalleLineas"></div>
+
+    <p class="text-muted small mb-4">
+        <i class="bi bi-info-circle"></i>
+        Ingreso neto = cantidad × precio unitario − descuentos. El costo se calcula con el costo actual de cada producto
+        (no existe costo histórico por venta). Las filas en rojo tienen margen negativo.
+    </p>
+</div>
+
+<script id="datosRentabilidad" type="application/json">@Json.Serialize(Model)</script>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="~/js/rentabilidad.js" asp-append-version="true"></script>
+}

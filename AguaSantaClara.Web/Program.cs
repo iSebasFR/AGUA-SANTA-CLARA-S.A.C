@@ -104,6 +104,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 
 builder.Services.AddScoped<IPedidoService, PedidoService>();
 builder.Services.AddScoped<IHistorialComprasService, HistorialComprasService>(); // HU-19
+builder.Services.AddScoped<IRentabilidadService, RentabilidadService>(); // HU-21
 builder.Services.AddScoped<IAutoventaService, AutoventaService>(); // HU-14 T10
 builder.Services.AddScoped<IAlertasService, AlertasService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();

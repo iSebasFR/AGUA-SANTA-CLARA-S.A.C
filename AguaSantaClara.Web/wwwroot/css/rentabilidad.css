@@ -1,0 +1,23 @@
+.rentabilidad-grafico {
+    position: relative;
+    height: 280px;
+    padding: 1rem;
+}
+
+.kpi-card.margen-negativo {
+    border-color: #f1aeb5;
+    background-color: #fff5f5;
+}
+
+.kpi-detalle {
+    font-size: 0.85rem;
+    color: #6e6e73;
+}
+
+.kpi-detalle strong {
+    color: #1d1d1f;
+}
+
+.reporte-table tbody tr.table-danger td {
+    background-color: #f8d7da;
+}
