@@ -123,6 +123,19 @@ public class ProductosControllerTests
     }
 
     [Fact]
+    public async Task Create_DatosValidos_Ajax_DevuelveUrlYConservaMensaje()
+    {
+        var (db, central, _, _) = await CrearEscenarioAsync();
+        var controller = Controlador(db, ajax: true);
+
+        var resultado = await controller.Create(ModeloCrear(central.Id));
+
+        // Sin redirección HTTP: fetch la seguiría y consumiría el TempData antes de que se muestre.
+        Assert.IsType<JsonResult>(resultado);
+        Assert.Equal("PRODUCTO CREADO CORRECTAMENTE", controller.TempData["SuccessMessage"]);
+    }
+
+    [Fact]
     public async Task Create_DescripcionVacia_GuardaNull()
     {
         var (db, central, _, _) = await CrearEscenarioAsync();
@@ -213,7 +226,7 @@ public class ProductosControllerTests
 
         await controller.Create(ModeloCrear(central.Id, norte.Id));
 
-        Assert.Contains("Este producto ya está registrado en todos los locales seleccionados.",
+        Assert.Contains("Ya existe un producto con ese nombre.",
             (string)controller.TempData["ErrorMessage"]!);
         Assert.Equal(1, await db.Productos.CountAsync());
     }

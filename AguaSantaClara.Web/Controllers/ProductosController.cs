@@ -128,7 +128,7 @@ public class ProductosController : Controller
                 relacionesExistentes.Any(pl => pl.IdLocal == idLocal && pl.Estado && pl.EstadoRegistro));
 
             if (todosYaAsignados)
-                ModelState.AddModelError(nameof(model.IdLocales), "Este producto ya está registrado en todos los locales seleccionados.");
+                ModelState.AddModelError(nameof(model.Nombre), "Ya existe un producto con ese nombre.");
         }
 
         if (!ModelState.IsValid)
@@ -165,7 +165,7 @@ public class ProductosController : Controller
 
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = "PRODUCTO AGREGADO A LOS LOCALES SELECCIONADOS";
-            return RedirectToAction(nameof(Index));
+            return IrAlCatalogoTrasGuardar();
         }
 
         var producto = new Producto
@@ -194,7 +194,7 @@ public class ProductosController : Controller
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "PRODUCTO CREADO CORRECTAMENTE";
-        return RedirectToAction(nameof(Index));
+        return IrAlCatalogoTrasGuardar();
     }
 
     // ==================== EDIT ====================
@@ -328,8 +328,16 @@ public class ProductosController : Controller
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = "PRODUCTO ACTUALIZADO CORRECTAMENTE";
-        return RedirectToAction(nameof(Index));
+        return IrAlCatalogoTrasGuardar();
     }
+
+    // Con fetch, un RedirectToAction lo sigue el navegador solo y el TempData se consume
+    // en esa petición; al recargar luego el listado el mensaje ya no existe.
+    // Por eso, en AJAX devolvemos la URL y el JS navega una sola vez.
+    private IActionResult IrAlCatalogoTrasGuardar() =>
+        EsSolicitudAjax
+            ? Json(new { redirectUrl = Url.Action(nameof(Index)) })
+            : RedirectToAction(nameof(Index));
 
     private bool EsSolicitudAjax => string.Equals(
         Request.Headers["X-Requested-With"].ToString(),
