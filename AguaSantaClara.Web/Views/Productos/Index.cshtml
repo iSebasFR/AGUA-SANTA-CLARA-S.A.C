@@ -779,6 +779,13 @@
 
                 if (!respuesta.ok) throw new Error('Error al guardar el producto.');
 
+                // Guardado correcto: el servidor devuelve la URL del catálogo (el mensaje queda en TempData)
+                if ((respuesta.headers.get('content-type') || '').includes('application/json')) {
+                    const datos = await respuesta.json();
+                    window.location.assign(datos.redirectUrl);
+                    return;
+                }
+
                 document.getElementById(contenidoId).innerHTML = await respuesta.text();
                 if (window.jQuery?.validator?.unobtrusive) {
                     window.jQuery.validator.unobtrusive.parse(document.getElementById(contenidoId));

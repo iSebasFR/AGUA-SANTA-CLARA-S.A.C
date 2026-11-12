@@ -357,7 +357,13 @@ public class PedidosController : Controller
     public async Task<IActionResult> Guardar([FromBody] CrearPedidoViewModel modelo)
     {
         var resultado = await _pedidoService.CrearAsync(modelo ?? new CrearPedidoViewModel(), enviar: false);
-        return resultado.Ok ? Json(resultado) : BadRequest(resultado);
+
+        if (!resultado.Ok)
+            return BadRequest(resultado);
+
+        // El pedido queda en estado "Pendiente"; el JS muestra este mensaje tras recargar el listado.
+        resultado.Mensaje = "PEDIDO CREADO CORRECTAMENTE";
+        return Json(resultado);
     }
 
     [HttpPost]
