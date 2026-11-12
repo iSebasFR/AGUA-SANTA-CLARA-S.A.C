@@ -434,7 +434,7 @@ public class PedidoServiceCrearPedidoTests
         await db.Database.MigrateAsync();
         await using var tx = await db.Database.BeginTransactionAsync();
 
-        var sufijo = Guid.NewGuid().ToString("N")[..6];
+        var sufijo = Random.Shared.Next(0, 1_000_000).ToString("D6");
         db.Clientes.AddRange(
             new Cliente { Nombre = $"Zoila Prueba {sufijo}", Telefono = $"9{sufijo}11", Dni = $"7{sufijo}1" },
             new Cliente { Nombre = $"Inactiva {sufijo}", Telefono = "900000000", Estado = false });

@@ -68,15 +68,16 @@ public class UsuariosControllerTests
         await db.Database.MigrateAsync();
         await using var tx = await db.Database.BeginTransactionAsync();
 
-        var rol = await db.Roles.FirstAsync(r => r.Codigo != "GERENTE");
         var sufijo = Guid.NewGuid().ToString("N")[..8];
+        var rol = new Rol { Codigo = $"T{sufijo}", Name = $"Prueba{sufijo}", NormalizedName = $"PRUEBA{sufijo}".ToUpper() };
+        db.Roles.Add(rol);
         db.Usuarios.Add(new Usuario
         {
             UserName = $"zz{sufijo}",
             NormalizedUserName = $"ZZ{sufijo}".ToUpper(),
             Nombres = "Rosa",
             Apellidos = $"Quispe{sufijo}",
-            IdRol = rol.Id
+            Rol = rol
         });
         await db.SaveChangesAsync();
 
