@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Tests;
 
+[Collection(PostgresCollection.Nombre)]
 public class UsuariosControllerTests
 {
     private static UsuariosController CrearControlador(EntornoIdentity entorno) =>

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AguaSantaClara.Tests;
 
+[Collection(PostgresCollection.Nombre)]
 public class PedidoServiceCrearPedidoTests
 {
     private sealed record Escenario(

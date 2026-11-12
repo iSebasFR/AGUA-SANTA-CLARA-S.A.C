@@ -216,3 +216,10 @@ public sealed class PostgresFactAttribute : FactAttribute
             .UseNpgsql(Environment.GetEnvironmentVariable(Variable)!)
             .Options);
 }
+
+// Las clases que migran PostgreSQL corren al final y en serie para no chocar al aplicar migraciones.
+[CollectionDefinition(Nombre, DisableParallelization = true)]
+public sealed class PostgresCollection
+{
+    public const string Nombre = "PostgreSQL";
+}
