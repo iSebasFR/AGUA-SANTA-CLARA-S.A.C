@@ -100,6 +100,9 @@
                         <a asp-controller="Reportes" asp-action="Ventas" class="sidebar-link">
                             <i class="bi bi-file-earmark-bar-graph"></i><span class="sidebar-label">Reporte de Ventas</span>
                         </a>
+                        <a asp-controller="Rentabilidad" asp-action="Index" class="sidebar-link">
+                            <i class="bi bi-graph-up-arrow"></i><span class="sidebar-label">Rentabilidad</span>
+                        </a>
                     }
                     else if (User.IsInRole("Vendedora"))
                     {
